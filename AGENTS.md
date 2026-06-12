@@ -105,3 +105,30 @@ jhonstart is a *consumer*. What it relies on:
     data layer;
   - the `Element` model has no **attribute** slot, so `Link`/form controls can't
     render `href`/`onClick` in pure `.bp` yet.
+
+## CI
+
+`.github/workflows/test.yml` runs `zig build test-libs -- --lib jhonstart
+--target commonJS` on every push / PR to `feat`/`master`/`main`, across
+`ubuntu-22.04`, `macos-14`, `windows-2022`. jhonstart is a frontend
+framework — the matrix is **commonJS-only**.
+
+Bootstrap path mirrors the other lib repos: check out this lib + a
+fresh `botopink-lang` clone, place this lib under
+`botopink-lang/repository/jhonstart/`, then `zig build install && zig
+build test-libs`. `BOTOPINK_LANG_REF` repo variable pins a specific
+botopink-lang ref (default `main`).
+
+## Tagging (auto)
+
+`.github/workflows/tag.yml` reads `version` from `botopink.json` and
+creates / moves a git tag on every push to `feat`/`master`/`main`:
+
+- **feat** → moving `<version>-feat` tag, force-pushed on every push.
+- **master** / **main** → immutable `<version>` tag. Pushing the same
+  SHA twice is a no-op; pushing a *different* SHA without bumping
+  `version` in `botopink.json` is a hard error ("bump version in
+  botopink.json to publish a new release").
+
+To preview unreleased work, set `requires.jhonstart = "feat"` in the
+consuming project's `botopink.json` and run `bpmp sync`.

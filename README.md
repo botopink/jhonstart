@@ -1,5 +1,7 @@
 # jhonstart
 
+[![CI](https://github.com/botopink/jhonstart/actions/workflows/test.yml/badge.svg?branch=feat)](https://github.com/botopink/jhonstart/actions/workflows/test.yml)
+
 > React/Next-style UI framework written in botopink — on the language's own
 > primitives. No compiler-core support; reached via `from "jhonstart"`.
 

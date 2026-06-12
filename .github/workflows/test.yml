@@ -1,0 +1,71 @@
+# Per-platform CI for jhonstart.
+#
+# jhonstart is a frontend UI framework — only the `commonJS` target ships.
+# Bootstrap: check out this lib + botopink-lang, place this lib under
+# `botopink-lang/repository/jhonstart/`, run `zig build test-libs -- --lib
+# jhonstart --target commonJS`.
+name: test
+
+on:
+  push:
+    branches: [feat, master, main]
+  pull_request:
+    branches: [feat, master, main]
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LIB_NAME: jhonstart
+  BOTOPINK_LANG_REPO: botopink/botopink-lang
+
+jobs:
+  test:
+    name: ${{ matrix.runner }} · commonJS
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, macos-14, windows-2022]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout this lib
+        uses: actions/checkout@v4
+        with:
+          path: self
+
+      - name: Checkout botopink-lang
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.BOTOPINK_LANG_REPO }}
+          ref: ${{ vars.BOTOPINK_LANG_REF || 'main' }}
+          path: botopink-lang
+
+      - name: Place lib under botopink-lang/repository/${{ env.LIB_NAME }}/
+        shell: bash
+        run: |
+          mkdir -p botopink-lang/repository
+          if command -v rsync >/dev/null 2>&1; then
+            rsync -a --delete self/ "botopink-lang/repository/${LIB_NAME}/"
+          else
+            rm -rf "botopink-lang/repository/${LIB_NAME}"
+            cp -R self "botopink-lang/repository/${LIB_NAME}"
+          fi
+
+      - name: Install Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.16.0
+
+      - name: zig build install
+        working-directory: botopink-lang
+        run: zig build install
+
+      - name: zig build test-libs --lib jhonstart --target commonJS
+        working-directory: botopink-lang
+        run: zig build test-libs -- --lib "${LIB_NAME}" --target commonJS
