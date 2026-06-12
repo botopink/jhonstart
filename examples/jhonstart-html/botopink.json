@@ -1,0 +1,1 @@
+{ "name": "jhonstart-html", "version": "0.0.1", "target": "commonJS", "dependencies": ["jhonstart"] }

@@ -1,0 +1,116 @@
+// jhonstart/element — the UI core, implemented in *real* botopink.
+//
+// V1 models the UI tree as ordinary data rather than a host intrinsic: every
+// builder/renderer here is an ordinary `.bp` function and the SSR renderer is a
+// pure, synchronous walk — no host runtime, no `@[external]`, no async.
+//
+// `Element` IS the `@Context` base for every client hook: a function whose
+// return implements `@Context<Element, _>` is a hook, and the `use` prefix is
+// only legal inside a `-> Element` body (enforced by context-inference). The
+// node type is therefore a `record` that *implements* `@Context<Element, Element>`
+// — at once the rendered data and the capability the hooks gate on. (A `record`
+// carries the inline `implement` clause AND constructs correctly at runtime;
+// an inline `struct implement … {}` type-checks but its fields are dropped by
+// codegen, and a standalone `implement @Context<…> for …` block does not parse —
+// see the spec Notes.)
+//
+// A node is tagged: `tag` is `"#text"` (a leaf), `"#fragment"` (siblings, no
+// wrapper), or an HTML tag name (`"div"`, `"p"`, …); `value` is text content
+// (only for `"#text"`); `children` holds the child nodes.
+//
+// `children` is typed `Children` (not `Element[]`) so the builders below accept
+// the whole coercion family (G4): an `Element[]` list (`div([a, b])`), a single
+// `Element`, or a `string`. V1 renders the **list** form (the renderer walks
+// `children` as an array); the single/`string` forms type-check today but their
+// render needs a runtime normalization intrinsic (recorded follow-up — there are
+// no runtime type tags to branch a lone child vs a list on).
+pub record Element implement @Context<Element, Element> {
+    tag: string,
+    value: string,
+    children: Children,
+}
+
+// ── builders ──────────────────────────────────────────────────────────────────
+//
+// Builders take a `Children` argument, so the call site can pass an `Element[]`
+// list (`div([a, b])`), a single `Element`, or a `string` — the `Children`
+// coercion (G4, now landed). The list form (`div([a, b])`) is the rendering
+// contract and the one the `html` DSL emits; nested lists type-check and build
+// deep trees. The trailing-lambda sugar (`div { [a, b] }`, needing `fn() ->
+// Children` G3 in argument position) stays a recorded ergonomic follow-up.
+
+// A text leaf. A bare string in markup becomes one of these.
+pub fn text(value: string) -> Element {
+    return Element(tag: "#text", value: value, children: []);
+}
+
+// Group siblings without a wrapper element (React's `<>…</>`).
+pub fn fragment(children: Children) -> Element {
+    return Element(tag: "#fragment", value: "", children: children);
+}
+
+pub fn div(children: Children) -> Element { return Element(tag: "div", value: "", children: children); }
+pub fn span(children: Children) -> Element { return Element(tag: "span", value: "", children: children); }
+pub fn p(children: Children) -> Element { return Element(tag: "p", value: "", children: children); }
+pub fn h1(children: Children) -> Element { return Element(tag: "h1", value: "", children: children); }
+pub fn ul(children: Children) -> Element { return Element(tag: "ul", value: "", children: children); }
+pub fn li(children: Children) -> Element { return Element(tag: "li", value: "", children: children); }
+
+// ── render ──────────────────────────────────────────────────────────────────
+
+// Serialize an Element tree to an HTML string. Pure and synchronous: a plain
+// self-recursive walk over the (list-form) `children`. Mutual recursion between
+// top-level fns now resolves, so a `renderChildren` split would type-check; the
+// inline walk is kept for a single self-contained renderer.
+pub fn renderToString(e: Element) -> string {
+    if (e.tag == "#text") {
+        return e.value;
+    };
+    var inner = "";
+    loop (e.children) { c ->
+        inner = inner + renderToString(c);
+    };
+    if (e.tag == "#fragment") {
+        return inner;
+    };
+    return "<" + e.tag + ">" + inner + "</" + e.tag + ">";
+}
+
+// ── tests ──────────────────────────────────────────────────────────────────
+
+test "leaf, fragment, and a nested tree render to HTML" {
+    // A text leaf renders as its raw value.
+    assert renderToString(text("hi")) == "hi";
+    // A fragment renders its children with no wrapper.
+    assert renderToString(fragment([text("a"), text("b")])) == "ab";
+    // A nested tree renders as HTML.
+    val tree = div([p([text("hi")]), text("!")]);
+    assert renderToString(tree) == "<div><p>hi</p>!</div>";
+}
+
+test "deeply nested lists build and render (list form)" {
+    val page = div([
+        h1([text("Title")]),
+        ul([
+            li([text("one")]),
+            li([span([text("t"), text("wo")])]),
+        ]),
+    ]);
+    assert renderToString(page) == "<div><h1>Title</h1><ul><li>one</li><li><span>two</span></li></ul></div>";
+}
+
+// G4: the builders' `Children` parameter accepts the whole coercion family — an
+// `Element[]` list, a single `Element`, and a `string`. All three type-check
+// here (this is the coercion the spec's `div([a, b])` test names). The list form
+// is the one V1 renders (asserted above); the single/`string` forms are bound to
+// confirm the coercion fires, without rendering (their walk is the recorded
+// normalization follow-up).
+val coerceList = div([text("a"), text("b")]);
+val coerceSingle = div(text("only"));
+val coerceText = div("bare string");
+
+test "Children coercion: list / single / string all type-check (G4)" {
+    assert coerceList.tag == "div";
+    assert coerceSingle.tag == "div";
+    assert coerceText.tag == "div";
+}

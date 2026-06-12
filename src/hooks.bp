@@ -1,0 +1,111 @@
+// jhonstart/hooks — the client hook surface, as *real* botopink (F1).
+//
+// Every hook is a function whose return implements `@Context<Element, _>`: that
+// capability is what makes the `use` prefix legal on it, and only inside a
+// component (a `-> Element` body) — enforced by the language's context-inference,
+// not by jhonstart. The hooks are pure and synchronous: they model the FIRST
+// render (SSR). `state` yields its initial value, `memo` computes eagerly,
+// `effect` is a no-op, `ref`/`reducer` seed their boxes. Client re-render
+// reactivity is the host runtime's job (the `use` prefix lowers to the target's
+// hook convention — React `useState`/… on `commonJS`); the bodies here carry no
+// host runtime, so they are exercised directly in `test {}` below.
+//
+// Promoted from `hooks.d.bp` once the gaps landed: G1 (a function-typed record
+// field — `set: fn(next: T)`) and G2 (an anonymous record type as the transient
+// `{current}` / `{state, dispatch}` shape).
+
+import { Element };
+
+// The `{value, set}` cell a `state` hook yields (G1: a fn-typed field). A named
+// `record` (not an anonymous shape) so `use state(0)` can be destructured *and*
+// passed around (`State<T>`) by callers and custom hooks.
+pub record State<T> {
+    value: T,
+    set: fn(next: T),
+}
+
+// `state` — a stateful cell. On the server (SSR / first render) it yields the
+// initial value; `set` is the updater the client runtime rebinds on mount.
+pub fn state<T>(initial: T) -> @Context<Element, State<T>> {
+    return State(value: initial, set: { next -> });
+}
+
+// `effect` — a side effect run after render. Pure during SSR (a no-op); the
+// client runtime schedules `run` against `deps` on mount. Yields the empty
+// capability (`{}` — nothing to bind).
+pub fn effect(run: fn(), deps: any[]) -> @Context<Element, {}> {
+    return record { };
+}
+
+// `memo` — a value memoized across renders. Computed eagerly here (the first
+// render has no previous `deps` to compare against), yielding the computed `T`.
+pub fn memo<T>(compute: fn() -> T, deps: any[]) -> @Context<Element, T> {
+    return compute();
+}
+
+// `ref` — a mutable box that persists across renders. Yields `{current}` seeded
+// with `initial` (G2: an anonymous record shape).
+pub fn ref<T>(initial: T) -> @Context<Element, {current: T}> {
+    return record { current: initial };
+}
+
+// `reducer` — state threaded through a reducer. Yields `{state, dispatch}`;
+// `state` is the initial state, `dispatch` the action sink the client rebinds.
+pub fn reducer<S, A>(reduce: fn(s: S, a: A) -> S, initial: S)
+    -> @Context<Element, {state: S, dispatch: fn(action: A)}>
+{
+    return record { state: initial, dispatch: { action -> } };
+}
+
+// ── tests ──────────────────────────────────────────────────────────────────
+//
+// The hook BODIES are pure `.bp`, so they are exercised by calling them directly
+// (the `use` prefix's per-target lowering — React hooks on `commonJS` — is the
+// host runtime's concern and is verified to *type-check* by `Counter` below, not
+// run here). This is the SSR/first-render contract.
+
+test "state yields its initial value and a callable setter" {
+    val c = state(7);
+    assert c.value == 7;
+    c.set(9);            // G1: the fn-typed `set` field is callable
+}
+
+test "memo computes eagerly; ref/reducer seed their boxes" {
+    val m = memo({ -> 3 + 4 }, []);
+    assert m == 7;
+    val r = ref(0);
+    assert r.current == 0;
+    val rd = reducer({ s, a -> s + a }, 10);
+    assert rd.state == 10;
+    rd.dispatch(1);
+}
+
+test "a custom hook composes State and stays the {value,set} shape" {
+    val c = useCounter(5);
+    assert c.value == 5;
+    c.set(6);
+}
+
+// A custom hook: an ordinary fn whose return is another hook's `@Context`. Its
+// `use` legality propagates transitively (context-inference); here it just
+// re-exposes `state`'s `State<i32>`.
+fn useCounter(start: i32) -> @Context<Element, State<i32>> {
+    return state(start);
+}
+
+// A component using `use` — proves the capability type-checks (the `use` prefix
+// is legal because `state`/`memo` return `@Context<Element, _>` and `Counter`
+// returns `Element`). Not executed: the `commonJS` lowering maps `use state` to
+// React's `useState`, which belongs to the client runtime, not this SSR test.
+fn Counter() -> Element {
+    val c = use state(0);
+    val doubled = use memo({ -> c.value + c.value }, []);
+    return Element(
+        tag: "div",
+        value: "",
+        children: [
+            Element(tag: "#text", value: "count: " + c.value.toString(), children: []),
+            Element(tag: "#text", value: " x2=" + doubled.toString(), children: []),
+        ],
+    );
+}

@@ -1,0 +1,30 @@
+// jhonstart/router — client-side navigation (the Next-style app layer).
+//
+// `useRouter` is an Element-context hook (so `use`-only inside a component);
+// `Link` renders an anchor the router intercepts for client navigation.
+// File-based routing (`app/`, `page.bp`, `layout.bp`, `[id]`) is a library
+// CONVENTION in V1, not a compiler feature.
+//
+// STILL GATED — stays `.d.bp` (F4). Nothing here is promotable to real `.bp` yet:
+//   - `Router` carries `get` accessors — declaration-file syntax; a real `.bp`
+//     interface parses (see `hooks.bp`'s records) but a getter member does not.
+//   - `useRouter` is a host-bound `@Context` capability — client navigation lives
+//     in the host runtime (`#[@external]`, only valid on a bodyless `declare`),
+//     not in pure `.bp`.
+//   - `Link` must render `<a href=…>`, but the `Element` model is `tag`/`value`/
+//     `children` with NO attribute slot (`href`/`class`/`onClick`). A real `.bp`
+//     `Link` would silently drop `href`, so it stays host-backed until Element
+//     grows an attribute model (recorded follow-up — see `docs.md`).
+
+pub interface Router {
+    get pathname(self: Self) -> string
+    get params(self: Self) -> Dict<string, string>
+    fn push(self: Self, href: string)
+    fn replace(self: Self, href: string)
+}
+
+#[@external(node, "jhonstart/runtime", "useRouter")]
+pub fn useRouter() -> @Context<Element, Router>
+
+#[@external(node, "jhonstart/runtime", "link")]
+pub fn Link(href: string, children: fn() -> Children) -> Element

@@ -1,0 +1,29 @@
+// jhonstart — a minimal html template library (expr-templates showcase).
+//
+// `html` receives the caller's template UNEVALUATED (`@Expr<string>`), walks
+// its parts at compile time, and builds the output expression as source text:
+// Text parts are re-quoted, `${…}` holes splice the caller's expression back
+// (each Interp part exposes a `code` placeholder for exactly that).
+//
+// The call site pays zero runtime cost — `val page = html …` compiles to a
+// plain string concatenation; this function never reaches the output.
+
+pub fn html(comptime q: @Expr<string>) -> @Expr<string> {
+    var acc = "\"\"";
+    loop (q.parts()) { p ->
+        if (p.kind == "Text") {
+            acc = acc + " + \"" + p.text + "\"";
+        };
+        if (p.kind == "Interp") {
+            acc = acc + " + " + p.code;
+        };
+    };
+    return q.build(acc);
+}
+
+// Scope-aware diagnostics: a component lookup that fails points INSIDE the
+// caller's template (rustc-style), not at this library.
+//
+//     val hit = q.lookup("Page1");          // ?Binding — caller-scope resolution
+//     if (hit) { b -> … b.ref() … };        // spliceable reference
+//     q.fail("component not found");        // diagnostic at the template

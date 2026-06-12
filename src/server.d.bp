@@ -1,0 +1,28 @@
+// jhonstart/server — the Http ContextBase: server components & data loading.
+//
+// `request()` is a server hook (`@Context<Http, Request>`) — usable inside a
+// server component (`#[@future] fn … -> @Future<Element>`). A loader is an
+// ordinary `#[@future]` fn returning `@Future<_>`, awaited before the component
+// returns its Element.
+// (`Http` mirrors the `connection()` ContextBase from context-inference.)
+//
+// STILL GATED — stays `.d.bp` (F4):
+//   - `Request` carries `get` accessors — declaration-file syntax (as in
+//     `router.d.bp`).
+//   - `request()` is a host-bound `@Context<Http, Request>` server hook — the
+//     request is provided by the host runtime (`#[@external]`).
+//   - The async SSR data layer — server components (`#[@future] fn … -> @Future<Element>`)
+//     and the `#[@future] fn … -> @Future<_>` loaders awaited before render — is gated on
+//     the effect-await surface (`use-await-prefix` / `async-generators`,
+//     tasks/v0.beta.1), not yet expressible; recorded here, not built.
+//   - `Http` is a phantom `@Context` base (no members) supplied by the host,
+//     the server-side mirror of `Element`.
+
+pub interface Request {
+    get path(self: Self) -> string
+    get params(self: Self) -> Dict<string, string>
+    get query(self: Self) -> Dict<string, string>
+}
+
+#[@external(node, "jhonstart/runtime", "request")]
+pub fn request() -> @Context<Http, Request>

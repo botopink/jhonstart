@@ -1,0 +1,31 @@
+// jonhstar — using the html template library (expr-templates showcase).
+//
+// The template below is captured UNEVALUATED, expanded at COMPILE TIME by
+// `jhonstart.html`, and re-type-checked here: `page`/`greeting` are plain
+// `string`s built from the text parts and the `${…}` holes — no template engine,
+// no runtime parsing. The expansion never reaches the output.
+
+import { html } from "jhonstart";
+
+val name = "world";
+
+// A multi-line markup template (the `\\`-string form), spliced with `${name}`.
+val page = html
+    \\<div>
+    \\  <p>${name}</p>
+    \\  <Page1/>
+    \\  <Page2/>
+    \\  <Page3/>
+    \\</div>
+;
+
+// A small, exactly-assertable template for the test below.
+val greeting = html "Hello, ${name}!";
+
+fn main() {
+    @print(page);
+}
+
+test "a ${...} hole splices the caller's value into the built string" {
+    assert greeting == "Hello, world!";
+}

@@ -1,0 +1,17 @@
+//// The `jhonstart` package — module-tree root.
+////
+//// The compiled UI core: `element` (the `Element` tree + builders + SSR
+//// renderer), `hooks` (the `state`/`effect`/`memo`/`ref`/`reducer` family —
+//// `hooks` imports `Element` from `element`), and `html` (the `html """…"""`
+//// markup DSL that expands to the builder pipeline). All three are public
+//// surface, reached by a consumer via `import {…} from "jhonstart"`.
+////
+//// The host-bound surface stays in declaration modules — `router.d.bp`
+//// (client navigation) and `server.d.bp` (the Http server context) — wired
+//// through `botopink.json` `files` (loaded with `.declaration = true` for a
+//// consumer), not the build tree: `.d.bp` modules are not resolved by `mod`
+//// paths, mirroring how `libs/std` keeps its ambient `.d.bp` out of `root.bp`.
+
+pub mod element;
+pub mod hooks;
+pub mod html;

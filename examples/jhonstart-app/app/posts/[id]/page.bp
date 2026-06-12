@@ -1,0 +1,36 @@
+// ⛔ GATED / ASPIRATIONAL EXAMPLE — does not build yet.
+// The app/server layer needs language work not yet landed: async server
+// components (`#[@future] fn … -> @Future`, `await`) gated on use-await-prefix /
+// async-generators (tasks/v0.beta.1), the host-bound `request()`/router, and
+// an Element attribute model. Kept as the intended app-layer surface; the
+// functional examples are jhonstart-counter / jhonstart-todo / jhonstart-html.
+//
+// jhonstart-app — a dynamic, server-rendered route (`app/posts/[id]/page.bp`).
+//
+// `[id]` is a dynamic segment, exposed via the Http-context `request()` hook.
+// The page is a SERVER component: a `#[@future]` fn that `await`s a loader before
+// returning its `Element`. `#[@future]` marks the return as `@Future<_>`; `await`
+// unwraps it (both from the async-generators language work).
+
+import { div, h1, p } from "jhonstart";
+import { request } from "jhonstart/server";
+
+#[@future]
+fn loadPost(id: string) -> @Future<{ title: string, body: string }> {
+    val resp = await fetch("/api/posts/" + id);
+    return resp.json();
+}
+
+#[@future]
+fn Page() -> @Future<Element> {
+    val req = use request();                         // @Context<Http, Request>
+    val id = req.params.get("id").unwrapOr("0");
+    val post = await loadPost(id);
+
+    div {
+        [
+            h1 { post.title },
+            p { post.body },
+        ]
+    }
+}

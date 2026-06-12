@@ -1,0 +1,13 @@
+{
+  "name": "jhonstart",
+  "version": "0.0.1",
+  "description": "Botopink React/Next-style UI framework — an Element tree + builders + SSR renderer + hooks in real botopink, plus the html markup DSL (compiled) and the host-bound router/server surface",
+  "src": "src/",
+  "files": [
+    "element.bp",
+    "hooks.bp",
+    "html.bp",
+    "router.d.bp",
+    "server.d.bp"
+  ]
+}

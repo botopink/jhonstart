@@ -1,0 +1,69 @@
+// jhonstart/html — behaviour-parity tests for the markup front-end.
+//
+// Run by `botopink test` from `libs/jhonstart/` (the flat `test/` suite, loaded
+// alongside `src/`). The `html` template's dual lowering is exercised through its
+// EXECUTABLE half: `html "…"` resolves its builders against THIS module's scope
+// snapshot (the `import { div, p, … }` below — the same way a consumer imports
+// the builders the markup names), expands to the `tag([...])` pipeline, and the
+// SSR renderer asserts the lowered `Element` tree matches the old body's output.
+// The reference (`CustomNode`) half is reference-only — read by the language
+// server, not by a runtime assert — so it is covered by the core's sublanguage
+// LSP tests, not here.
+//
+// Arrays would compare by reference (`==` lowers to JS ref-equality), so trees
+// are compared through `renderToString`.
+
+import { html, div, span, p, h1, ul, li, text, fragment, renderToString };
+
+test "markup lowers to the builder pipeline and renders" {
+    val page = html """<div><p>hi</p></div>""";
+    assert renderToString(page) == "<div><p>hi</p></div>";
+}
+
+test "a lowercase tag maps to its builder" {
+    val hi = html """<p>hi</p>""";
+    assert renderToString(hi) == "<p>hi</p>";
+}
+
+test "a ${...} hole splices the caller's typed expression as a child" {
+    val who = "Eric";
+    val greet = html """<p>hi ${who}</p>""";
+    assert renderToString(greet) == "<p>hi Eric</p>";
+}
+
+test "a text run and a hole compose in the same element" {
+    val n = 3;
+    val row = html """<li>item ${n.toString()}</li>""";
+    assert renderToString(row) == "<li>item 3</li>";
+}
+
+test "nested tags build a nested Element tree" {
+    val tree = html """<div><p>one</p><p>two</p></div>""";
+    assert renderToString(tree) == "<div><p>one</p><p>two</p></div>";
+}
+
+test "multi-line markup with indentation tokenizes the same" {
+    val name = "world";
+    val page = html """
+        <div>
+          <p>hello, ${name}</p>
+        </div>
+    """;
+    assert renderToString(page) == "<div><p>hello, world</p></div>";
+}
+
+test "multiple roots wrap in an implicit fragment" {
+    val pair = html """<p>a</p><p>b</p>""";
+    assert renderToString(pair) == "<p>a</p><p>b</p>";
+}
+
+test "attributes are accepted and do not change the Element tree" {
+    val card = html """<div class="card"><p>x</p></div>""";
+    assert renderToString(card) == "<div><p>x</p></div>";
+}
+
+test "deeply nested tags with mixed text and holes" {
+    val a = "one";
+    val tree = html """<ul><li>${a}</li><li><span>t<h1>w</h1>o</span></li></ul>""";
+    assert renderToString(tree) == "<ul><li>one</li><li><span>t<h1>w</h1>o</span></li></ul>";
+}

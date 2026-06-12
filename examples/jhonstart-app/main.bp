@@ -1,0 +1,23 @@
+// ⛔ GATED / ASPIRATIONAL EXAMPLE — does not build yet.
+// The app/server layer needs language work not yet landed: async server
+// components (`#[@future] fn … -> @Future`, `await`) gated on use-await-prefix /
+// async-generators (tasks/v0.beta.1), the host-bound `request()`/router, and
+// an Element attribute model. Kept as the intended app-layer surface; the
+// functional examples are jhonstart-counter / jhonstart-todo / jhonstart-html.
+//
+// jhonstart-app — server-side rendering entry.
+//
+// File-based routing is a jhonstart convention (V1); here the dynamic post route
+// is wired manually. `Page` is a server component (`#[@future] fn -> @Future<Element>`):
+// `await Page()` runs its loader, `renderToString` serializes the resulting
+// `Element` tree to an HTML string. The `#[@future]`/`await` pair comes from the
+// language's async work; `renderToString` is itself `#[@future]` (it may await the tree).
+
+import { renderToString } from "jhonstart";
+import { Page } from "jhonstart-app/app/posts/[id]/page";
+
+#[@future]
+fn main() -> @Future<void> {
+    val html = await renderToString(await Page());
+    @print(html);
+}

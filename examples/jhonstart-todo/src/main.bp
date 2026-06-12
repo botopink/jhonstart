@@ -1,0 +1,46 @@
+// jhonstart-todo — lists + a custom hook, as a pure SSR client.
+//
+// List rendering is ordinary data: `items.map({ it -> li([text(it)]) })`
+// produces an `Element[]` the `ul` builder accepts (the `Children` coercion).
+// `todoView` is pure and directly testable; `useToggle` is a custom hook
+// (its return implements `@Context<Element, _>`, propagated transitively) used
+// by the idiomatic `TodoApp` client component.
+
+import { Element, div, ul, li, span, text, state, renderToString } from "jhonstart";
+
+// Pure view: render a todo list (and a count) from plain data.
+fn todoView(items: string[]) -> Element {
+    val rows = items.map({ it -> li([text(it)]) });
+    return div([
+        span([text("todos: " + items.length.toString())]),
+        ul(rows),
+    ]);
+}
+
+// A custom hook composing the primitive `state` hook.
+fn useToggle(initial: bool) -> @Context<Element, State<bool>> {
+    return state(initial);
+}
+
+// Idiomatic stateful component (type-checks the hooks; host renders it).
+fn TodoApp() -> Element {
+    val items = use state(["buy milk", "write docs"]);
+    val open = use useToggle(true);
+    if (open.value) {
+        return todoView(items.value);
+    };
+    return span([text("(hidden)")]);
+}
+
+fn main() {
+    print(renderToString(todoView(["buy milk", "write docs"])));
+}
+
+test "the todo view renders one li per item plus a count" {
+    val out = renderToString(todoView(["a", "b", "c"]));
+    assert out == "<div><span>todos: 3</span><ul><li>a</li><li>b</li><li>c</li></ul></div>";
+}
+
+test "an empty list renders an empty ul" {
+    assert renderToString(todoView([])) == "<div><span>todos: 0</span><ul></ul></div>";
+}

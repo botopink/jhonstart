@@ -1,0 +1,220 @@
+// jhonstart/html — the JSX-like authoring DSL, with a real markup front-end.
+//
+// `html` is a template function: it receives the caller's markup UNEVALUATED
+// (`@Expr<string>` — the `"""…"""` triple-quoted literal) and expands it, at
+// compile time, into an `Element` tree. Unlike the old split/slice scanner that
+// built the builder pipeline straight as a string, this body runs a proper
+// three-stage front-end, so the markup becomes tooling-visible: it returns
+// `@ExprCustom<Element>` — the executable builder code PLUS a `CustomNode`
+// reference tree the language server reads. It is the sibling of erika's
+// `erika "…"` SQL front-end: same mechanism (`@Expr<string>` → lex → parse →
+// dual lowering → `q.custom`), disjoint lib.
+//
+//   html """<div class="card"><p>${name}</p></div>"""
+//     ① lexer  → Token[]            (markup tokens, each with a byte Span)
+//     ② parser → builder pipeline   (a stack walk over the tag stream)
+//                ├─ ③ lower → @Expr<Element>  div([p([text(name)])])
+//                └─ ④ lower → CustomNode      the generic reference overlay
+//        return q.custom(customRoot, q.build(code)) → @ExprCustom<Element>
+//
+//   - lowercase tags (`<div>`, `<p>`) → a bare `tag(...)` call resolved in the
+//     CALLER's scope (the consumer `import {div, p, …}` the builders); the tag's
+//     reference node carries the `Binding` `q.lookup` resolves it to, so the LSP
+//     can tie `<div>` to its builder. An unknown tag stays an unbound diagnostic
+//     at the call site (parity with the old body).
+//   - `${expr}` holes → the caller's already-typed expression, spliced as a
+//     `text(<expr>)` child via the `Interp` part's `code` placeholder. The hole
+//     stays normal botopink (the overlay only owns the tags/attrs/text).
+//   - attributes are captured for the reference overlay (`property`/`string`
+//     nodes) but, as today, do not change the built `Element` tree (the builders
+//     take only `Children`); `<Component/>` lookup stays a future layer.
+//
+// HOW THE BODY WORKS.
+//
+// ① LEXER (`tokens`). A flat token list is built by walking the template's
+// `parts()` — `Text` runs and `${…}` `Interp` holes. Each `Text` part is split
+// on `<` then `>` into a lead text run and, per `<…>`, a tag plus a trailing text
+// run; a tag inner is classified open / close (`/x`) / self-close (`x/`) and its
+// attributes split off. Holes become a `hole` token carrying the part's `Interp`
+// `code` placeholder and its `span`. Each token records the SOURCE part text +
+// base so its byte span is recovered later — no offset counter is mutated in the
+// lexer's nested walk (only the token array is appended, which is what comptime
+// inference tolerates inside a closure-in-a-closure). The token helpers
+// (`emitText`/`emitTag`) are FUNCTION-level closures, not nested in the loop: a
+// closure DEFINED inside the loop body but CALLED from the inner `forEach` trips
+// comptime inference (`expected array, got void`).
+//
+// ② PARSER + ③④ LOWERING (`codeStack` / `nodes`). A SINGLE flat loop over the
+// tokens drives a frame stack (the proven shape of the old body): each open tag
+// pushes its name and a fresh "" child accumulator; a matching close pops, wraps
+// the children as `tag([...])`, and emits that into the parent; text/hole emit a
+// `text(...)` child; `rootMarks` counts root children so a single root returns
+// bare (no `fragment` import needed at the call site). In the SAME pass each
+// token's `Span` is recovered (a left-to-right `indexOf` over its part text,
+// erika's technique — the loop is flat, so the cursor `i32` is safe here) and a
+// `CustomNode` is appended to the flat `nodes` overlay: a tag → `label "tag"`
+// plus its `q.lookup` `ref`, an attribute name → `"property"`, a value →
+// `"string"`, text → `"string"`, a hole → neutral `"none"`. A mismatched or
+// unexpected close fails with `q.failAt` at the offending tag's span (the LSP
+// underlines it), not the whole template; an unclosed tag fails likewise.
+//
+// The markup AST the spec describes is realized in this stack walk — the same
+// way erika's SQL AST lives in its token scan — rather than as a separately
+// materialized record tree: the comptime evaluator has no array indexing
+// (`.at()`/`arr[i]`), so a frame stack of child-node records is read back only
+// awkwardly, while the flat overlay + builder string carry every span, label,
+// ref and nesting the tooling and the runtime need.
+//
+// COMPTIME CONSTRAINTS (the body runs in `template_eval.zig` over a native-JS
+// prelude — hence the unusual style; explanation lives here, not inline):
+//   - native-JS ops only (`split`/`slice`/`trim`/`join`/`indexOf`/`append`/
+//     `forEach`/`length`/`+`/`==`) — no `?T`/Option (`.at()`/`.pop()`): a stack
+//     top is read with `slice(len-1, len).join("")` and popped with
+//     `slice(0, len-1)`; a string's length is `split("").length` (`.length()` is
+//     a method needing a JS rename, unavailable in a standalone body);
+//   - the token records are anonymous `record { … }` literals (they lower to JS
+//     object literals); the private markup node TYPES the spec names stay
+//     conceptual, since the comptime evaluator emits only this fn (a sibling
+//     `record Element { … }` would lower to a JS class this body can't `new`);
+//   - inside the lexer's nested closures only the token ARRAY is reassigned —
+//     never an `i32` counter, which would trip comptime inference;
+//   - the per-token cursor is reassigned only in the FLAT parser loop, where an
+//     `i32` is safe (erika does the same);
+//   - NO comments inside the body: the emitter flattens each block to one line,
+//     so a `//` would comment out the code that follows it on that line.
+
+pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
+    var tokens = [];
+
+    val emitText = { raw, ptext, pbase ->
+        if (raw.trim() != "") {
+            tokens = tokens.append([record { kind: "text", text: raw, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+        };
+    };
+    val emitTag = { inner, ptext, pbase ->
+        val innerLen = inner.split("").length;
+        val isClose = inner.slice(0, 1) == "/";
+        if (isClose) {
+            val nm = inner.slice(1, innerLen).trim();
+            tokens = tokens.append([record { kind: "close", text: nm, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+        } else {
+            val selfc = inner.slice(innerLen - 1, innerLen) == "/";
+            val body = if (selfc) { inner.slice(0, innerLen - 1).trim(); } else { inner.trim(); };
+            val ws = body.split(" ");
+            val nm = ws.slice(0, 1).join("");
+            val knd = if (selfc) { "selfclose"; } else { "open"; };
+            tokens = tokens.append([record { kind: knd, text: nm, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+            ws.slice(1, ws.length).forEach({ attr ->
+                if (attr.trim() != "") {
+                    val eq = attr.split("=");
+                    val an = eq.slice(0, 1).join("").trim();
+                    tokens = tokens.append([record { kind: "attrName", text: an, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                    if (eq.length > 1) {
+                        val av = eq.slice(1, eq.length).join("=").split("\"").join("");
+                        if (av != "") {
+                            tokens = tokens.append([record { kind: "attrValue", text: av, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                        };
+                    };
+                };
+            });
+        };
+    };
+
+    loop (template.parts()) { part ->
+        if (part.kind == "Interp") {
+            tokens = tokens.append([record { kind: "hole", text: "", code: part.code, ptext: "", pbase: 0, hstart: part.span.start, hend: part.span.end }]);
+        } else {
+            val ptext = part.text;
+            val pbase = part.span.start;
+            val chunks = ptext.split("<");
+            emitText(chunks.slice(0, 1).join(""), ptext, pbase);
+            chunks.slice(1, chunks.length).forEach({ seg ->
+                val gt = seg.split(">");
+                emitTag(gt.slice(0, 1).join(""), ptext, pbase);
+                emitText(gt.slice(1, gt.length).join(">"), ptext, pbase);
+            });
+        };
+    };
+
+    var tagStack = [];
+    var codeStack = [""];
+    var rootMarks = [];
+    var nodes = [];
+    var cursor = 0;
+    var curBase = 0 - 1;
+    var openStart = 0;
+    var openFinish = 0;
+
+    val pushChildCode = { c ->
+        val topIdx = codeStack.length - 1;
+        val cur = codeStack.slice(topIdx, codeStack.length).join("");
+        val sep = if (cur == "") { ""; } else { ","; };
+        codeStack = codeStack.slice(0, topIdx).append([cur + sep + c]);
+        if (topIdx == 0) { rootMarks = rootMarks.append(["x"]); };
+    };
+
+    loop (tokens) { t ->
+        if (t.kind == "hole") {
+            nodes = nodes.append([CustomNode(kind: "hole", span: Span(t.hstart, t.hend, 1), label: "none", ref: null, children: [])]);
+            pushChildCode("text(" + t.code + ")");
+        } else {
+            if (t.pbase != curBase) { curBase = t.pbase; cursor = 0; };
+            val tlen = t.text.split("").length;
+            val rest = t.ptext.slice(cursor, t.ptext.split("").length);
+            val rel = rest.indexOf(t.text);
+            val start = t.pbase + cursor + rel;
+            val finish = start + tlen;
+            cursor = cursor + rel + tlen;
+            val sp = Span(start, finish, 1);
+
+            if (t.kind == "open") {
+                openStart = start;
+                openFinish = finish;
+                val b = template.lookup(t.text);
+                nodes = nodes.append([CustomNode(kind: "tag", span: sp, label: "tag", ref: b, children: [])]);
+                tagStack = tagStack.append([t.text]);
+                codeStack = codeStack.append([""]);
+            };
+            if (t.kind == "selfclose") {
+                val b = template.lookup(t.text);
+                nodes = nodes.append([CustomNode(kind: "tag", span: sp, label: "tag", ref: b, children: [])]);
+                pushChildCode(t.text + "([])");
+            };
+            if (t.kind == "close") {
+                val depth = tagStack.length;
+                if (depth == 0) { template.failAt(sp, "html: unexpected closing tag </" + t.text + ">"); };
+                val cname = tagStack.slice(depth - 1, depth).join("");
+                if (t.text != cname) { template.failAt(sp, "html: mismatched closing tag </" + t.text + ">, expected </" + cname + ">"); };
+                val topIdx = codeStack.length - 1;
+                val kids = codeStack.slice(topIdx, codeStack.length).join("");
+                codeStack = codeStack.slice(0, topIdx);
+                tagStack = tagStack.slice(0, depth - 1);
+                pushChildCode(cname + "([" + kids + "])");
+            };
+            if (t.kind == "attrName") {
+                nodes = nodes.append([CustomNode(kind: "attr", span: sp, label: "property", ref: null, children: [])]);
+            };
+            if (t.kind == "attrValue") {
+                nodes = nodes.append([CustomNode(kind: "attrValue", span: sp, label: "string", ref: null, children: [])]);
+            };
+            if (t.kind == "text") {
+                nodes = nodes.append([CustomNode(kind: "text", span: sp, label: "string", ref: null, children: [])]);
+                pushChildCode("text(\"" + t.text + "\")");
+            };
+        };
+    };
+
+    if (tagStack.length != 0) {
+        val unclosed = tagStack.slice(tagStack.length - 1, tagStack.length).join("");
+        template.failAt(Span(openStart, openFinish, 1), "html: unclosed tag <" + unclosed + ">");
+    };
+
+    var srcLen = 0;
+    loop (template.parts()) { part -> srcLen = part.span.end; };
+
+    val rootKids = codeStack.slice(0, 1).join("");
+    val single = rootMarks.length == 1;
+    val code = if (single) { rootKids; } else { "fragment([" + rootKids + "])"; };
+    val root = CustomNode(kind: "fragment", span: Span(0, srcLen, 1), label: "none", ref: null, children: nodes);
+    return template.custom(root, template.build(code));
+}
