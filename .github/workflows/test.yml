@@ -57,15 +57,40 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Zig
+      # H7 (v0.beta.19) — release fast path. Opt-in via the lib's
+      # `BOTOPINK_USE_RELEASE_FASTPATH` repo variable. Set to `true` after
+      # botopink-lang has published at least one tagged release; until then,
+      # the source path below is the default.
+      - name: Install botopink (release fast path)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH == 'true' }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.runner }}" = "windows-2022" ]; then
+            powershell -ExecutionPolicy Bypass -Command "iwr https://botopink.dev/install.ps1 -UseBasicParsing | iex"
+            echo "$USERPROFILE\\.bpmp\\bin" >> $GITHUB_PATH
+          else
+            curl --proto '=https' --tlsv1.2 -sSfL https://botopink.dev/install.sh | sh
+            echo "$HOME/.bpmp/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Install Zig (source build path)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
         uses: mlugg/setup-zig@v1
         with:
           version: 0.16.0
 
-      - name: zig build install
+      - name: zig build install (source build path)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
         working-directory: botopink-lang
         run: zig build install
 
-      - name: zig build test-libs --lib jhonstart --target commonJS
+      - name: zig build test-libs --lib jhonstart --target commonJS (source)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
         working-directory: botopink-lang
         run: zig build test-libs -- --lib "${LIB_NAME}" --target commonJS
+
+      - name: botopink-lib-test --lib jhonstart --target commonJS (fast path)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH == 'true' }}
+        working-directory: botopink-lang
+        shell: bash
+        run: botopink-lib-test --lib "${LIB_NAME}" --target commonJS
