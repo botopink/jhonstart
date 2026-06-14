@@ -7,9 +7,9 @@
 
 Components are plain functions returning `Element`; hooks are the
 `@Context<Element, _>` capability gated by the `use` prefix; server components
-are `*fn … -> @Future<Element>`; the JSX-like `html """…"""` DSL reuses
-`expr-templates` (`@Expr<Element>`), expanding markup to the builder pipeline at
-comptime.
+are `#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12);
+the JSX-like `html """…"""` DSL reuses `expr-templates` (`@Expr<Element>`),
+expanding markup to the builder pipeline at comptime.
 
 ## Install
 
@@ -20,14 +20,17 @@ import {component, html, useState, useEffect} from "jhonstart";
 ## Quick example
 
 ```bp
-component Counter() -> Element {
-    val (count, setCount) = useState(0);
-    html """
-        <div>
-            <p>count is {count}</p>
-            <button onClick={() => setCount(count + 1)}>+1</button>
-        </div>
-    """
+import {div, p, text, state, renderToString} from "jhonstart";
+
+fn Counter() -> Element {
+    val c = use state(0);
+    return div([
+        p([text("count: " + c.value.toString())]),
+    ]);
+}
+
+fn main() {
+    @print(renderToString(Counter()));
 }
 ```
 

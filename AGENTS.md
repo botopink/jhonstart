@@ -9,9 +9,10 @@ botopink's **React/Next-style** UI framework, written *in* botopink on the
 language's own primitives — **no jhonstart-specific compiler features**.
 Components are plain functions returning `Element`; hooks are the
 `@Context<Element, _>` capability gated by the `use` prefix; server components are
-`*fn … -> @Future<Element>`; the JSX-like `html """…"""` DSL reuses
-`expr-templates` (`@Expr<Element>`), expanding markup to the builder pipeline at
-comptime. The compiler is **unaware** of jhonstart (hard rule + `grep -riE
+`#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12;
+`*fn` was the legacy carrier and the parser now rejects it); the JSX-like
+`html """…"""` DSL reuses `expr-templates` (`@Expr<Element>`), expanding markup
+to the builder pipeline at comptime. The compiler is **unaware** of jhonstart (hard rule + `grep -riE
 "rakun|jhonstart" modules/compiler-core/src` gate); the framework is a pure
 client, reached with `from "jhonstart"`, never embedded.
 
@@ -98,13 +99,16 @@ jhonstart is a *consumer*. What it relies on:
   walk uses a stack + `indexOf` span recovery rather than a recursive descent —
   see `html.bp`'s header.
 - **Still gated** (router / server, all generic core work):
-  - the generic loader binds a lib's **namespace** but not bare imported
-    values/template-fns — `import {html} from "jhonstart"` leaves `html "…"`
-    unbound (same gap as `erika "…"`);
   - `use-await-prefix` / `async-generators` (`tasks/v0.beta.1/`) for the server
-    data layer;
+    data layer (the `#[@future]` annotation surface itself landed in
+    v0.beta.12; the prefix/generator wiring on top is the remaining gap);
   - the `Element` model has no **attribute** slot, so `Link`/form controls can't
     render `href`/`onClick` in pure `.bp` yet.
+
+  (The "bare imported template-fn binding" gap that originally lived here
+  closed in v0.beta.8 via the generic-loader-binding keystone, with the
+  package-default-dsl handle binding following in v0.beta.14 — consumers
+  can `import jhonstart, {html, div, …} from "jhonstart"` today.)
 
 ## CI
 
