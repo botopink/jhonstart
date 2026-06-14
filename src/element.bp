@@ -2,7 +2,7 @@
 //
 // V1 models the UI tree as ordinary data rather than a host intrinsic: every
 // builder/renderer here is an ordinary `.bp` function and the SSR renderer is a
-// pure, synchronous walk — no host runtime, no `@[external]`, no async.
+// pure, synchronous walk — no host runtime, no `#[@external]`, no async.
 //
 // `Element` IS the `@Context` base for every client hook: a function whose
 // return implements `@Context<Element, _>` is a hook, and the `use` prefix is
