@@ -146,7 +146,7 @@ by a plain call. See `examples/jhonstart-html`.
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - `router`/`server` host hooks (`useRouter`/`request`, `#[@external]`), `Link`
+  - `router`/`server` host hooks (`useRouter`/`request`, `#[@External.Node]`), `Link`
     and form controls (the `Element` model has no attribute slot for
     `href`/`value`/`onClick`), and `get`-accessor interfaces (`.d.bp` syntax);
   - the `#[@future]` + `await` data-loading path (`use-await-prefix`,

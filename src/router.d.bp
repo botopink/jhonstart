@@ -9,7 +9,7 @@
 //   - `Router` carries `get` accessors — declaration-file syntax; a real `.bp`
 //     interface parses (see `hooks.bp`'s records) but a getter member does not.
 //   - `useRouter` is a host-bound `@Context` capability — client navigation lives
-//     in the host runtime (`#[@external]`, only valid on a bodyless `declare`),
+//     in the host runtime (`#[@External.Node]`, only valid on a bodyless `declare`),
 //     not in pure `.bp`.
 //   - `Link` must render `<a href=…>`, but the `Element` model is `tag`/`value`/
 //     `children` with NO attribute slot (`href`/`class`/`onClick`). A real `.bp`
@@ -23,8 +23,8 @@ pub interface Router {
     fn replace(self: Self, href: string)
 }
 
-#[@external(node, "jhonstart/runtime", "useRouter")]
+#[@External.Node("jhonstart/runtime", "useRouter")]
 pub fn useRouter() -> @Context<Element, Router>
 
-#[@external(node, "jhonstart/runtime", "link")]
+#[@External.Node("jhonstart/runtime", "link")]
 pub fn Link(href: string, children: fn() -> Children) -> Element
