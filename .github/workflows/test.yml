@@ -26,14 +26,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # windows-2022 fails on a PowerShell `${LIB_NAME}` shell-variable
-        # expansion gap shared with every sibling lib — pinned-red until
-        # a follow-up spec normalises the run line for `pwsh`. Hard gate
-        # stays ubuntu + macos.
+        # windows-2022 commonJS now runs the source step under `shell:
+        # bash` (ci-tail W1), so the PowerShell `${LIB_NAME}` expansion
+        # gap is closed and the row carries `allow_fail: false`.
         include:
           - { runner: ubuntu-22.04, allow_fail: false }
           - { runner: macos-14,     allow_fail: false }
-          - { runner: windows-2022, allow_fail: true  }
+          - { runner: windows-2022, allow_fail: false }
     runs-on: ${{ matrix.runner }}
     continue-on-error: ${{ matrix.allow_fail }}
     steps:
