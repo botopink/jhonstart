@@ -95,6 +95,7 @@ jobs:
       - name: zig build test-libs --lib jhonstart --target commonJS (source)
         if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
         working-directory: botopink-lang
+        shell: bash
         run: zig build test-libs -- --lib "${LIB_NAME}" --target commonJS
 
       - name: botopink-lib-test --lib jhonstart --target commonJS (fast path)
