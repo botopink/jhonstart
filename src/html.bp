@@ -106,13 +106,36 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
             tokens = tokens.append([record { kind: knd, text: nm, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
             ws.slice(1, ws.length).forEach({ attr ->
                 if (attr.trim() != "") {
-                    val eq = attr.split("=");
-                    val an = eq.slice(0, 1).join("").trim();
-                    tokens = tokens.append([record { kind: "attrName", text: an, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
-                    if (eq.length > 1) {
-                        val av = eq.slice(1, eq.length).join("=").split("\"").join("");
-                        if (av != "") {
-                            tokens = tokens.append([record { kind: "attrValue", text: av, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                    val fc = attr.slice(0, 1);
+                    if (fc == "[") {
+                        val cb = attr.indexOf("]={");
+                        if (cb > 0) {
+                            val name = attr.slice(1, cb);
+                            val rest = attr.slice(cb + 3, attr.split("").length);
+                            val chars = rest.split("");
+                            var bc = 1;
+                            var el = 0;
+                            var open = true;
+                            loop (chars) { c ->
+                                if (open) {
+                                    if (c == "{") { bc = bc + 1; };
+                                    if (c == "}") { bc = bc - 1; };
+                                    if (bc > 0) { el = el + 1; };
+                                    open = bc > 0;
+                                };
+                            };
+                            val ec = rest.slice(0, el);
+                            tokens = tokens.append([record { kind: "attrBracketProp", text: name, code: ec, ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                        };
+                    } else {
+                        val eq = attr.split("=");
+                        val an = eq.slice(0, 1).join("").trim();
+                        tokens = tokens.append([record { kind: "attrName", text: an, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                        if (eq.length > 1) {
+                            val av = eq.slice(1, eq.length).join("=").split("\"").join("");
+                            if (av != "") {
+                                tokens = tokens.append([record { kind: "attrValue", text: av, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                            };
                         };
                     };
                 };
@@ -138,12 +161,14 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
 
     var tagStack = [];
     var codeStack = [""];
+    var attrStack = [""];
     var rootMarks = [];
     var nodes = [];
     var cursor = 0;
     var curBase = 0 - 1;
     var openStart = 0;
     var openFinish = 0;
+    var pendingSc = "";
 
     val pushChildCode = { c ->
         val topIdx = codeStack.length - 1;
@@ -156,7 +181,7 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
     loop (tokens) { t ->
         if (t.kind == "hole") {
             nodes = nodes.append([CustomNode(kind: "hole", span: Span(t.hstart, t.hend, 1), label: "none", ref: null, children: [])]);
-            pushChildCode("text(" + t.code + ")");
+            pushChildCode("text(" + t.code + ", attrs: [])");
         } else {
             if (t.pbase != curBase) { curBase = t.pbase; cursor = 0; };
             val tlen = t.text.split("").length;
@@ -174,11 +199,13 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                 nodes = nodes.append([CustomNode(kind: "tag", span: sp, label: "tag", ref: b, children: [])]);
                 tagStack = tagStack.append([t.text]);
                 codeStack = codeStack.append([""]);
+                attrStack = attrStack.append([""]);
             };
             if (t.kind == "selfclose") {
                 val b = template.lookup(t.text);
                 nodes = nodes.append([CustomNode(kind: "tag", span: sp, label: "tag", ref: b, children: [])]);
-                pushChildCode(t.text + "([])");
+                pendingSc = t.text;
+                attrStack = attrStack.append([""]);
             };
             if (t.kind == "close") {
                 val depth = tagStack.length;
@@ -189,7 +216,9 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                 val kids = codeStack.slice(topIdx, codeStack.length).join("");
                 codeStack = codeStack.slice(0, topIdx);
                 tagStack = tagStack.slice(0, depth - 1);
-                pushChildCode(cname + "([" + kids + "])");
+                val attrsContent = attrStack.slice(topIdx, attrStack.length).join("");
+                attrStack = attrStack.slice(0, topIdx);
+                pushChildCode(cname + "([" + kids + "], attrs: [" + attrsContent + "])");
             };
             if (t.kind == "attrName") {
                 nodes = nodes.append([CustomNode(kind: "attr", span: sp, label: "property", ref: null, children: [])]);
@@ -197,12 +226,22 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
             if (t.kind == "attrValue") {
                 nodes = nodes.append([CustomNode(kind: "attrValue", span: sp, label: "string", ref: null, children: [])]);
             };
+            if (t.kind == "attrBracketProp") {
+                val b2 = template.lookup(t.text);
+                nodes = nodes.append([CustomNode(kind: "attrBracket", span: sp, label: "property", ref: b2, children: [])]);
+                val ai = attrStack.length - 1;
+                val ac2 = attrStack.slice(ai, attrStack.length).join("");
+                val sp2 = if (ac2 == "") { ""; } else { ","; };
+                attrStack = attrStack.slice(0, ai).append([ac2 + sp2 + "bracketPair(\"" + t.text + "\", " + t.code + ")"]);
+            };
             if (t.kind == "text") {
                 nodes = nodes.append([CustomNode(kind: "text", span: sp, label: "string", ref: null, children: [])]);
-                pushChildCode("text(\"" + t.text + "\")");
+                pushChildCode("text(\"" + t.text + "\", attrs: [])");
             };
         };
     };
+
+    if (pendingSc != "") { pushChildCode(pendingSc + "([])"); pendingSc = ""; };
 
     if (tagStack.length != 0) {
         val unclosed = tagStack.slice(tagStack.length - 1, tagStack.length).join("");

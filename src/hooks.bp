@@ -104,8 +104,9 @@ fn Counter() -> Element {
         tag: "div",
         value: "",
         children: [
-            Element(tag: "#text", value: "count: " + c.value.toString(), children: []),
-            Element(tag: "#text", value: " x2=" + doubled.toString(), children: []),
+            Element(tag: "#text", value: "count: " + c.value.toString(), children: [], attrs: []),
+            Element(tag: "#text", value: " x2=" + doubled.toString(), children: [], attrs: []),
         ],
+        attrs: [],
     );
 }
