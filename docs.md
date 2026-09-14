@@ -131,7 +131,8 @@ by a plain call. See `examples/jhonstart-html`.
 - `useRouter() -> @Context<Element, Router>`, `Link(href, …)` — client navigation
   (host runtime; `Link` also needs an Element attribute slot for `href`).
 - `request() -> @Context<Http, Request>` — server hook; used inside a server
-  component (`*fn … -> @Future<Element>`).
+  component (`#[@future] fn … -> @Future<Element>` — the legacy `*fn`
+  carrier was removed in v0.beta.19).
 - File routing (`app/`, `page.bp`, `layout.bp`, `[id]`) is a **convention** (V1),
   wired manually until a CLI/build step lands.
 - `renderToString(app)` (SSR, real `.bp`) / client `mount` (host).
@@ -145,9 +146,10 @@ by a plain call. See `examples/jhonstart-html`.
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - `router`/`server` host hooks (`useRouter`/`request`, `#[@external]`), `Link`
+  - `router`/`server` host hooks (`useRouter`/`request`, `#[@External.Node]`), `Link`
     and form controls (the `Element` model has no attribute slot for
     `href`/`value`/`onClick`), and `get`-accessor interfaces (`.d.bp` syntax);
-  - the `*fn`/`await` data-loading path (`use-await-prefix`, `async-generators`);
+  - the `#[@future]` + `await` data-loading path (`use-await-prefix`,
+    `async-generators`);
   - the trailing-lambda children sugar (`div { … }`) and lone-child / `string`
     `Children` *rendering* (type-checks today; render needs normalization).

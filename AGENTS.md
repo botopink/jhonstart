@@ -9,9 +9,10 @@ botopink's **React/Next-style** UI framework, written *in* botopink on the
 language's own primitives — **no jhonstart-specific compiler features**.
 Components are plain functions returning `Element`; hooks are the
 `@Context<Element, _>` capability gated by the `use` prefix; server components are
-`*fn … -> @Future<Element>`; the JSX-like `html """…"""` DSL reuses
-`expr-templates` (`@Expr<Element>`), expanding markup to the builder pipeline at
-comptime. The compiler is **unaware** of jhonstart (hard rule + `grep -riE
+`#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12;
+`*fn` was the legacy carrier and the parser now rejects it); the JSX-like
+`html """…"""` DSL reuses `expr-templates` (`@Expr<Element>`), expanding markup
+to the builder pipeline at comptime. The compiler is **unaware** of jhonstart (hard rule + `grep -riE
 "rakun|jhonstart" modules/compiler-core/src` gate); the framework is a pure
 client, reached with `from "jhonstart"`, never embedded.
 
@@ -98,10 +99,65 @@ jhonstart is a *consumer*. What it relies on:
   walk uses a stack + `indexOf` span recovery rather than a recursive descent —
   see `html.bp`'s header.
 - **Still gated** (router / server, all generic core work):
-  - the generic loader binds a lib's **namespace** but not bare imported
-    values/template-fns — `import {html} from "jhonstart"` leaves `html "…"`
-    unbound (same gap as `erika "…"`);
   - `use-await-prefix` / `async-generators` (`tasks/v0.beta.1/`) for the server
-    data layer;
+    data layer (the `#[@future]` annotation surface itself landed in
+    v0.beta.12; the prefix/generator wiring on top is the remaining gap);
   - the `Element` model has no **attribute** slot, so `Link`/form controls can't
     render `href`/`onClick` in pure `.bp` yet.
+
+  (The "bare imported template-fn binding" gap that originally lived here
+  closed in v0.beta.8 via the generic-loader-binding keystone, with the
+  package-default-dsl handle binding following in v0.beta.14 — consumers
+  can `import jhonstart, {html, div, …} from "jhonstart"` today.)
+
+## CI
+
+`.github/workflows/test.yml` runs `zig build test-libs -- --lib jhonstart
+--target commonJS` on every push / PR to `feat`/`master`/`main`, across
+`ubuntu-22.04`, `macos-14`, `windows-2022`. jhonstart is a frontend
+framework — the matrix is **commonJS-only**.
+
+Bootstrap path mirrors the other lib repos: check out this lib + a
+fresh `botopink-lang` clone, place this lib under
+`botopink-lang/repository/jhonstart/`, then `zig build install && zig
+build test-libs`. `BOTOPINK_LANG_REF` repo variable pins a specific
+botopink-lang ref (default `main`).
+
+## Tagging (auto)
+
+`.github/workflows/tag.yml` reads `version` from `botopink.json` and
+creates / moves a git tag on every push to `feat`/`master`/`main`:
+
+- **feat** → moving `<version>-feat` tag, force-pushed on every push.
+- **master** / **main** → immutable `<version>` tag. Pushing the same
+  SHA twice is a no-op; pushing a *different* SHA without bumping
+  `version` in `botopink.json` is a hard error ("bump version in
+  botopink.json to publish a new release").
+
+To preview unreleased work, set `requires.jhonstart = "feat"` in the
+consuming project's `botopink.json` and run `bpmp sync`.
+
+## Local gate
+
+`scripts/git-hooks/pre-commit` is the tracked source of truth for the
+local pre-commit gate. Two install paths:
+
+- **From the meta workspace** — run `scripts/install-hooks.sh` at the
+  root of [botopink/projects][meta]. It walks `.gitmodules` and
+  symlinks the meta's hook plus a shim into every submodule's git dir,
+  so a commit in this lib delegates to the shared
+  [`lib/runners/bp-lib.sh`][bp-lib] runner.
+- **From a standalone clone** — run `scripts/install-hooks.sh` (when
+  this lib ships one) or symlink `scripts/git-hooks/pre-commit` into
+  `.git/hooks/pre-commit` manually. The shim falls back to the
+  self-contained `scripts/git-hooks/lib/runner-standalone.sh` so the
+  gate works without the meta nearby.
+
+The gate runs `botopink test` over `src/` + `test/`. The compiler
+binary is located via (in order) `$BOTOPINK_BIN`, the nearest
+ancestor `repository/botopink-lang/zig-out/bin/botopink`, then
+`$PATH`. If none resolve, the gate prints a yellow warning and exits
+0 — CI runs the full suite and catches any regression there.
+
+[meta]: https://github.com/botopink/projects
+[bp-lib]: https://github.com/botopink/projects/blob/feat/scripts/git-hooks/lib/runners/bp-lib.sh

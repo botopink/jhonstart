@@ -10,7 +10,7 @@
 //   - `Request` carries `get` accessors — declaration-file syntax (as in
 //     `router.d.bp`).
 //   - `request()` is a host-bound `@Context<Http, Request>` server hook — the
-//     request is provided by the host runtime (`#[@external]`).
+//     request is provided by the host runtime (`#[@External.Node]`).
 //   - The async SSR data layer — server components (`#[@future] fn … -> @Future<Element>`)
 //     and the `#[@future] fn … -> @Future<_>` loaders awaited before render — is gated on
 //     the effect-await surface (`use-await-prefix` / `async-generators`,
@@ -24,5 +24,5 @@ pub interface Request {
     get query(self: Self) -> Dict<string, string>
 }
 
-#[@external(node, "jhonstart/runtime", "request")]
+#[@External.Node("jhonstart/runtime", "request")]
 pub fn request() -> @Context<Http, Request>

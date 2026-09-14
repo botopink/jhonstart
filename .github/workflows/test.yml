@@ -1,0 +1,104 @@
+# Per-platform CI for jhonstart.
+#
+# jhonstart is a frontend UI framework — only the `commonJS` target ships.
+# Bootstrap: check out this lib + botopink-lang, place this lib under
+# `botopink-lang/repository/jhonstart/`, run `zig build test-libs -- --lib
+# jhonstart --target commonJS`.
+name: test
+
+on:
+  push:
+    branches: [feat, master, main]
+  pull_request:
+    branches: [feat, master, main]
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LIB_NAME: jhonstart
+  BOTOPINK_LANG_REPO: botopink/botopink-lang
+
+jobs:
+  test:
+    name: ${{ matrix.runner }} · commonJS
+    strategy:
+      fail-fast: false
+      matrix:
+        # windows-2022 commonJS now runs the source step under `shell:
+        # bash` (ci-tail W1), so the PowerShell `${LIB_NAME}` expansion
+        # gap is closed and the row carries `allow_fail: false`.
+        include:
+          - { runner: ubuntu-22.04, allow_fail: false }
+          - { runner: macos-14,     allow_fail: false }
+          - { runner: windows-2022, allow_fail: false }
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.allow_fail }}
+    steps:
+      - name: Checkout this lib
+        uses: actions/checkout@v5
+        with:
+          path: self
+
+      - name: Checkout botopink-lang
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ env.BOTOPINK_LANG_REPO }}
+          ref: ${{ vars.BOTOPINK_LANG_REF || 'main' }}
+          path: botopink-lang
+
+      - name: Place lib under botopink-lang/repository/${{ env.LIB_NAME }}/
+        shell: bash
+        run: |
+          mkdir -p botopink-lang/repository
+          if command -v rsync >/dev/null 2>&1; then
+            rsync -a --delete self/ "botopink-lang/repository/${LIB_NAME}/"
+          else
+            rm -rf "botopink-lang/repository/${LIB_NAME}"
+            cp -R self "botopink-lang/repository/${LIB_NAME}"
+          fi
+
+      - name: Install Node 20
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      # H7 (v0.beta.19) — release fast path. Opt-in via the lib's
+      # `BOTOPINK_USE_RELEASE_FASTPATH` repo variable. Set to `true` after
+      # botopink-lang has published at least one tagged release; until then,
+      # the source path below is the default.
+      - name: Install botopink (release fast path)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH == 'true' }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.runner }}" = "windows-2022" ]; then
+            powershell -ExecutionPolicy Bypass -Command "iwr https://botopink.dev/install.ps1 -UseBasicParsing | iex"
+            echo "$USERPROFILE\\.bpmp\\bin" >> $GITHUB_PATH
+          else
+            curl --proto '=https' --tlsv1.2 -sSfL https://botopink.dev/install.sh | sh
+            echo "$HOME/.bpmp/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Install Zig (source build path)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
+      - name: zig build install (source build path)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
+        working-directory: botopink-lang
+        run: zig build install
+
+      - name: zig build test-libs --lib jhonstart --target commonJS (source)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
+        working-directory: botopink-lang
+        shell: bash
+        run: zig build test-libs -- --lib "${LIB_NAME}" --target commonJS
+
+      - name: botopink-lib-test --lib jhonstart --target commonJS (fast path)
+        if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH == 'true' }}
+        working-directory: botopink-lang
+        shell: bash
+        run: botopink-lib-test --lib "${LIB_NAME}" --target commonJS

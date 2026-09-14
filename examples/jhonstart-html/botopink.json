@@ -1,1 +1,11 @@
-{ "name": "jhonstart-html", "version": "0.0.1", "target": "commonJS", "dependencies": ["jhonstart"] }
+{
+    "name": "jhonstart-html",
+    "version": "0.0.1",
+    "target": "commonJS",
+    "dependencies": {
+        "jhonstart": {
+            "git": "https://github.com/botopink/jhonstart.git",
+            "branch": "feat"
+        }
+    }
+}
