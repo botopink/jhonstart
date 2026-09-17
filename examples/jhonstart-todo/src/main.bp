@@ -10,11 +10,11 @@ import { Element, div, ul, li, span, text, state, renderToString } from "jhonsta
 
 // Pure view: render a todo list (and a count) from plain data.
 fn todoView(items: string[]) -> Element {
-    val rows = items.map({ it -> li([text(it)]) });
+    val rows = items.map({ it -> li([text(it, [])], []) });
     return div([
-        span([text("todos: " + items.length.toString())]),
-        ul(rows),
-    ]);
+        span([text("todos: " + items.length.toString(), [])], []),
+        ul(rows, []),
+    ], []);
 }
 
 // A custom hook composing the primitive `state` hook.
@@ -29,7 +29,7 @@ fn TodoApp() -> Element {
     if (open.value) {
         return todoView(items.value);
     };
-    return span([text("(hidden)")]);
+    return span([text("(hidden)", [])], []);
 }
 
 fn main() {

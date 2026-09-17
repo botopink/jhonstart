@@ -67,7 +67,7 @@ test "nested tags build a nested Element tree" {
 }
 
 test "html-authored components compose by ordinary call" {
-    val ui = div([greeting("world"), menu("one", "two")]);
+    val ui = div([greeting("world"), menu("one", "two")], []);
     assert renderToString(ui) ==
         "<div><p>hello, world</p><ul><li>one</li><li>two</li></ul></div>";
 }

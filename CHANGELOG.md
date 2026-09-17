@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `examples/jhonstart-counter`, `jhonstart-html` and `jhonstart-todo` build again:
+  their element builder calls pass `attrs` explicitly — the `attrs = []`
+  default is not applied by the compiler yet — and they leave
+  `scripts/known-broken-examples.txt`.
+
 - **MIT license.** `LICENSE` (`Copyright (c) 2026 Eric Fillipe and botopink
   contributors`) backs the README's License section, which now points at it.
 

@@ -14,9 +14,9 @@ import { Element, div, p, span, text, state, renderToString } from "jhonstart";
 fn counterView(count: i32) -> Element {
     val sign = if (count >= 0) { "non-negative"; } else { "negative"; };
     return div([
-        p([text("count: " + count.toString())]),
-        span([text(sign)]),
-    ]);
+        p([text("count: " + count.toString(), [])], []),
+        span([text(sign, [])], []),
+    ], []);
 }
 
 // Stateful component (idiomatic hooks). Type-checks the `use`/@Context
@@ -36,9 +36,9 @@ fn StatefulBadge() -> Element {
     val c = state(7);
     val doubled = c.value + c.value;
     return div([
-        p([text("count: " + c.value.toString())]),
-        span([text("x2=" + doubled.toString())]),
-    ]);
+        p([text("count: " + c.value.toString(), [])], []),
+        span([text("x2=" + doubled.toString(), [])], []),
+    ], []);
 }
 
 fn main() {
