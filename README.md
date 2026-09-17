@@ -53,4 +53,4 @@ See [AGENTS.md](AGENTS.md) for the architectural status notes.
 
 ## License
 
-Same as the parent botopink workspace.
+MIT — see [`LICENSE`](LICENSE). Same license as the rest of the botopink workspace.
