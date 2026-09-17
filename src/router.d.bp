@@ -6,8 +6,6 @@
 // CONVENTION in V1, not a compiler feature.
 //
 // STILL GATED — stays `.d.bp` (F4). Nothing here is promotable to real `.bp` yet:
-//   - `Router` carries `get` accessors — declaration-file syntax; a real `.bp`
-//     interface parses (see `hooks.bp`'s records) but a getter member does not.
 //   - `useRouter` is a host-bound `@Context` capability — client navigation lives
 //     in the host runtime (`#[@External.Node]`, only valid on a bodyless `declare`),
 //     not in pure `.bp`.
@@ -17,14 +15,14 @@
 //     grows an attribute model (recorded follow-up — see `docs.md`).
 
 pub interface Router {
-    get pathname(self: Self) -> string
-    get params(self: Self) -> Dict<string, string>
+    fn pathname(self: Self) -> string
+    fn params(self: Self) -> Dict<string, string>
     fn push(self: Self, href: string)
     fn replace(self: Self, href: string)
 }
 
 #[@External.Node("jhonstart/runtime", "useRouter")]
-pub fn useRouter() -> @Context<Element, Router>
+pub declare fn useRouter() -> @Context<Element, Router>;
 
 #[@External.Node("jhonstart/runtime", "link")]
-pub fn Link(href: string, children: fn() -> Children) -> Element
+pub declare fn Link(href: string, children: fn() -> Children) -> Element;

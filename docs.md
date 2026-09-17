@@ -148,7 +148,8 @@ by a plain call. See `examples/jhonstart-html`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
   - `router`/`server` host hooks (`useRouter`/`request`, `#[@External.Node]`), `Link`
     and form controls (the `Element` model has no attribute slot for
-    `href`/`value`/`onClick`), and `get`-accessor interfaces (`.d.bp` syntax);
+    `href`/`value`/`onClick`) — `Router` and `Request` expose their fields as
+    zero-argument methods (`router.pathname()`, `req.params()`);
   - the `#[@future]` + `await` data-loading path (`use-await-prefix`,
     `async-generators`);
   - the trailing-lambda children sugar (`div { … }`) and lone-child / `string`

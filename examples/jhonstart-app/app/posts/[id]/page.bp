@@ -24,7 +24,7 @@ fn loadPost(id: string) -> @Future<{ title: string, body: string }> {
 #[@future]
 fn Page() -> @Future<Element> {
     val req = use request();                         // @Context<Http, Request>
-    val id = req.params.get("id").unwrapOr("0");
+    val id = req.params().get("id").unwrapOr("0");
     val post = await loadPost(id);
 
     div {

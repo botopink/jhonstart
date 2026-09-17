@@ -5,6 +5,10 @@
 - Promoted from workspace subdir to standalone repository under
   `botopink/jhonstart`. Tracked from `botopink/projects` as a git submodule on
   the `feat` branch.
+- `Router` and `Request` read their fields through zero-argument methods
+  (`router.pathname()`, `req.params()`, `req.query()`): `get` is no longer a
+  keyword, so the `get name(self: Self)` accessors did not parse. Their host
+  hooks are `pub declare fn`, so both declaration files parse whole.
 
 ## 0.0.1 — v0.beta.8
 
