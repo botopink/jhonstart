@@ -161,8 +161,9 @@ fix the red instead.
 After `botopink test`, the gate builds every `examples/*/` that has a
 `botopink.json` (`runExamplesGate`, each with its own manifest target,
 into a throwaway `--out`); CI runs the same function once per workflow.
-`scripts/known-broken-examples.txt` (absent while no example is broken — the runner aborts on a list with no entries) lists the examples allowed to fail —
+`scripts/known-broken-examples.txt` lists the examples allowed to fail —
 `examples/<name>  <reason>` per line — and cannot rot: a listed example
 that builds, or a listed path that no longer exists, fails the gate too.
-When a fix makes an example build, delete its line in the same commit.
+When a fix makes an example build, delete its line in the same commit. The list may be absent,
+empty or hold only `#` comments — each means no example is allowed to fail.
 No example is listed today; `examples/jhonstart-app` has no `botopink.json` and is not built. The examples pass `attrs` explicitly to the element builders (`text("x", [])`, `div([…], [])`): the `attrs = []` default added by the bracket-prop commit is not applied by the compiler yet (botopink-lang 1.0.4-beta 06 N1), so a one-argument call does not type-check.

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The examples gate no longer aborts silently on a `scripts/known-broken-examples.txt`
+  holding only comments or blank lines: the runner reads the list with `awk`, whose
+  "no entry" is not a failure under `set -euo pipefail`.
+
 - `examples/jhonstart-counter`, `jhonstart-html` and `jhonstart-todo` build again:
   their element builder calls pass `attrs` explicitly — the `attrs = []`
   default is not applied by the compiler yet — and they leave
