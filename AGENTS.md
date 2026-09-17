@@ -121,7 +121,7 @@ Bootstrap path mirrors the other lib repos: check out this lib + a
 fresh `botopink-lang` clone, place this lib under
 `botopink-lang/repository/jhonstart/`, then `zig build install && zig
 build test-libs`. `BOTOPINK_LANG_REF` repo variable pins a specific
-botopink-lang ref (default `main`).
+botopink-lang ref (default `feat`).
 
 ## Tagging (auto)
 
