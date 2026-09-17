@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **1.0.3 surface** (botopink-lang front 12): `Element` and `State<T>` are
+  `type Name(fields)`; `Router` / `Request` are `behavior`s whose bodiless members
+  end with `;`; the hook shapes are labeled tuple types — `effect` yields `#()`,
+  `ref` `#(current: T)`, `reducer` `#(state: S, dispatch: fn(action: A))`; the
+  `html` lexer's tokens are tuples typed by `tokens`' written element type. Two
+  compiler gaps are worked around with positional access: labels of a generic
+  labeled return are lost when `T` is instantiated (the hooks test reads `r.0`),
+  and label access on a lambda parameter is not rewritten in a template body
+  (`t.0` … `t.6`). `botopink format` is not applied: it currently emits code that
+  does not compile here.
+
 - The examples gate no longer aborts silently on a `scripts/known-broken-examples.txt`
   holding only comments or blank lines: the runner reads the list with `awk`, whose
   "no entry" is not a failure under `set -euo pipefail`.

@@ -14,17 +14,17 @@ surface for consumers.
 
 | File | Kind | Provides |
 |---|---|---|
-| `element.bp` | **compiled** | `record Element implement @Context<Element, Element>` with a `Children` `children` field (the UI node AND the hook ContextBase), builders (`text`, `fragment`, `div`/`span`/`p`/`h1`/`ul`/`li` — take `Children`), `renderToString` (pure, synchronous), `test {}` (render + the G4 coercion) |
-| `hooks.bp` | **compiled** | `record State<T> { value, set: fn(next: T) }` (G1) + `state`/`effect`/`memo`/`ref`/`reducer` returning `@Context<Element, _>` with real SSR bodies (G2 anon shapes for `{current}`/`{state,dispatch}`), `test {}` calling the bodies directly + a `use`-component that type-checks the capability |
+| `element.bp` | **compiled** | `type Element(…) implement @Context<Element, Element>` with a `Children` `children` field (the UI node AND the hook ContextBase), builders (`text`, `fragment`, `div`/`span`/`p`/`h1`/`ul`/`li` — take `Children`), `renderToString` (pure, synchronous), `test {}` (render + the G4 coercion) |
+| `hooks.bp` | **compiled** | `type State<T>(value, set: fn(next: T))` (G1) + `state`/`effect`/`memo`/`ref`/`reducer` returning `@Context<Element, _>` with real SSR bodies (G2 labeled tuple types `#(current: T)`/`#(state: S, dispatch: fn(action: A))`), `test {}` calling the bodies directly + a `use`-component that type-checks the capability |
 | `html.bp` | **compiled** | `html(comptime template: @Expr<string>) -> @ExprCustom<Element>` — the JSX-like `html """…"""` DSL with a real markup front-end: ① a native-JS-only **lexer** walks `template.parts()` into a token stream (tags/attrs/text/holes, each carrying a byte `Span`), ② a **flat stack parser** lowers it twice — to the builder pipeline (`<tag>` → `tag([...])`, text → `text("…")`, `${expr}` → `text(<code>)`, lowercase tags resolved in the **caller's** scope) AND to a generic `CustomNode` reference overlay (tags `label "tag"` + `q.lookup` `ref`, attrs `property`, values/text `string`, holes neutral), returned together via `q.custom(...)`. Mismatched/unexpected/unclosed tags → `q.failAt(span, …)` at the offending tag. Sibling of erika's `erika "…"` SQL front-end. Exercised by `test/html_test.bp` (parity) + `examples/jhonstart-html`. See the file header for the comptime-eval constraints (no `?T`, no in-body comments, helper closures at fn level not nested in the loop, `i32` cursor only in the flat parser loop) |
 | `router.d.bp` | declarative (GATED) | `Router`, `useRouter`, `Link` — host-bound navigation (fields read as zero-argument methods); `#[@External.Node]` + no Element attribute slot |
 | `server.d.bp` | declarative (GATED) | `Http` ContextBase: `Request`, `request()` — host-bound + async loaders |
 
 The four language gaps the framework surfaced are closed (spec
-`jhonstart-language-gaps`, v0.beta.6) and now **used** here: records carry
+`jhonstart-language-gaps`, v0.beta.6) and now **used** here: types carry
 function-typed fields (`set: fn(next: T)`, G1 — `State<T>` in `hooks.bp`),
-anonymous record types annotate transient hook shapes (G2 — `{current}`,
-`{state, dispatch}`), a function type returns an array (G3), and
+labeled tuple types annotate transient hook shapes (G2 — `#(current: T)`,
+`#(state: S, dispatch: fn(action: A))`), a function type returns an array (G3), and
 `Element[]`/`Element`/`string` coerce into a `Children` parameter (G4 — the
 builders' `children` arg and the `Element.children` field). The list form
 (`div([a, b])`) is the rendering contract; the single/`string` forms type-check

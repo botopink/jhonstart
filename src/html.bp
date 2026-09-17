@@ -72,10 +72,11 @@
 //     top is read with `slice(len-1, len).join("")` and popped with
 //     `slice(0, len-1)`; a string's length is `split("").length` (`.length()` is
 //     a method needing a JS rename, unavailable in a standalone body);
-//   - the token records are anonymous `record { … }` literals (they lower to JS
-//     object literals); the private markup node TYPES the spec names stay
-//     conceptual, since the comptime evaluator emits only this fn (a sibling
-//     `record Element { … }` would lower to a JS class this body can't `new`);
+//   - the tokens are tuples typed by `tokens`' written element type and read
+//     positionally (`t.0` = kind … `t.6` = hend): label access on the lambda
+//     parameter `t` is not rewritten in a template body yet (a compiler gap);
+//     the private markup node TYPES the spec names stay conceptual, since the
+//     comptime evaluator emits only this fn;
 //   - inside the lexer's nested closures only the token ARRAY is reassigned —
 //     never an `i32` counter, which would trip comptime inference;
 //   - the per-token cursor is reassigned only in the FLAT parser loop, where an
@@ -84,11 +85,11 @@
 //     so a `//` would comment out the code that follows it on that line.
 
 pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
-    var tokens = [];
+    var tokens: Array<#(kind: string, text: string, code: string, ptext: string, pbase: i32, hstart: i32, hend: i32)> = [];
 
     val emitText = { raw, ptext, pbase ->
         if (raw.trim() != "") {
-            tokens = tokens.append([record { kind: "text", text: raw, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+            tokens = tokens.append([#("text", raw, "", ptext, pbase, 0, 0)]);
         };
     };
     val emitTag = { inner, ptext, pbase ->
@@ -96,14 +97,14 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
         val isClose = inner.slice(0, 1) == "/";
         if (isClose) {
             val nm = inner.slice(1, innerLen).trim();
-            tokens = tokens.append([record { kind: "close", text: nm, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+            tokens = tokens.append([#("close", nm, "", ptext, pbase, 0, 0)]);
         } else {
             val selfc = inner.slice(innerLen - 1, innerLen) == "/";
             val body = if (selfc) { inner.slice(0, innerLen - 1).trim(); } else { inner.trim(); };
             val ws = body.split(" ");
             val nm = ws.slice(0, 1).join("");
             val knd = if (selfc) { "selfclose"; } else { "open"; };
-            tokens = tokens.append([record { kind: knd, text: nm, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+            tokens = tokens.append([#(knd, nm, "", ptext, pbase, 0, 0)]);
             ws.slice(1, ws.length).forEach({ attr ->
                 if (attr.trim() != "") {
                     val fc = attr.slice(0, 1);
@@ -125,16 +126,16 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                                 };
                             };
                             val ec = rest.slice(0, el);
-                            tokens = tokens.append([record { kind: "attrBracketProp", text: name, code: ec, ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                            tokens = tokens.append([#("attrBracketProp", name, ec, ptext, pbase, 0, 0)]);
                         };
                     } else {
                         val eq = attr.split("=");
                         val an = eq.slice(0, 1).join("").trim();
-                        tokens = tokens.append([record { kind: "attrName", text: an, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                        tokens = tokens.append([#("attrName", an, "", ptext, pbase, 0, 0)]);
                         if (eq.length > 1) {
                             val av = eq.slice(1, eq.length).join("=").split("\"").join("");
                             if (av != "") {
-                                tokens = tokens.append([record { kind: "attrValue", text: av, code: "", ptext: ptext, pbase: pbase, hstart: 0, hend: 0 }]);
+                                tokens = tokens.append([#("attrValue", av, "", ptext, pbase, 0, 0)]);
                             };
                         };
                     };
@@ -145,7 +146,7 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
 
     loop (template.parts()) { part ->
         if (part.kind == "Interp") {
-            tokens = tokens.append([record { kind: "hole", text: "", code: part.code, ptext: "", pbase: 0, hstart: part.span.start, hend: part.span.end }]);
+            tokens = tokens.append([#("hole", "", part.code, "", 0, part.span.start, part.span.end)]);
         } else {
             val ptext = part.text;
             val pbase = part.span.start;
@@ -179,39 +180,39 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
     };
 
     loop (tokens) { t ->
-        if (t.kind == "hole") {
-            nodes = nodes.append([CustomNode(kind: "hole", span: Span(t.hstart, t.hend, 1), label: "none", ref: null, children: [])]);
-            pushChildCode("text(" + t.code + ", attrs: [])");
+        if (t.0 == "hole") {
+            nodes = nodes.append([CustomNode(kind: "hole", span: Span(t.5, t.6, 1), label: "none", ref: null, children: [])]);
+            pushChildCode("text(" + t.2 + ", attrs: [])");
         } else {
-            if (t.pbase != curBase) { curBase = t.pbase; cursor = 0; };
-            val tlen = t.text.split("").length;
-            val rest = t.ptext.slice(cursor, t.ptext.split("").length);
-            val rel = rest.indexOf(t.text);
-            val start = t.pbase + cursor + rel;
+            if (t.4 != curBase) { curBase = t.4; cursor = 0; };
+            val tlen = t.1.split("").length;
+            val rest = t.3.slice(cursor, t.3.split("").length);
+            val rel = rest.indexOf(t.1);
+            val start = t.4 + cursor + rel;
             val finish = start + tlen;
             cursor = cursor + rel + tlen;
             val sp = Span(start, finish, 1);
 
-            if (t.kind == "open") {
+            if (t.0 == "open") {
                 openStart = start;
                 openFinish = finish;
-                val b = template.lookup(t.text);
+                val b = template.lookup(t.1);
                 nodes = nodes.append([CustomNode(kind: "tag", span: sp, label: "tag", ref: b, children: [])]);
-                tagStack = tagStack.append([t.text]);
+                tagStack = tagStack.append([t.1]);
                 codeStack = codeStack.append([""]);
                 attrStack = attrStack.append([""]);
             };
-            if (t.kind == "selfclose") {
-                val b = template.lookup(t.text);
+            if (t.0 == "selfclose") {
+                val b = template.lookup(t.1);
                 nodes = nodes.append([CustomNode(kind: "tag", span: sp, label: "tag", ref: b, children: [])]);
-                pendingSc = t.text;
+                pendingSc = t.1;
                 attrStack = attrStack.append([""]);
             };
-            if (t.kind == "close") {
+            if (t.0 == "close") {
                 val depth = tagStack.length;
-                if (depth == 0) { template.failAt(sp, "html: unexpected closing tag </" + t.text + ">"); };
+                if (depth == 0) { template.failAt(sp, "html: unexpected closing tag </" + t.1 + ">"); };
                 val cname = tagStack.slice(depth - 1, depth).join("");
-                if (t.text != cname) { template.failAt(sp, "html: mismatched closing tag </" + t.text + ">, expected </" + cname + ">"); };
+                if (t.1 != cname) { template.failAt(sp, "html: mismatched closing tag </" + t.1 + ">, expected </" + cname + ">"); };
                 val topIdx = codeStack.length - 1;
                 val kids = codeStack.slice(topIdx, codeStack.length).join("");
                 codeStack = codeStack.slice(0, topIdx);
@@ -220,23 +221,23 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                 attrStack = attrStack.slice(0, topIdx);
                 pushChildCode(cname + "([" + kids + "], attrs: [" + attrsContent + "])");
             };
-            if (t.kind == "attrName") {
+            if (t.0 == "attrName") {
                 nodes = nodes.append([CustomNode(kind: "attr", span: sp, label: "property", ref: null, children: [])]);
             };
-            if (t.kind == "attrValue") {
+            if (t.0 == "attrValue") {
                 nodes = nodes.append([CustomNode(kind: "attrValue", span: sp, label: "string", ref: null, children: [])]);
             };
-            if (t.kind == "attrBracketProp") {
-                val b2 = template.lookup(t.text);
+            if (t.0 == "attrBracketProp") {
+                val b2 = template.lookup(t.1);
                 nodes = nodes.append([CustomNode(kind: "attrBracket", span: sp, label: "property", ref: b2, children: [])]);
                 val ai = attrStack.length - 1;
                 val ac2 = attrStack.slice(ai, attrStack.length).join("");
                 val sp2 = if (ac2 == "") { ""; } else { ","; };
-                attrStack = attrStack.slice(0, ai).append([ac2 + sp2 + "bracketPair(\"" + t.text + "\", " + t.code + ")"]);
+                attrStack = attrStack.slice(0, ai).append([ac2 + sp2 + "bracketPair(\"" + t.1 + "\", " + t.2 + ")"]);
             };
-            if (t.kind == "text") {
+            if (t.0 == "text") {
                 nodes = nodes.append([CustomNode(kind: "text", span: sp, label: "string", ref: null, children: [])]);
-                pushChildCode("text(\"" + t.text + "\", attrs: [])");
+                pushChildCode("text(\"" + t.1 + "\", attrs: [])");
             };
         };
     };

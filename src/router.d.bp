@@ -14,11 +14,11 @@
 //     `Link` would silently drop `href`, so it stays host-backed until Element
 //     grows an attribute model (recorded follow-up — see `docs.md`).
 
-pub interface Router {
-    fn pathname(self: Self) -> string
-    fn params(self: Self) -> Dict<string, string>
-    fn push(self: Self, href: string)
-    fn replace(self: Self, href: string)
+pub behavior Router {
+    fn pathname(self: Self) -> string;
+    fn params(self: Self) -> Dict<string, string>;
+    fn push(self: Self, href: string);
+    fn replace(self: Self, href: string);
 }
 
 #[@External.Node("jhonstart/runtime", "useRouter")]

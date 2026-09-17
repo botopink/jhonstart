@@ -1,11 +1,11 @@
 // jhonstart/element — the UI core, implemented in *real* botopink.
 
-pub record Element implement @Context<Element, Element> {
+pub type Element(
     tag: string,
     value: string,
     children: Children,
     attrs: Array<#(string, string)>,
-}
+) implement @Context<Element, Element>
 
 pub fn bracketPair(name: string, value: string) -> #(string, string) {
     return #(name, value);

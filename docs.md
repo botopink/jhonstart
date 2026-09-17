@@ -45,10 +45,10 @@ runtime's job: the `use` prefix lowers to the target's hook convention (React
 | Hook | Returns (via `use`) | Notes |
 |---|---|---|
 | `state<T>(initial)` | `State<T>` = `{value: T, set: fn(next: T)}` | local state + setter |
-| `effect(run, deps)` | `{}` | side effect after render (void) |
+| `effect(run, deps)` | `#()` | side effect after render (void) |
 | `memo<T>(compute, deps)` | `T` | memoized value (computed eagerly in SSR) |
-| `ref<T>(initial)` | `{current: T}` | mutable handle |
-| `reducer<S,A>(reduce, init)` | `{state: S, dispatch: fn(action: A)}` | reducer state |
+| `ref<T>(initial)` | `#(current: T)` | mutable handle |
+| `reducer<S,A>(reduce, init)` | `#(state: S, dispatch: fn(action: A))` | reducer state |
 
 Custom hooks compose the primitives — their return implements
 `@Context<Element, _>`, propagated transitively:
@@ -140,7 +140,7 @@ by a plain call. See `examples/jhonstart-html`.
 ## V1 limits
 
 - **Implemented now** (`element.bp` + `hooks.bp` + `html.bp`, compiled +
-  `test {}`-checked): the `Element` record, builders (`Children` args, list-form
+  `test {}`-checked): the `Element` type, builders (`Children` args, list-form
   render), a synchronous `renderToString`, the `state`/`effect`/`memo`/`ref`/
   `reducer` hook family (real SSR bodies), and the `html """…"""` markup DSL
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as

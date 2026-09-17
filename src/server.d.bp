@@ -16,10 +16,10 @@
 //   - `Http` is a phantom `@Context` base (no members) supplied by the host,
 //     the server-side mirror of `Element`.
 
-pub interface Request {
-    fn path(self: Self) -> string
-    fn params(self: Self) -> Dict<string, string>
-    fn query(self: Self) -> Dict<string, string>
+pub behavior Request {
+    fn path(self: Self) -> string;
+    fn params(self: Self) -> Dict<string, string>;
+    fn query(self: Self) -> Dict<string, string>;
 }
 
 #[@External.Node("jhonstart/runtime", "request")]

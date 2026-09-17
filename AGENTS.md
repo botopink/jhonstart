@@ -34,7 +34,7 @@ repository/jhonstart/
 ├── src/
 │   ├── AGENTS.md
 │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html;`
-│   ├── element.bp     ← COMPILED CORE: record Element + builders (Children) + renderToString + test {}
+│   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>) + test {} (imports `Element`)
 │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
 │   ├── router.d.bp    ← Router/useRouter/Link (host-bound navigation; GATED)
@@ -66,7 +66,7 @@ are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
 ## Conventions
 
 - **Prefer real `.bp`**: implement in botopink whatever the language can express.
-  `element.bp` (record, builders, `renderToString`) and `hooks.bp` (the
+  `element.bp` (type, builders, `renderToString`) and `hooks.bp` (the
   `{value, set}` hook family) are ordinary `.bp`. Keep `.d.bp` only for genuinely
   host-bound intrinsics or async-gated surface — and say which gap gates each one.
 - Builders take a `Children` arg (`div([a, b])` / single / `string` — the G4
@@ -86,7 +86,7 @@ are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
 jhonstart is a *consumer*. What it relies on:
 
 - **Landed**: `context-inference` (`@Context`/`use`), `expr-templates` (`@Expr`),
-  the G1–G4 gaps (fn-typed fields, anon record types, `fn() -> T[]`, `Children`
+  the G1–G4 gaps (fn-typed fields, labeled tuple types, `fn() -> T[]`, `Children`
   coercion), the generic `from "<lib>"` loader, and — new in this port — generic
   **cross-module nominal-type resolution** (a local component `fn … -> Element`
   whose result feeds an imported `renderToString`/`use` now type-checks; see
