@@ -85,8 +85,11 @@
 //     so a `//` would comment out the code that follows it on that line.
 
 // The sibling module declaring `Element` — the type `html`'s `@ExprCustom<…>`
-// return annotation names, the same import `hooks` makes.
-import { Element };
+// return annotation names, the same import `hooks` makes. The module is named
+// explicitly: the bare `import { Element };` shorthand type-checks, but
+// commonJS lowers it to `require("../module")`, which resolves inside this
+// package and not when jhonstart is consumed as a dependency.
+import { Element } from "element";
 
 pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
     var tokens: Array<#(kind: string, text: string, code: string, ptext: string, pbase: i32, hstart: i32, hend: i32)> = [];
