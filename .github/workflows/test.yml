@@ -1,9 +1,9 @@
 # Per-platform CI for jhonstart.
 #
-# jhonstart is a frontend UI framework — only the `commonJS` target ships.
+# jhonstart renders to a string, so it runs on `commonJS` and on `erlang`.
 # Bootstrap: check out this lib + botopink-lang, place this lib under
 # `botopink-lang/repository/jhonstart/`, run `zig build test-libs -- --lib
-# jhonstart --target commonJS`.
+# jhonstart --target <matrix.target>`.
 name: test
 
 on:
@@ -22,17 +22,21 @@ env:
 
 jobs:
   test:
-    name: ${{ matrix.runner }} · commonJS
+    name: ${{ matrix.runner }} · ${{ matrix.target }}
     strategy:
       fail-fast: false
       matrix:
-        # windows-2022 commonJS now runs the source step under `shell:
-        # bash` (ci-tail W1), so the PowerShell `${LIB_NAME}` expansion
-        # gap is closed and the row carries `allow_fail: false`.
+        # The `erlang` axis is a hard cell: `botopink test --target erlang`
+        # passes the whole suite (8/8, measured 2026-09-18). windows-2022
+        # commonJS now runs the source step under `shell: bash` (ci-tail W1),
+        # so the PowerShell `${LIB_NAME}` expansion gap is closed and the row
+        # carries `allow_fail: false`.
         include:
-          - { runner: ubuntu-22.04, allow_fail: false }
-          - { runner: macos-14,     allow_fail: false }
-          - { runner: windows-2022, allow_fail: false }
+          - { runner: ubuntu-22.04, target: commonJS, allow_fail: false }
+          - { runner: ubuntu-22.04, target: erlang,   allow_fail: false }
+          - { runner: macos-14,     target: commonJS, allow_fail: false }
+          - { runner: macos-14,     target: erlang,   allow_fail: false }
+          - { runner: windows-2022, target: commonJS, allow_fail: false }
     runs-on: ${{ matrix.runner }}
     continue-on-error: ${{ matrix.allow_fail }}
     steps:
@@ -59,7 +63,18 @@ jobs:
             cp -R self "botopink-lang/repository/${LIB_NAME}"
           fi
 
-      - name: Install Node 20
+      - name: Install erlang (linux)
+        if: matrix.runner == 'ubuntu-22.04' && matrix.target == 'erlang'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y erlang
+
+      - name: Install erlang (macos)
+        if: matrix.runner == 'macos-14' && matrix.target == 'erlang'
+        run: brew install erlang
+
+      - name: Install Node 20 (for commonJS target)
+        if: matrix.target == 'commonJS'
         uses: actions/setup-node@v5
         with:
           node-version: '20'
@@ -91,23 +106,24 @@ jobs:
         working-directory: botopink-lang
         run: zig build install
 
-      - name: zig build test-libs --lib jhonstart --target commonJS (source)
+      - name: zig build test-libs --lib jhonstart --target ${{ matrix.target }} (source)
         if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH != 'true' }}
         working-directory: botopink-lang
         shell: bash
-        run: zig build test-libs -- --lib "${LIB_NAME}" --target commonJS
+        run: zig build test-libs -- --lib "${LIB_NAME}" --target "${{ matrix.target }}"
 
-      - name: botopink-lib-test --lib jhonstart --target commonJS (fast path)
+      - name: botopink-lib-test --lib jhonstart --target ${{ matrix.target }} (fast path)
         if: ${{ vars.BOTOPINK_USE_RELEASE_FASTPATH == 'true' }}
         working-directory: botopink-lang
         shell: bash
-        run: botopink-lib-test --lib "${LIB_NAME}" --target commonJS
+        run: botopink-lib-test --lib "${LIB_NAME}" --target "${{ matrix.target }}"
 
       # Every examples/*/ with a botopink.json builds (runExamplesGate, the same
       # stage as the pre-commit hook); scripts/known-broken-examples.txt lists
       # the ones allowed to fail. Each example uses its own manifest target, so
       # this runs once, not per target.
       - name: Examples build
+        if: matrix.target == 'commonJS'
         working-directory: botopink-lang/repository/${{ env.LIB_NAME }}
         shell: bash
         run: |
