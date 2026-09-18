@@ -167,11 +167,11 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
         };
     };
 
-    var tagStack = [];
+    var tagStack: Array<string> = [];
     var codeStack = [""];
     var attrStack = [""];
-    var rootMarks = [];
-    var nodes = [];
+    var rootMarks: Array<string> = [];
+    var nodes: Array<CustomNode> = [];
     var cursor = 0;
     var curBase = 0 - 1;
     var openStart = 0;
