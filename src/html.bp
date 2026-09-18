@@ -84,6 +84,10 @@
 //   - NO comments inside the body: the emitter flattens each block to one line,
 //     so a `//` would comment out the code that follows it on that line.
 
+// The sibling module declaring `Element` — the type `html`'s `@ExprCustom<…>`
+// return annotation names, the same import `hooks` makes.
+import { Element };
+
 pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
     var tokens: Array<#(kind: string, text: string, code: string, ptext: string, pbase: i32, hstart: i32, hend: i32)> = [];
 
