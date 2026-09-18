@@ -48,7 +48,18 @@ repository/jhonstart/
 `src/root.bp` is the explicit module-tree root — the package builds from it, not
 a deprecated blind `src/` scan. It declares the three compiled modules
 `pub mod element; pub mod hooks; pub mod html;` (all public surface; `hooks`
-imports `Element` from `element`, so the resolver compiles `element` first). The
+imports `Element` from `element`, so the resolver compiles `element` first).
+
+**A sibling-module import always names its module** — `import { Element } from
+"element";`, never the bare `import { Element };`. Both type-check, but
+commonJS lowers the bare form to `require("../module")`: a path that resolves
+while jhonstart is compiled on its own and not when it is a dependency, which
+is how `examples/jhonstart-counter` and `-todo` came to build and then die with
+`Cannot find module '../module'`. Reported to botopink-lang as a codegen defect
+(`src/codegen/commonJS.zig`, the require path of a dependency's sibling
+module); naming the module is the workaround and reads better anyway.
+
+The
 host-bound declaration modules `router.d.bp` / `server.d.bp` are **not** in the
 tree: they are wired through `botopink.json` `files` (consumer surface, loaded
 with `.declaration = true` for a `from "jhonstart"` consumer). `.d.bp` modules
@@ -113,9 +124,14 @@ jhonstart is a *consumer*. What it relies on:
 ## CI
 
 `.github/workflows/test.yml` runs `zig build test-libs -- --lib jhonstart
---target commonJS` on every push / PR to `feat`/`master`/`main`, across
-`ubuntu-22.04`, `macos-14`, `windows-2022`. jhonstart is a frontend
-framework — the matrix is **commonJS-only**.
+--target <t>` on every push / PR to `feat`/`master`/`main`, over
+`{ubuntu-22.04, macos-14} × {commonJS, erlang}` plus `commonJS` on
+`windows-2022` (`escript` ships cleanly only on linux + macos). Both target
+rows are hard cells — no `allow_fail`. Nothing about jhonstart is
+commonJS-only: `renderToString` turns an `Element` tree into a string, which is
+pure string work on either backend, and the suite is 8/8 on erlang. The
+examples stage reads each example's own manifest target, so it is pinned to the
+commonJS row and runs once.
 
 Bootstrap path mirrors the other lib repos: check out this lib + a
 fresh `botopink-lang` clone, place this lib under
@@ -166,4 +182,17 @@ into a throwaway `--out`); CI runs the same function once per workflow.
 that builds, or a listed path that no longer exists, fails the gate too.
 When a fix makes an example build, delete its line in the same commit. The list may be absent,
 empty or hold only `#` comments — each means no example is allowed to fail.
-No example is listed today; `examples/jhonstart-app` has no `botopink.json` and is not built. The examples pass `attrs` explicitly to the element builders (`text("x", [])`, `div([…], [])`): the `attrs = []` default added by the bracket-prop commit is not applied by the compiler yet (botopink-lang 1.0.4-beta 06 N1), so a one-argument call does not type-check.
+No example is listed today; `examples/jhonstart-app` has no `botopink.json` and
+is not built (it is the gated aspirational app-layer example). The other three
+build **and run**:
+
+| example | `botopink run` output |
+|---|---|
+| `jhonstart-counter` | `<div><p>count: 0</p><span>non-negative</span></div>` |
+| `jhonstart-html` | `<div><p>hello, world</p></div>` |
+| `jhonstart-todo` | `<div><span>todos: 2</span><ul><li>buy milk</li><li>write docs</li></ul></div>` |
+
+The examples pass `attrs` explicitly to the element builders (`text("x", [])`,
+`div([…], [])`): the `attrs = []` default added by the bracket-prop commit is
+not applied by the compiler yet (botopink-lang 1.0.4-beta 06 N1), so a
+one-argument call does not type-check.
