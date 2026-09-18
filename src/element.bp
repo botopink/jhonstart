@@ -19,24 +19,37 @@ pub fn fragment(children: Children, attrs: Array<#(string, string)> = []) -> Ele
     return Element(tag: "#fragment", value: "", children: children, attrs: attrs);
 }
 
-pub fn div(children: Children, attrs: Array<#(string, string)> = []) -> Element { return Element(tag: "div", value: "", children: children, attrs: attrs); }
-pub fn span(children: Children, attrs: Array<#(string, string)> = []) -> Element { return Element(tag: "span", value: "", children: children, attrs: attrs); }
-pub fn p(children: Children, attrs: Array<#(string, string)> = []) -> Element { return Element(tag: "p", value: "", children: children, attrs: attrs); }
-pub fn h1(children: Children, attrs: Array<#(string, string)> = []) -> Element { return Element(tag: "h1", value: "", children: children, attrs: attrs); }
-pub fn ul(children: Children, attrs: Array<#(string, string)> = []) -> Element { return Element(tag: "ul", value: "", children: children, attrs: attrs); }
-pub fn li(children: Children, attrs: Array<#(string, string)> = []) -> Element { return Element(tag: "li", value: "", children: children, attrs: attrs); }
+pub fn div(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+    return Element(tag: "div", value: "", children: children, attrs: attrs);
+}
+
+pub fn span(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+    return Element(tag: "span", value: "", children: children, attrs: attrs);
+}
+
+pub fn p(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+    return Element(tag: "p", value: "", children: children, attrs: attrs);
+}
+
+pub fn h1(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+    return Element(tag: "h1", value: "", children: children, attrs: attrs);
+}
+
+pub fn ul(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+    return Element(tag: "ul", value: "", children: children, attrs: attrs);
+}
+
+pub fn li(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+    return Element(tag: "li", value: "", children: children, attrs: attrs);
+}
 
 pub fn renderToString(e: Element) -> string {
-    if (e.tag == "#text") {
-        return e.value;
-    };
+    if (e.tag == "#text") return e.value;
     var inner = "";
     loop (e.children) { c ->
         inner = inner + renderToString(c);
     };
-    if (e.tag == "#fragment") {
-        return inner;
-    };
+    if (e.tag == "#fragment") return inner;
     var attrStr = "";
     loop (e.attrs) { a ->
         attrStr = attrStr + " " + a._0 + "=\"" + a._1 + "\"";
@@ -53,17 +66,19 @@ test "leaf, fragment, and a nested tree render to HTML" {
 
 test "deeply nested lists build and render (list form)" {
     val page = div([
-        h1([text("Title", attrs: [])], attrs: []),
-        ul([
-            li([text("one", attrs: [])], attrs: []),
-            li([span([text("t", attrs: []), text("wo", attrs: [])], attrs: [])], attrs: []),
-        ], attrs: []),
-    ], attrs: []);
+            h1([text("Title", attrs: [])], attrs: []),
+            ul([
+                    li([text("one", attrs: [])], attrs: []),
+                    li([span([text("t", attrs: []), text("wo", attrs: [])], attrs: [])], attrs: []),
+                ], attrs: []),
+        ], attrs: []);
     assert renderToString(page) == "<div><h1>Title</h1><ul><li>one</li><li><span>two</span></li></ul></div>";
 }
 
 val coerceList = div([text("a", attrs: []), text("b", attrs: [])], attrs: []);
+
 val coerceSingle = div(text("only", attrs: []), attrs: []);
+
 val coerceText = div("bare string", attrs: []);
 
 test "Children coercion: list / single / string all type-check (G4)" {
