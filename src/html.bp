@@ -111,41 +111,41 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
             val knd = if (selfc) "selfclose" else "open";
             tokens = tokens.append([#(knd, nm, "", ptext, pbase, 0, 0)]);
             ws.slice(1, ws.length).forEach({ attr ->
-                    if (attr.trim() != "") {
-                        val fc = attr.slice(0, 1);
-                        if (fc == "[") {
-                            val cb = attr.indexOf("]={");
-                            if (cb > 0) {
-                                val name = attr.slice(1, cb);
-                                val rest = attr.slice(cb + 3, attr.split("").length);
-                                val chars = rest.split("");
-                                var bc = 1;
-                                var el = 0;
-                                var open = true;
-                                loop (chars) { c ->
-                                    if (open) {
-                                        if (c == "{") bc = bc + 1;
-                                        if (c == "}") bc = bc - 1;
-                                        if (bc > 0) el = el + 1;
-                                        open = bc > 0;
-                                    };
+                if (attr.trim() != "") {
+                    val fc = attr.slice(0, 1);
+                    if (fc == "[") {
+                        val cb = attr.indexOf("]={");
+                        if (cb > 0) {
+                            val name = attr.slice(1, cb);
+                            val rest = attr.slice(cb + 3, attr.split("").length);
+                            val chars = rest.split("");
+                            var bc = 1;
+                            var el = 0;
+                            var open = true;
+                            loop (chars) { c ->
+                                if (open) {
+                                    if (c == "{") bc = bc + 1;
+                                    if (c == "}") bc = bc - 1;
+                                    if (bc > 0) el = el + 1;
+                                    open = bc > 0;
                                 };
-                                val ec = rest.slice(0, el);
-                                tokens = tokens.append([#("attrBracketProp", name, ec, ptext, pbase, 0, 0)]);
                             };
-                        } else {
-                            val eq = attr.split("=");
-                            val an = eq.slice(0, 1).join("").trim();
-                            tokens = tokens.append([#("attrName", an, "", ptext, pbase, 0, 0)]);
-                            if (eq.length > 1) {
-                                val av = eq.slice(1, eq.length).join("=").split("\"").join(
-                                    ""
-                                );
-                                if (av != "") tokens = tokens.append([#("attrValue", av, "", ptext, pbase, 0, 0)]);
-                            };
+                            val ec = rest.slice(0, el);
+                            tokens = tokens.append([#("attrBracketProp", name, ec, ptext, pbase, 0, 0)]);
+                        };
+                    } else {
+                        val eq = attr.split("=");
+                        val an = eq.slice(0, 1).join("").trim();
+                        tokens = tokens.append([#("attrName", an, "", ptext, pbase, 0, 0)]);
+                        if (eq.length > 1) {
+                            val av = eq.slice(1, eq.length).join("=").split("\"").join(
+                                ""
+                            );
+                            if (av != "") tokens = tokens.append([#("attrValue", av, "", ptext, pbase, 0, 0)]);
                         };
                     };
-                });
+                };
+            });
         };
     };
 
@@ -156,10 +156,10 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
             val chunks = ptext.split("<");
             emitText(chunks.slice(0, 1).join(""), ptext, pbase);
             chunks.slice(1, chunks.length).forEach({ seg ->
-                    val gt = seg.split(">");
-                    emitTag(gt.slice(0, 1).join(""), ptext, pbase);
-                    emitText(gt.slice(1, gt.length).join(">"), ptext, pbase);
-                });
+                val gt = seg.split(">");
+                emitTag(gt.slice(0, 1).join(""), ptext, pbase);
+                emitText(gt.slice(1, gt.length).join(">"), ptext, pbase);
+            });
         };
     };
 

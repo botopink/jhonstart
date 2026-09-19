@@ -28,9 +28,7 @@ pub type State<T>(
 // `state` — a stateful cell. On the server (SSR / first render) it yields the
 // initial value; `set` is the updater the client runtime rebinds on mount.
 pub fn state<T>(initial: T) -> @Context<Element, State<T>> {
-    return State(value: initial, set: { next ->
-            
-        });
+    return State(value: initial, set: { next -> });
 }
 
 // `effect` — a side effect run after render. Pure during SSR (a no-op); the
@@ -54,10 +52,11 @@ pub fn ref<T>(initial: T) -> @Context<Element, #(current: T)> {
 
 // `reducer` — state threaded through a reducer. Yields `#(state, dispatch)`;
 // `state` is the initial state, `dispatch` the action sink the client rebinds.
-pub fn reducer<S, A>(reduce: fn(s: S, a: A) -> S, initial: S) -> @Context<Element, #(state: S, dispatch: fn(action: A))> {
-    return #(initial, { action ->
-            
-        });
+pub fn reducer<S, A>(
+    reduce: fn(s: S, a: A) -> S,
+    initial: S,
+) -> @Context<Element, #(state: S, dispatch: fn(action: A))> {
+    return #(initial, { action -> });
 }
 
 // ── tests ──────────────────────────────────────────────────────────────────
@@ -78,8 +77,8 @@ test "state yields its initial value and a callable setter" {
 // the intended spelling (`r.current`, `rd.state`).
 test "memo computes eagerly; ref/reducer seed their boxes" {
     val m = memo({ ->
-            3 + 4;
-        }, []);
+        3 + 4;
+    }, []);
     assert m == 7;
     val r = ref(0);
     assert r.0 == 0;
@@ -109,8 +108,8 @@ fn useCounter(start: i32) -> @Context<Element, State<i32>> {
 fn Counter() -> Element {
     val c = use state(0);
     val doubled = use memo({ ->
-            c.value + c.value;
-        }, []);
+        c.value + c.value;
+    }, []);
     return Element(tag: "div", value: "", children: [
             Element(tag: "#text", value: "count: " + c.value.toString(), children: [], attrs: []),
             Element(tag: "#text", value: " x2=" + doubled.toString(), children: [], attrs: []),

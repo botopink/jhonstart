@@ -15,15 +15,24 @@ pub fn text(value: string, attrs: Array<#(string, string)> = []) -> Element {
     return Element(tag: "#text", value: value, children: [], attrs: attrs);
 }
 
-pub fn fragment(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+pub fn fragment(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
     return Element(tag: "#fragment", value: "", children: children, attrs: attrs);
 }
 
-pub fn div(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+pub fn div(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
     return Element(tag: "div", value: "", children: children, attrs: attrs);
 }
 
-pub fn span(children: Children, attrs: Array<#(string, string)> = []) -> Element {
+pub fn span(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
     return Element(tag: "span", value: "", children: children, attrs: attrs);
 }
 
