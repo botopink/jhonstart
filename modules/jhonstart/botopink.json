@@ -13,6 +13,8 @@
     "router.bp",
     "elements.bp",
     "client_runtime.bp",
-    "server.bp"
+    "server.bp",
+    "link.bp",
+    "reconcile.bp"
   ]
 }

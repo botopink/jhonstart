@@ -1,0 +1,107 @@
+// `botopink test` flat suite for `src/reconcile.bp` (front 27).
+//
+// The whole remount decision of a client transition is a function of two lists
+// of layout keys, so the whole of it is asserted here WITHOUT a DOM — which is
+// the property the front's § Step 3b asks for and the reason `layoutKeys` and
+// `sharedDepth` are pure.
+//
+// Both rows run this file. Nothing in `reconcile.bp` is host-bound, so there is
+// no cell to be missing on either backend.
+//
+// ── What this file does NOT assert, and why ─────────────────────────────────
+//
+// Two of § Step 3b's acceptance rows are not assertable here and are not faked:
+//
+//   - "a shared layout's islands are not re-hydrated across a transition,
+//     asserted by an island whose mount count is observable" — an island is
+//     front 29's, hydration is front 68's, and a mount count is observable
+//     only in a DOM. What this file asserts instead is the DECISION that
+//     produces it: the depths a transition keeps are exactly the depths whose
+//     keys agree, so a shared layout is never in the replaced range.
+//   - "the reconciler reads front 60's route-kind flag to decide whether the
+//     target payload had to be fetched" — front 60 has not started and there
+//     is no flag. `reconcile.bp`'s header names it as the driver's input
+//     rather than recomputing one here; the front's own § Prefetch strategy is
+//     explicit that the kind is front 60's and not this front's.
+//
+// The third row — "`reconcile.bp` declares no `#[@External.Erlang]` cell" — is
+// true and stronger than asked: it declares no cell of ANY target.
+
+import {layoutKeys, sharedDepth} from "reconcile";
+import {layoutKey} from "link";
+
+test "reconcile: layoutKeys is root-first and includes the root" {
+    val keys = layoutKeys(["docs", "api"]);
+    assert keys.length == 3;
+    assert keys.join(" ") == "/ /docs /docs/api";
+}
+
+test "reconcile: the root route is the single root key" {
+    val keys = layoutKeys([]);
+    assert keys.length == 1;
+    assert keys.join(" ") == "/";
+}
+
+test "reconcile: layoutKeys is layoutKey applied at every depth" {
+    val segs = ["blog", "[slug]"];
+    val keys = layoutKeys(segs);
+    assert keys.length == 3;
+    assert keys[0] == layoutKey(segs, 0);
+    assert keys[1] == layoutKey(segs, 1);
+    assert keys[2] == layoutKey(segs, 2);
+}
+
+// ── the reuse cases ─────────────────────────────────────────────────────────
+
+test "reconcile: two routes under /docs reuse root AND the docs layout" {
+    val here = layoutKeys(["docs", "api"]);
+    val there = layoutKeys(["docs", "guides"]);
+    assert sharedDepth(here, there) == 2;
+}
+
+test "reconcile: routes under different sections keep only the root layout" {
+    assert sharedDepth(layoutKeys(["docs"]), layoutKeys(["blog"])) == 1;
+    assert sharedDepth(layoutKeys(["docs", "api"]), layoutKeys(["blog", "hi"])) == 1;
+}
+
+test "reconcile: a navigation to the current route remounts nothing" {
+    val keys = layoutKeys(["docs", "api", "use-router"]);
+    assert sharedDepth(keys, keys) == keys.length;
+    assert sharedDepth(layoutKeys([]), layoutKeys([])) == 1;
+}
+
+test "reconcile: the root layout is never remounted — the answer is never 0" {
+    assert sharedDepth(layoutKeys(["a"]), layoutKeys(["b"])) == 1;
+    assert sharedDepth(layoutKeys([]), layoutKeys(["b", "c"])) == 1;
+    assert sharedDepth(layoutKeys(["a", "b"]), layoutKeys([])) == 1;
+}
+
+test "reconcile: going deeper under the same section keeps every shared layout" {
+    // /docs/api  →  /docs/api/use-router : both layouts above stay mounted.
+    val here = layoutKeys(["docs", "api"]);
+    val there = layoutKeys(["docs", "api", "use-router"]);
+    assert sharedDepth(here, there) == 3;
+    assert sharedDepth(there, here) == 3;
+}
+
+test "reconcile: a divergence high up is not repaired by a match below it" {
+    // ["a","x"] vs ["b","x"] — the second segment matches as a NAME but the
+    // key at depth 2 is "/a/x" against "/b/x", so nothing below the root is
+    // shared. Keying by segment PATH rather than by position is what makes
+    // this the answer.
+    assert sharedDepth(layoutKeys(["a", "x"]), layoutKeys(["b", "x"])) == 1;
+}
+
+test "reconcile: the decision splits the depths into kept and replaced" {
+    // The contract the driver consumes: [0, keep) stays mounted, [keep, n] is
+    // replaced. A shared layout is by construction never in the replaced
+    // range, which is the pure half of "its islands are not re-hydrated".
+    val here = layoutKeys(["shop", "cart"]);
+    val there = layoutKeys(["shop", "checkout"]);
+    val keep = sharedDepth(here, there);
+    assert keep == 2;
+    assert here[0] == there[0];
+    assert here[1] == there[1];
+    assert here[2] != there[2];
+    assert there.length - keep == 1;
+}

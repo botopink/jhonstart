@@ -2,6 +2,89 @@
 
 ## Unreleased
 
+- **Front 27 — client navigation: `link.bp` and `reconcile.bp`, the render-time
+  half.** `router.d.bp`'s one-line `declare fn Link` explained why it never
+  became real — "`Element` … has NO attribute slot … a real `.bp` `Link` would
+  silently drop `href`". That reason expired with `element.bp`'s `attrs`, and
+  the anchor is now ordinary botopink. Both files are **pure**: they declare no
+  host cell of any target, which is stronger than the front's "no
+  `#[@External.Erlang]` cell" acceptance row, so all 35 new assertions run on
+  **both** rows and `Link` renders in the server pass exactly as in the browser.
+  - **`LinkProps` + `linkProps(href)` + five `with*` helpers.** The props are a
+    record because `Link(href, children, prefetch = true, …)` does not work for
+    a consumer — see the measurement below. `linkProps` fills Next's documented
+    defaults; each `with*` returns a NEW record and none assigns to a field of
+    its argument, there being no copy-with-update expression.
+  - **`#[@context] Link(props, children) -> Element`** — `<a href=…
+    data-onze-l="1">`, plus one attribute per prop that DIFFERS from its
+    default, so a page with two hundred links does not carry five redundant
+    pairs on each. `target` and `class` are real attributes; `prefetch`,
+    `replace` and `scroll` are `data-onze-*`. There is no pass-through `attrs`
+    parameter: an anchor that accepts any attribute is an anchor that can be
+    handed its own `data-onze-l`, the marker the browser half queries on.
+  - **`prefetchMode(kind, hasLoading, requested)`** — `NEXTJS-DOCS.md § 8`'s
+    table verbatim, as a pure function so that it is testable without a
+    browser. Both inputs are front 60's; jhonstart computes neither. An unknown
+    kind is not static, so it falls through to the boundary question and
+    answers `skip` — the conservative answer a missing table should produce.
+  - **`layoutKey` / `layoutKeys` / `sharedDepth`** — a layout is keyed by its
+    segment PATH, never by its position in the tree, so two routes under
+    `/docs` reuse the docs layout and a route under `/blog` does not. The keys
+    come from front 26's `RouterState.segments()`, so the key a client
+    transition computes and the key the server rendered under are the same
+    string. `sharedDepth` is never `0`: the root layout is never remounted.
+  - **`LinkStatus` / `linkStatusOf(href)`** — the pure derivation the
+    `linkStatus()` hook will return, `""` being idle.
+- **The browser half is NOT shipped, and is not stubbed.** `__onzeLinkMount`,
+  `__onzeLinkPrefetch`, `__onzeLinkStatus`, `__onzeLinkRouteKind`,
+  `linkStatus()` and the transition driver `reconcile(current, target)` all wait
+  on fronts that have not started: **front 68**'s generated client bundle (the
+  module the four cells bind to, and the DOM primitives the driver mounts and
+  unmounts through) and **front 60**'s route-kind table. Two measurements make
+  writing them today wrong rather than merely early, and they point in opposite
+  directions:
+  - **A called node-only cell reds the ERLANG build at its call site.** Measured
+    2026-09-21 against compiler `2e6bb4ac`: `pub fn statusOf() { return
+    __cellStatus(); }` over a `#[@External.Node]`-only cell builds on commonJS
+    and fails erlang with ``error: `__cellStatus` has no
+    `#[@External.<Target>(…)]` for the erlang backend``. It is the mirror of the
+    erlang-only → commonJS measurement fronts 26 and 28 both carry, and it
+    applies because these modules land in the core member, compiled on both
+    rows — a `linkStatus()` wrapper would take all 103 assertions off erlang.
+  - **A declared and never-called node-only cell is fine** (re-measured; it is
+    why `client_runtime.bp`'s `clientRender` does not red erlang). What is not
+    fine is the module it would name: `jhonstart/client-runtime` does not
+    exist, so the declaration would emit a `require` of a file nobody writes.
+    A host cell answering what no one can check is exactly what `router.d.bp`'s
+    one-line `Link` was, and the reason it never became real.
+- **Measured: an IMPORTED declared default is still not applied.** A trailing
+  default is filled at the call site for a declaration in the calling module
+  (C-04); across a package boundary it is not. On both rows — it is a checker
+  answer, so every target fails identically — against jhonstart's own `text`:
+
+  ```text
+  import { text } from "jhonstart";  text("hi")
+  error: 'text' expects 2 argument(s), got 1
+  ```
+
+  This is why `Link` takes a record and not six parameters with five defaults,
+  and it is the front's first § Language gaps row. The second — no
+  `Record(base, field: value)` copy-update — is what makes each `with*` helper
+  respell all six fields.
+- **Spec vs. landed tree, recorded not resolved.** The front table and
+  `modules.md` put `link.bp`/`reconcile.bp` in a submodule `jhonstart-link`,
+  while front 27's own README § Owns says `repository/jhonstart/src/link.bp`
+  (the flat 1.0.9 layout). The landed tree has exactly one member,
+  `modules/jhonstart/`, and no submodule split has happened yet — `html.bp` is
+  still in core too — so both files land in the core member. And § Step 5 says
+  the `root.bp` / `botopink.json` lines are HANDED to front 94, while fronts 26
+  (`d9f1f3c`), 94 (`dc979b6`) and 28 (`6d6c007`) each appended their own; front
+  27 follows the tree.
+- **Counts.** `modules/jhonstart` goes 68/68 → **103/103 on both rows** (25 in
+  `test/link_test.bp`, 10 in `test/reconcile_test.bp`), summing the per-module
+  summaries — `botopink test` prints one PER MODULE, so its last line is the
+  last module's count and not the run's total.
+
 - **Front 28 — server components: `server.d.bp` is promoted to `server.bp`.**
   The declaration file listed three blockers and all three are answered rather
   than carried.

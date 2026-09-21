@@ -1,0 +1,280 @@
+// jhonstart/link — the anchor a client transition starts from (front 27 of
+// 1.0.10-beta).
+//
+// Next.js splits `<Link>` into a render-time half and a runtime half. The
+// render-time half emits an anchor with the props encoded on it; the runtime
+// half, in the browser, intercepts the click, prefetches on viewport entry and
+// performs the transition. jhonstart keeps that split, and it is what lets a
+// client front render correctly during the server pass.
+//
+// **This file is the render-time half, and it is the half that exists.** It
+// touches no host cell, so it produces the same anchor on every backend and
+// every assertion in `test/link_test.bp` RUNS on both rows. The reason the
+// 1.0.7 draft never became real — "`Link` must render `<a href=…>`, but the
+// `Element` model is `tag`/`value`/`children` with NO attribute slot"
+// (`router.d.bp:12-15`) — expired: `element.bp:7` carries
+// `attrs: Array<#(string, string)>` and `renderToString` emits every pair.
+//
+// ── What is NOT here, and why it is not stubbed ─────────────────────────────
+//
+// The front's § Step 4 asks for four `#[@External.Node]` cells —
+// `__onzeLinkMount()`, `__onzeLinkPrefetch(href, mode)`, `__onzeLinkStatus()`
+// and `__onzeLinkRouteKind(href)` — bound to the module
+// `"jhonstart/client-runtime"`, plus `linkStatus() -> @Context<Element,
+// LinkStatus>` reading the third. **None of them is declared here**, and the
+// reason is a dependency that has not started rather than a preference:
+//
+//   - `"jhonstart/client-runtime"` is the bundle **front 68** generates. It
+//     does not exist in this tree, so a `declare fn` naming it would emit a
+//     `require` of a module that is never written — a host stub returning an
+//     answer nobody can check, which is exactly the shape the front's own
+//     § Problem says cannot be faked.
+//   - `__onzeLinkRouteKind` reads the route-kind table **front 60** emits into
+//     that bundle. Front 60 has not started either, so there is no table to
+//     read and no second place to compute one: § Prefetch strategy is explicit
+//     that both of `prefetchMode`'s inputs come from front 60.
+//   - `linkStatus()` would CALL a node-only cell, and a called node-only cell
+//     reds the **erlang** build at the call site:
+//
+//         error: `__cellStatus` has no `#[@External.<Target>(…)]` for the
+//                erlang backend
+//          --> src/main.bp:5:12
+//
+//     Measured 2026-09-21 against compiler `2e6bb4ac`; it is the mirror of the
+//     erlang-only → commonJS measurement front 26 and front 28 both carry, and
+//     it applies here because this module lands in the core member, which is
+//     compiled on BOTH rows. A DECLARED and never-called node-only cell is
+//     fine — that is why `client_runtime.bp`'s `clientRender` does not red the
+//     erlang row — so the four declarations are one commit away once their
+//     module exists; the wrapper that calls one is not.
+//
+// What the browser half needs from this file when it lands is already here and
+// is pure: `prefetchMode` is the decision § 8 *Prefetching* specifies, and
+// `linkStatusOf` is the one line that turns the in-flight href into the record
+// a link renders a spinner from. `linkStatus()` is then
+// `return linkStatusOf(__onzeLinkStatus());` and nothing else in this file
+// moves.
+//
+// ── Why the props are a record ──────────────────────────────────────────────
+//
+// `Link(href, children, prefetch = true, replace = false, scroll = true)` is
+// the signature anyone would write, and it does not work for a CONSUMER.
+// A trailing declared default IS filled at the call site since C-04 — for a
+// declaration in the calling module. It is still not filled for an IMPORTED
+// one, and `Link` is imported by construction:
+//
+//     import { greet } from "helper";  greet("w")
+//     error: 'greet' expects 2 argument(s), got 1
+//
+// It is a checker answer, so every target fails the same way. So the props are
+// a record, `linkProps(href)` fills Next's documented defaults, and overriding
+// one is `withPrefetch(props, false)` — a helper returning a NEW record, since
+// there is no assignment to a `self` field anywhere in this tree and a record
+// has no copy-with-update expression. The call site is
+// `Link(withPrefetch(linkProps(href), false), children)`, which is the honest
+// cost of the gap and still shorter than spelling six arguments at every link.
+//
+// Both gaps are the front's § Language gaps rows.
+
+import {Element} from "element";
+
+// ── step 1: the props, and the constructor that fills Next's defaults ───────
+//
+// Six fields. `prefetch`/`replace`/`scroll` are Next's three documented
+// booleans with Next's documented defaults; `target` and `className` are the
+// only two arbitrary attributes a link may set, and they are FIELDS rather
+// than a pass-through `attrs` list on purpose — an anchor that accepts any
+// attribute is an anchor that can be handed its own `data-onze-l`, and the
+// browser half queries on exactly that marker.
+pub type LinkProps(
+    href: string,
+    prefetch: bool,
+    replace: bool,
+    scroll: bool,
+    target: string,
+    className: string,
+)
+
+// Next's defaults, verbatim: prefetch on, replace off, scroll on, no target,
+// no class.
+pub fn linkProps(href: string) -> LinkProps {
+    return LinkProps(
+        href: href,
+        prefetch: true,
+        replace: false,
+        scroll: true,
+        target: "",
+        className: "",
+    );
+}
+
+// The five copy-with-one-field helpers. Each respells all six fields because
+// the language has no `Record(base, field: value)` expression — the front's
+// second § Language gaps row. None of them assigns to a field of its argument.
+pub fn withPrefetch(p: LinkProps, prefetch: bool) -> LinkProps {
+    return LinkProps(
+        href: p.href,
+        prefetch: prefetch,
+        replace: p.replace,
+        scroll: p.scroll,
+        target: p.target,
+        className: p.className,
+    );
+}
+
+pub fn withReplace(p: LinkProps, replace: bool) -> LinkProps {
+    return LinkProps(
+        href: p.href,
+        prefetch: p.prefetch,
+        replace: replace,
+        scroll: p.scroll,
+        target: p.target,
+        className: p.className,
+    );
+}
+
+pub fn withScroll(p: LinkProps, scroll: bool) -> LinkProps {
+    return LinkProps(
+        href: p.href,
+        prefetch: p.prefetch,
+        replace: p.replace,
+        scroll: scroll,
+        target: p.target,
+        className: p.className,
+    );
+}
+
+pub fn withTarget(p: LinkProps, target: string) -> LinkProps {
+    return LinkProps(
+        href: p.href,
+        prefetch: p.prefetch,
+        replace: p.replace,
+        scroll: p.scroll,
+        target: target,
+        className: p.className,
+    );
+}
+
+pub fn withClass(p: LinkProps, className: string) -> LinkProps {
+    return LinkProps(
+        href: p.href,
+        prefetch: p.prefetch,
+        replace: p.replace,
+        scroll: p.scroll,
+        target: p.target,
+        className: className,
+    );
+}
+
+// ── step 2: the anchor ──────────────────────────────────────────────────────
+//
+// The props travel to the browser as `data-` attributes ON THE ANCHOR. There
+// is no second channel and no registry the server has to serialize: the
+// runtime half queries `[data-onze-l]` and reads the rest off the element it
+// found.
+//
+// An attribute is emitted only when it DIFFERS from the default, so the common
+// link is `<a href="/blog" data-onze-l="1">Blog</a>` and a page with two
+// hundred links does not carry five redundant pairs on each of them.
+//
+//   | prop        | attribute                | emitted when          |
+//   |-------------|--------------------------|-----------------------|
+//   | `href`      | `href="…"`               | always                |
+//   | —           | `data-onze-l="1"`        | always — the marker   |
+//   | `prefetch`  | `data-onze-prefetch="0"` | only when `false`     |
+//   | `replace`   | `data-onze-replace="1"`  | only when `true`      |
+//   | `scroll`    | `data-onze-scroll="0"`   | only when `false`     |
+//   | `target`    | `target="…"`             | only when non-empty   |
+//   | `className` | `class="…"`              | only when non-empty   |
+//
+// `data-onze-` is the milestone's marker family (`contracts.md § 2`); this
+// front owns the link markers inside it and adds no other vocabulary.
+//
+// `#[@context]` per decision 88 — a component is `#[@context] fn … -> Element`
+// whether or not it activates a hook. Measured: the annotation on a body with
+// no `use` compiles and runs on both rows.
+#[@context]
+pub fn Link(props: LinkProps, children: Children) -> Element {
+    var pairs: Array<#(string, string)> = [
+        #("href", props.href),
+        #("data-onze-l", "1"),
+    ];
+    if (props.prefetch == false) {
+        pairs = pairs.append([#("data-onze-prefetch", "0")]);
+    };
+    if (props.replace) {
+        pairs = pairs.append([#("data-onze-replace", "1")]);
+    };
+    if (props.scroll == false) {
+        pairs = pairs.append([#("data-onze-scroll", "0")]);
+    };
+    if (props.target != "") {
+        pairs = pairs.append([#("target", props.target)]);
+    };
+    if (props.className != "") {
+        pairs = pairs.append([#("class", props.className)]);
+    };
+    return Element(tag: "a", value: "", children: children, attrs: pairs);
+}
+
+// ── step 3: the prefetch decision, and the layout key ───────────────────────
+//
+// `NEXTJS-DOCS.md § 8` *Prefetching* states the rule and this is it literally,
+// as a PURE function so that it is testable without a browser:
+//
+//   | route kind | `loading` boundary | mode      |
+//   |------------|--------------------|-----------|
+//   | static     | —                  | `full`    |
+//   | dynamic    | yes                | `partial` |
+//   | dynamic    | no                 | `skip`    |
+//   | any        | `prefetch: false`  | `skip`    |
+//
+// `kind` and `hasLoading` both come from front 60's route-kind table, which is
+// why this front depends on it read-only and owns none of it. An unknown kind
+// is NOT static, so it falls through to the `hasLoading` question and answers
+// `skip` when there is no boundary — the conservative answer, which is the one
+// a missing table should produce.
+pub fn prefetchMode(kind: string, hasLoading: bool, requested: bool) -> string {
+    if (requested == false) return "skip";
+    if (kind == "static") return "full";
+    if (hasLoading) return "partial";
+    return "skip";
+}
+
+// A layout is keyed by its SEGMENT PATH — the `/`-joined prefix of the route's
+// segments down to that layout's depth — and never by its position in the
+// tree. Two routes under `/docs` produce the same key `"/docs"` for the docs
+// layout, so a transition between them reuses it; a route under `/blog`
+// produces `"/blog"` and the docs layout is unmounted. That is what keeps a
+// sidebar's scroll position and every client component's state inside a shared
+// layout across a navigation (`NEXTJS-DOCS.md § 5`, *Preservam estado entre
+// navegações*).
+//
+// `segments` is front 26's `RouterState.segments()` — derived from the matched
+// pattern — so the key a client transition computes and the key the server
+// rendered under are the same string. The root layout is depth 0 and its key
+// is `"/"`.
+//
+// A depth past the end of the list is the whole list rather than a raise:
+// `take` is total on both rows (measured).
+pub fn layoutKey(segments: Array<string>, depth: i32) -> string {
+    return "/" + segments.take(depth).join("/");
+}
+
+// ── step 4 (the pure half): the in-flight status ────────────────────────────
+//
+// `LinkStatus` is what a link renders a spinner from while its OWN navigation
+// is in flight. The browser half answers the in-flight href — `""` when idle —
+// and this is the whole derivation from it.
+//
+// `linkStatus() -> @Context<Element, LinkStatus>` is the hook the front asks
+// for and it is NOT here: it would call `__onzeLinkStatus()`, a node-only cell
+// whose module front 68 generates, and a called node-only cell reds the erlang
+// build of this member (see this file's header). When that module lands the
+// hook is three lines — the cell, and `return linkStatusOf(__onzeLinkStatus());`
+// — and this record and this function do not change.
+pub type LinkStatus(pending: bool, href: string)
+
+pub fn linkStatusOf(href: string) -> LinkStatus {
+    return LinkStatus(pending: href != "", href: href);
+}

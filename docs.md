@@ -728,10 +728,147 @@ The `__onze` payload is front 23's to build and to escape. Nothing from
 not be reachable from an island's props, and the check that it is not is front
 68's build-time graph walk.
 
+## Client navigation (`link.bp`, `reconcile.bp`) — compiled
+
+Next.js splits `<Link>` into a **render-time** half and a **runtime** half. The
+render-time half emits an anchor with the props encoded on it; the runtime half,
+in the browser, intercepts the click, prefetches on viewport entry and performs
+the transition. jhonstart keeps that split, and it is what lets a client front
+render correctly during the server pass.
+
+**The render-time half is what ships.** It reaches no host cell, so `Link`
+renders identically on commonJS and on erlang, and every assertion in
+`test/link_test.bp` and `test/reconcile_test.bp` RUNS on both rows.
+
+### The props are a record, and why
+
+`Link(href, children, prefetch = true, replace = false, scroll = true)` is the
+signature anyone would write, and it does not work for a consumer. A trailing
+declared default is filled at the call site for a declaration in the **calling
+module**; it is still not filled for an **imported** one, and `Link` is imported
+by construction. Measured against compiler `2e6bb4ac`, on both rows, against
+jhonstart's own `text`:
+
+```text
+import { text } from "jhonstart";  text("hi")
+error: 'text' expects 2 argument(s), got 1
+```
+
+So the props are a record and `linkProps(href)` fills Next's documented
+defaults. Overriding one is a `with*` helper that returns a **new** record —
+there is no assignment to a `self` field anywhere in this tree, and a record has
+no copy-with-update expression.
+
+| Function | Shape |
+|---|---|
+| `LinkProps(href, prefetch, replace, scroll, target, className)` | the six props, a plain record |
+| `linkProps(href)` | Next's defaults: `prefetch` true, `replace` false, `scroll` true, no `target`, no `className` |
+| `withPrefetch` · `withReplace` · `withScroll` · `withTarget` · `withClass` | `(p, value) -> LinkProps` — each changes one field and copies the other five |
+
+```bp
+Link(linkProps("/about"), [text("About", attrs: [])])
+Link(withPrefetch(linkProps("/blog/" + slug), false), [text(title, attrs: [])])
+```
+
+### The anchor
+
+`#[@context] Link(props: LinkProps, children: Children) -> Element`. The props
+travel to the browser as `data-` attributes **on the anchor**: there is no
+second channel and no registry the server has to serialize. An attribute is
+emitted only when it **differs** from the default, so a page with two hundred
+links does not carry five redundant pairs on each of them.
+
+| Prop | Attribute | Emitted when |
+|---|---|---|
+| `href` | `href="…"` | always |
+| — | `data-onze-l="1"` | always — the marker the runtime queries for |
+| `prefetch` | `data-onze-prefetch="0"` | only when `false` |
+| `replace` | `data-onze-replace="1"` | only when `true` |
+| `scroll` | `data-onze-scroll="0"` | only when `false` |
+| `target` | `target="…"` | only when non-empty |
+| `className` | `class="…"` | only when non-empty |
+
+```text
+renderToString(Link(linkProps("/about"), [text("About", attrs: [])]))
+  == "<a href=\"/about\" data-onze-l=\"1\">About</a>"
+```
+
+`data-onze-` is the milestone's marker family; this front owns the link markers
+inside it and adds no other vocabulary.
+
+### The prefetch decision
+
+`prefetchMode(kind, hasLoading, requested) -> string` is Next's documented rule,
+as a pure function so that it is testable without a browser. Both inputs come
+from **front 60**'s route-kind table; jhonstart computes neither.
+
+| Route kind | `loading` boundary | Mode |
+|---|---|---|
+| `"static"` | — | `"full"` |
+| `"dynamic"` | yes | `"partial"` |
+| `"dynamic"` | no | `"skip"` |
+| any | `prefetch: false` | `"skip"` |
+
+An unknown kind is not static, so it falls through to the boundary question —
+the conservative answer, which is the one a missing table should produce.
+
+### Layout keys and the remount decision
+
+A client transition must not remount a layout the two routes share, or the
+sidebar's scroll position and every client component's state inside it are lost.
+A layout is keyed by its **segment path** — never by its position in the tree.
+
+| Function | Shape |
+|---|---|
+| `layoutKey(segments, depth)` | `"/" + segments.take(depth).join("/")`; root layout is `"/"`; a depth past the end is the whole path |
+| `layoutKeys(segments)` | `layoutKey` at every depth, root-first and root included: `["docs","api"]` → `["/", "/docs", "/docs/api"]` |
+| `sharedDepth(current, target)` | the length of the common prefix: `[0, keep)` stays mounted, `[keep, n]` is replaced |
+
+`segments` is front 26's `RouterState.segments()`, derived from the matched
+pattern, so the key a client transition computes and the key the server rendered
+under are the same string. `sharedDepth` is never `0` — both lists start with
+`"/"` — which is the same statement as "the root layout is never remounted".
+
+### The in-flight status
+
+`LinkStatus(pending, href)` is what a link renders a spinner from while its own
+navigation is in flight, and `linkStatusOf(href)` is the whole derivation from
+the href the browser half reports (`""` when idle).
+
+### What is NOT shipped, and what it needs
+
+The browser half is **not** written, and it is not stubbed either. Four cells
+and one hook are missing, all of them blocked on fronts that have not started:
+
+| Missing | Needs |
+|---|---|
+| `__onzeLinkMount()` — delegated click interception + an intersection observer over `[data-onze-l]` | front 68's generated client bundle (the module the cell binds to), which calls it once after hydrating the islands |
+| `__onzeLinkPrefetch(href, mode)` — warms the client route cache | the same bundle |
+| `__onzeLinkStatus() -> string` and `linkStatus() -> @Context<Element, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__onzeLinkStatus());` |
+| `__onzeLinkRouteKind(href) -> string` | **front 60**'s route-kind table, emitted into that bundle |
+| `reconcile(current, target)` — the transition driver | front 68's DOM primitives (mount/unmount), plus front 60's flag for whether the target payload had to be fetched |
+
+Two measurements make stubbing them the wrong move rather than a shortcut:
+
+1. A **called** node-only cell reds the **erlang** build at its call site —
+   ``error: `__cellStatus` has no `#[@External.<Target>(…)]` for the erlang
+   backend`` — and this module is compiled on both rows of the core member, so
+   a `linkStatus()` wrapper would take every landed assertion off the erlang
+   row. It is the mirror of the erlang-only → commonJS measurement `router.bp`
+   and `server.bp` both carry.
+2. A **declared and never called** node-only cell is fine (that is why
+   `client_runtime.bp`'s `clientRender` does not red erlang) — but the module
+   it names, `jhonstart/client-runtime`, does not exist, so the declaration
+   would emit a `require` of a file nobody writes. A host stub returning an
+   answer no one can check is exactly the shape `router.d.bp`'s one-line `Link`
+   was, and the reason it never became real.
+
 ## App layer (Next-style) — declared, host-bound
 
-- `Link(href, …)` — client navigation (front 27's `src/link.bp`; not shipped
-  yet). The router itself is no longer declared: see *The router* above.
+- `Link` is no longer declared: see *Client navigation* above. `link.bp` and
+  `reconcile.bp` are compiled and pure; what is still missing is the **browser
+  half** — front 68's generated bundle and front 60's route-kind table.
+  The router itself is no longer declared either: see *The router* above.
 - The server context is no longer declared either: see *Server components*
   above. `server.bp` is compiled, with both host halves shipped.
 - File routing (`app/`, `page.bp`, `layout.bp`, `[id]`) is a **convention** (V1),
@@ -747,7 +884,10 @@ not be reachable from an island's props, and the check that it is not is front
   `state`/`effect`/`memo`/`ref`/`reducer` hook family (real SSR bodies), the
   route snapshot and its six hooks and six navigation verbs (`router.bp`, with
   both host halves), the request record, its four accessors, `request()` and
-  the server-component convention (`server.bp`, with both host halves), and the
+  the server-component convention (`server.bp`, with both host halves), the
+  render-time half of client navigation — `Link`, `LinkProps` and its five
+  `with*` helpers, `prefetchMode`, `layoutKey`, `layoutKeys`, `sharedDepth`,
+  `linkStatusOf` (`link.bp` + `reconcile.bp`, pure, no host cell) — and the
   `html """…"""` markup DSL
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
@@ -760,7 +900,13 @@ not be reachable from an island's props, and the check that it is not is front
     controls are no longer gated on an attribute slot either: `Element` carries
     `attrs`, and `elements.bp` ships
     `form`/`input`/`button`/`label`/`select`/`textarea`; `Link` is front 27's
-    `src/link.bp` and it reads the router rather than replacing it;
+    `src/link.bp`, compiled and pure — see *Client navigation*;
+  - the **browser half** of client navigation. `link.bp` and `reconcile.bp`
+    ship the render-time half; the four `#[@External.Node]` cells
+    (`__onzeLinkMount`, `__onzeLinkPrefetch`, `__onzeLinkStatus`,
+    `__onzeLinkRouteKind`), the `linkStatus()` hook and the transition driver
+    `reconcile(current, target)` wait on front 68's generated bundle and front
+    60's route-kind table, and are not stubbed;
   - parallel loading. `@Future` is eager on the erlang row, so independent
     loaders awaited in sequence cost the sum of their round trips; the
     spawn-and-gather over unstarted tasks is front 02's and jhonstart ships no

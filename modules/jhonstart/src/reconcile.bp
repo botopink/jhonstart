@@ -1,0 +1,123 @@
+// jhonstart/reconcile — the remount decision of a client transition (front 27
+// of 1.0.10-beta).
+//
+// A client transition must not remount a layout the two routes share, or the
+// sidebar's scroll position and every client component's state inside it are
+// lost. The whole decision is a function of two lists of layout keys, and that
+// is what this module is: two pure functions, no DOM, no host cell, both rows.
+//
+// The four steps of a navigation, and which of them live here:
+//
+//   1. compute `layoutKey(segments, depth)` for every depth of the CURRENT
+//      route and of the TARGET route                       ← `layoutKeys`
+//   2. find the deepest depth at which the two lists agree; everything
+//      strictly above it is shared and stays mounted, DOM and islands
+//      untouched                                           ← `sharedDepth`
+//   3. unmount the current route's subtree below that depth and mount the
+//      target's from the payload the prefetcher already has — or fetch it,
+//      with front 60's route-kind flag deciding whether a fetch was needed
+//      at all                                              ← NOT here
+//   4. adopt `data-onze-s` slots as-is (front 29's rule) and re-anchor
+//      `data-onze-e` boundaries (front 31's), because both are keyed to the
+//      response and not to the layout                      ← NOT here
+//
+// ── Why `reconcile(current, target)` is not in this file ────────────────────
+//
+// Steps 3 and 4 are the transition DRIVER, and the front's own § Step 3b says
+// what it is made of: "unmounts and mounts through **front 68's DOM
+// primitives**". Front 68 has not started — there is no `mount`, no `unmount`,
+// no node handle and no generated bundle to import them from — and front 60
+// has not started either, so there is no route-kind flag for step 3 to read.
+// Neither is written here:
+//
+//   - a DOM primitive invented in this file would be a second answer to "what
+//     is a mounted subtree" the day front 68 writes the first, and
+//   - it would have to be a `#[@External.Node]` cell, which — once CALLED —
+//     reds the erlang build of this member at the call site (measured;
+//     `link.bp`'s header carries the exact output), taking every landed
+//     assertion of `modules/jhonstart` off the erlang row.
+//
+// So the driver is deferred with its inputs named rather than stubbed. What it
+// needs is below, and the two functions it decides with are here, asserted
+// without a DOM — which is the property § Step 3b actually asks for.
+//
+// `reconcile(current: Array<string>, target: Array<string>)` when it lands:
+//
+//     val keep = sharedDepth(layoutKeys(current), layoutKeys(target));
+//     // depths [0, keep) stay mounted, untouched, un-rehydrated
+//     // depths [keep, target.length] are mounted from the payload
+//
+// — plus front 68's `unmount(node)` / `mount(node, html)` for the two ranges,
+// front 60's kind flag to decide whether the payload had to be fetched, and
+// front 29's / front 31's marker rules for the slots and the boundaries.
+//
+// This module declares no host cell of any target, and in particular no
+// `#[@External.Erlang]` one — the front's § Step 3b acceptance row.
+
+import {layoutKey} from "link";
+
+// `layoutKey` applied at EVERY depth, root-first and root INCLUDED, so the
+// list is one entry longer than the segment list: `["docs", "api"]` is
+// `["/", "/docs", "/docs/api"]`. The root layout is depth 0 and is in every
+// list, which is why two routes that share nothing else still share it.
+//
+// Written as a `loop` over a counter rather than a `map` over an index range:
+// the index is the depth and the list being walked is the ANSWER, not the
+// input.
+pub fn layoutKeys(segments: Array<string>) -> Array<string> {
+    var keys: Array<string> = [layoutKey(segments, 0)];
+    var depth = 1;
+    loop (segments) { part ->
+        keys = keys.append([layoutKey(segments, depth)]);
+        depth = depth + 1;
+    };
+    return keys;
+}
+
+// The length of the common prefix of two key lists: everything strictly above
+// it stays mounted, everything from it down is replaced.
+//
+// Two identical routes answer the full length, so a navigation to the current
+// route remounts nothing. Two routes that share only the root answer 1. The
+// answer is never 0 — both lists always start with `"/"` — which is the same
+// statement as "the root layout is never remounted by a client transition".
+//
+// A `loop` over a counter for the same reason `segmentAt` is one in
+// `router.bp`: an element read back through the optional binder loses its type
+// on the erlang row.
+pub fn sharedDepth(current: Array<string>, target: Array<string>) -> i32 {
+    var shared = 0;
+    var i = 0;
+    var diverged = false;
+    loop (current) { key ->
+        if (diverged == false) {
+            if (i < target.length) {
+                if (key == keyAt(target, i)) {
+                    shared = i + 1;
+                } else {
+                    diverged = true;
+                };
+            } else {
+                diverged = true;
+            };
+        };
+        i = i + 1;
+    };
+    return shared;
+}
+
+// Read one key by index, out of range answering `""`. The same shape as
+// `router.bp`'s `segmentAt` and for the same measured reason — `xs.at(i)
+// .unwrapOr("")` over an array that arrived as a typed parameter reads the
+// element back unwrapped on the erlang row.
+fn keyAt(keys: Array<string>, index: i32) -> string {
+    var found = "";
+    var i = 0;
+    loop (keys) { key ->
+        if (i == index) {
+            found = key;
+        };
+        i = i + 1;
+    };
+    return found;
+}

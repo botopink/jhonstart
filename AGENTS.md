@@ -26,8 +26,11 @@ the core member's `botopink.json` compiled set): an
 and 28 there is **no `.d.bp` module left**: the route snapshot and the request
 are compiled and each ships its own host half on both rows
 (`router_runtime.mjs` / `sidecars/jhonstart_router.erl`, `server_runtime.mjs` /
-`sidecars/jhonstart_server.erl`). Client navigation (front 27's `Link`) is the
-only surface still to come. Nothing is embedded into the prelude.
+`sidecars/jhonstart_server.erl`). Client navigation is compiled too since
+front 27 — but only its RENDER-TIME half (`link.bp`, `reconcile.bp`, both pure,
+no host cell of any target): the browser half waits on front 68's generated
+bundle and front 60's route-kind table, and is not stubbed. Nothing is embedded
+into the prelude.
 
 ## Tree
 
@@ -46,10 +49,10 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   └── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, router.bp, elements.bp, client_runtime.bp, server.bp]
+│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, router.bp, elements.bp, client_runtime.bp, server.bp, link.bp, reconcile.bp]
 │       ├── src/
 │       │   ├── AGENTS.md
-│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod router; pub mod elements; pub mod server; mod client_runtime;`
+│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod router; pub mod elements; pub mod server; pub mod link; pub mod reconcile; mod client_runtime;`
 │       │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │       │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
 │       │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
@@ -62,10 +65,14 @@ repository/jhonstart/
 │       │   │   ├── jhonstart_router.erl ← HOST (BEAM): the same cells over the calling process's dictionary. NOT a `files` entry — `shipErlSidecars` finds it under the package's `src/sidecars/`
 │       │   │   └── jhonstart_server.erl ← HOST (BEAM): the request's six cells + `fill/6`, same process dictionary, same non-`files` discovery
 │       │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`fillRequest`/`cookies`/`headers`, `renderServerComponent`
-│       │   └── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
+│       │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
+│       │   ├── link.bp        ← COMPILED (front 27), PURE: `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`. NO host cell — the browser half is front 68's
+│       │   └── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
 │       └── test/
 │           ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │           ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `#[@future]` component and loader conventions (front 28) — both rows
+│           ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table and the layout key (front 27) — both rows
+│           ├── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, the whole remount decision without a DOM (front 27) — both rows
 │           ├── html_test.bp     ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
 │           └── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
 ├── examples/
@@ -103,6 +110,12 @@ compiles `element` first). Each track-C front **appends** its own `pub mod` line
 in front-number order and never reorders or edits another front's line;
 `botopink.json`'s `files` list takes the same entries in the same order.
 
+Front 27's own README § Step 5 says its two lines are HANDED to front 94 rather
+than written by the front. That is not what the landed tree does: front 26
+(`d9f1f3c`), front 94 (`dc979b6`) and front 28 (`6d6c007`) each appended their
+own line to `root.bp` and `botopink.json` in their own commit, and front 27 does
+the same. Recorded as a spec/tree disagreement, not resolved here.
+
 **A sibling-module import always names its module** — `import { Element } from
 "element";`, never the bare `import { Element };`. Both type-check, but
 commonJS lowers the bare form to `require("../module")`: a path that resolves
@@ -124,7 +137,7 @@ were promoted rather than filled in. A host-bound module here is now an ordinary
 | Layer | Analog | ContextBase | Surface |
 |---|---|---|---|
 | core | React | `Element` | `element.bp` + `elements.bp` + `hooks.bp` + `html.bp` (**compiled**) |
-| app | Next.js | `Element` | `router` (**compiled** — front 26), `server` (**compiled** — front 28) |
+| app | Next.js | `Element` | `router` (**compiled** — front 26), `server` (**compiled** — front 28), `link` + `reconcile` (**compiled, pure** — front 27) |
 
 ## Conventions
 
@@ -182,8 +195,25 @@ jhonstart is a *consumer*. What it relies on:
   - `use request()` — front 19 step 2 (decisions 89 + 90). `request()` is a
     plain function returning `RequestData` until it lands;
   - (closed) the `Element` model **does** carry an `attrs: Array<#(string,
-    string)>` slot, so `href`/`value`/`class` render in pure `.bp`; what `Link`
-    still lacks is the host navigation runtime, not an attribute slot.
+    string)>` slot, so `href`/`value`/`class` render in pure `.bp`. `Link` is
+    written and compiled since front 27; what it still lacks is the host
+    navigation runtime, which is front 68's bundle and front 60's route-kind
+    table, not an attribute slot and not a language gap;
+  - **an imported declared default is not applied.** A trailing default IS
+    filled at the call site for a declaration in the CALLING module (C-04), and
+    is still not filled for an imported one. Measured 2026-09-21 against
+    compiler `2e6bb4ac`, on BOTH rows (it is a checker answer, so every target
+    fails the same way), against jhonstart's own `text`:
+
+    ```text
+    import { text } from "jhonstart";  text("hi")
+    error: 'text' expects 2 argument(s), got 1
+     --> src/gap.bp:4:27
+    ```
+
+    This is why front 27's `Link` takes a `LinkProps` RECORD and not six
+    parameters with five defaults, and why every example in this tree spells
+    `attrs:` at every constructor call.
 
   (The "bare imported template-fn binding" gap that originally lived here
   closed in v0.beta.8 via the generic-loader-binding keystone, with the
@@ -251,7 +281,8 @@ the two `string` hooks compare directly either way.
    own rule above to bite it: every field of the adapter is a **lambda**
    (`{ t -> isVoidTag(t) }`), never a bare function name.
 3. **A `Link`.** It did not come along from `router.d.bp`. It is front 27's
-   `src/link.bp`, and this front adds nothing to it and reads nothing from it.
+   `src/link.bp` (landed), and front 26 adds nothing to it and reads nothing
+   from it.
 
 ### The `query` hole front 23 left, and what front 26 says about it
 
@@ -407,6 +438,72 @@ activate hooks on its own, and `#[@future] #[@context]` is
 `effect-duplicate-annotation`. A *client* component still carries `#[@context]`
 (decision 88).
 
+## Front 27 — client navigation, and the half that is not written
+
+`link.bp` and `reconcile.bp` are the RENDER-TIME half of a `<Link>`: the anchor,
+its props, the prefetch decision and the remount decision. Every one of them is
+**pure** — the two files declare no host cell of any target, which is stronger
+than the front's "no `#[@External.Erlang]` cell" acceptance row — so all 35
+assertions run on both rows and `Link` renders during the server pass exactly as
+it renders in the browser.
+
+| What | Where | Shape |
+|---|---|---|
+| The props | `LinkProps(href, prefetch, replace, scroll, target, className)` | a plain record. `linkProps(href)` fills Next's defaults; `withPrefetch`/`withReplace`/`withScroll`/`withTarget`/`withClass` each return a NEW record with one field changed |
+| The anchor | `#[@context] Link(props, children) -> Element` | `<a href=… data-onze-l="1">`, plus one attribute per prop that DIFFERS from its default. `target` and `class` are real attributes, the other three are `data-onze-*` |
+| The prefetch decision | `prefetchMode(kind, hasLoading, requested) -> string` | `"full"` / `"partial"` / `"skip"`, Next's § 8 table verbatim. BOTH inputs are front 60's; jhonstart computes neither |
+| The layout key | `layoutKey(segments, depth)` | `"/" + segments.take(depth).join("/")`. `segments` is front 26's `RouterState.segments()`, so the client's key and the server's are the same string |
+| The remount decision | `layoutKeys(segments)` · `sharedDepth(current, target)` | root-first keys including the root; the common-prefix length. `[0, keep)` stays mounted, `[keep, n]` is replaced. Never `0` — the root layout is never remounted |
+| The in-flight status | `LinkStatus(pending, href)` · `linkStatusOf(href)` | the pure derivation from the href the browser half reports, `""` being idle |
+
+**No arbitrary-attribute parameter.** `Link` has no pass-through `attrs` list —
+only `target` and `className`, through `LinkProps`. An anchor that accepts any
+attribute is an anchor that can be handed its own `data-onze-l`, and that marker
+is what the browser half queries on.
+
+### What fronts 60 · 67 · 68 have to bring, and why none of it is stubbed here
+
+| Missing | Owner | Note |
+|---|---|---|
+| `__onzeLinkMount()` | 68 | delegated click interception + an intersection observer over `[data-onze-l]`. The generated entry calls it ONCE, after hydrating the islands, alongside front 67's `__jhFormMount()`. Front 29 owns the per-island hydrate point, not the entry, and does not call this |
+| `__onzeLinkPrefetch(href, mode)` | 68 | warms the client route cache; `mode` is `prefetchMode`'s answer |
+| `__onzeLinkStatus()` and `linkStatus() -> @Context<Element, LinkStatus>` | 68 | the hook is then `return linkStatusOf(__onzeLinkStatus());` and nothing else in `link.bp` moves |
+| `__onzeLinkRouteKind(href)` | 60 | reads the route-kind table front 60 emits into the bundle |
+| `reconcile(current, target)` | 68 (+ 60) | the transition driver: front 68's DOM primitives for the two ranges, front 60's flag for whether the payload had to be fetched, front 29's `data-onze-s` adoption and front 31's `data-onze-e` re-anchoring |
+
+Two measurements make declaring them today wrong rather than merely early, and
+they point in opposite directions:
+
+1. **A called node-only cell reds the ERLANG build at its call site.** Measured
+   2026-09-21 against compiler `2e6bb4ac`, smallest program:
+
+   ```bp
+   #[@External.Node("./rt.mjs", "status")]
+   declare fn __cellStatus() -> string;
+   pub fn statusOf() -> string { return __cellStatus(); }
+   ```
+
+   ```text
+   $ botopink build --target commonJS     # Compiled in 95.64ms
+   $ botopink build --target erlang
+   error: `__cellStatus` has no `#[@External.<Target>(…)]` for the erlang backend
+    --> src/main.bp:5:12
+   ```
+
+   It is the exact mirror of the erlang-only → commonJS measurement `router.bp`
+   and `server.bp` both carry, and it applies because these modules land in the
+   core member, compiled on both rows. A `linkStatus()` wrapper would take all
+   103 landed assertions off the erlang row.
+
+2. **A declared and never-called node-only cell is fine** — that is why
+   `client_runtime.bp`'s `clientRender` does not red erlang, and it was
+   re-measured here. So the four declarations are cheap. What is not cheap is
+   the module they name: `jhonstart/client-runtime` is front 68's generated
+   bundle and does not exist, so the declaration would emit a `require` of a
+   file nobody writes, silently at build time and loudly at run time. A host
+   cell that answers what nobody can check is exactly what `router.d.bp`'s
+   one-line `Link` was, and the reason it never became real.
+
 ## CI
 
 `.github/workflows/test.yml` runs `zig build test-libs -- --lib jhonstart
@@ -429,17 +526,21 @@ the umbrella has no row, and `jhonstart-counter` / `jhonstart-html` /
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 68/68 | ✓ 68/68 |
+| `jhonstart` | ✓ 103/103 | ✓ 103/103 |
 | `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
 | `jhonstart-html` | ✓ 7/7 | ✓ 7/7 |
 | `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
 
-The core member was 51/51 on both rows before front 28 (27/27 before front 26);
-the request adds 17, all of which RUN on the erlang row — none is
-type-checked-only and none is a commonJS-only claim, which is what the six cells
-carrying both targets buys. Counted with the pinned compiler `2e6bb4ac` by
-summing the per-module summaries: `botopink test` prints one summary PER MODULE,
-so its last line is the last module's count and not the run's total.
+The core member was 68/68 on both rows before front 27, 51/51 before front 28
+and 27/27 before front 26; client navigation adds 35 — 25 in `link_test.bp`, 10
+in `reconcile_test.bp` — and every one of them RUNS on **both** rows, because
+`link.bp` and `reconcile.bp` reach no host cell at all. Front 27's assigned
+target is commonJS; the erlang column is not an extra but the front's own claim
+that `Link` is pure, which is how the server pass is known to emit the exact
+anchor the browser runtime later queries for. Counted with the pinned compiler
+`2e6bb4ac` by summing the per-module summaries: `botopink test` prints one
+summary PER MODULE, so its last line is the last module's count and not the
+run's total (for the record: 3 + 15 + 4 + 3 + 2 + 25 + 10 + 24 + 17).
 
 `jhonstart-counter` and `jhonstart-todo` **restrict** `targets` to
 `["commonJS"]` (a member may only restrict the workspace's targets, never widen
