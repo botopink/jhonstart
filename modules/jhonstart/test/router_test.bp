@@ -15,6 +15,8 @@ import {
     patternSegments,
     segmentAt,
     decodePairs,
+    fill,
+    snapshot,
 } from "router";
 
 // ── step 1: the record and its accessors ────────────────────────────────────
@@ -119,4 +121,56 @@ test "router: an empty value is preserved" {
     assert out.length == 2;
     assert pairValue(out, "q") == "";
     assert pairValue(out, "r") == "1";
+}
+
+// ── step 2: the five cells and the snapshot builder ─────────────────────────
+//
+// `fill` is the stub the front's test plan asks for, and it is the same seam
+// front 28's server adapter and fronts 27/29's client transition use. Both
+// rows run these: on erlang the store is the calling process's dictionary
+// (`src/sidecars/jhonstart_router.erl`), on commonJS a module-global
+// (`src/router_runtime.mjs`), and the assertions do not know which.
+
+test "router: the five cells round-trip into the record of step 1" {
+    val ignored = fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 0);
+    val r = snapshot();
+    assert r.path == "/blog/hi";
+    assert r.pattern == "/blog/[slug]";
+    assert r.selected == 0;
+    assert r.param("slug") == "hi";
+    assert r.params.length == 1;
+    assert r.search.length == 0;
+}
+
+test "router: an empty params string yields the empty list, not one empty pair" {
+    val ignored = fill("/", "", "", "/", 0);
+    val r = snapshot();
+    assert r.params.length == 0;
+    assert r.search.length == 0;
+    assert r.param("anything") == "";
+}
+
+test "router: the search list comes back through the same decoder" {
+    val ignored = fill("/blog", "", "sort=new&page=2", "/blog", 0);
+    val r = snapshot();
+    assert r.search.length == 2;
+    assert r.searchParam("sort") == "new";
+    assert r.searchParam("page") == "2";
+    assert r.searchParam("missing") == "";
+}
+
+test "router: selected reaches the record and drives segment()" {
+    val ignored = fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 1);
+    assert snapshot().segment() == "[slug]";
+    val again = fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 0);
+    assert snapshot().segment() == "blog";
+}
+
+test "router: a fill replaces the WHOLE snapshot, never one field of it" {
+    val first = fill("/a", "x=1", "s=1", "/a", 0);
+    val second = fill("/b", "", "", "/b", 0);
+    val r = snapshot();
+    assert r.path == "/b";
+    assert r.param("x") == "";
+    assert r.searchParam("s") == "";
 }

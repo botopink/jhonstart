@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+- **The route snapshot has a host half on both rows (front 26, step 2).**
+  `snapshot()` reads five cells and builds `RouterState`; each maps one-to-one
+  onto a key of rakun front 23's payload envelope (`p`/`m`/`q`/`r`, plus the
+  per-layout `selected`, which has no payload key). The two pair-shaped values
+  travel querystring-encoded — no JSON, no record serialization, nothing that
+  has to agree between an Erlang term and a JS object.
+  - `src/router_runtime.mjs` (a module-global) and
+    `src/sidecars/jhonstart_router.erl` (the calling process's dictionary) are
+    the two halves, cell for cell, so `test/router_test.bp` is ONE set of
+    assertions run on both rows. A request is a process on the BEAM, so the
+    snapshot dies with it and two concurrent renders cannot see each other's
+    route. Neither half parses or matches anything: the matcher and the route
+    table are rakun front 22's, compiled once.
+  - An unfilled snapshot answers `""`/`[]`/`0` rather than raising — rendering
+    a component outside a request is how this package's own tests render the
+    server pass.
+  - **Every cell carries both targets**, where the front's spec asks for the
+    five reads to be `#[@External.Erlang]` only. Measured: an erlang-only cell
+    reds the commonJS row at its *call site* (`` `__jhRoutePath` has no
+    `#[@External.<Target>(…)]` for the node backend ``) the moment `snapshot()`
+    calls it, and this module is compiled on both rows of the core member. A
+    declared and never-called cell is fine — which is why `client_runtime.bp`'s
+    node-only `clientRender` does not red the erlang row. The dual form is also
+    what the front's own mechanism needs: the client rebuilds the snapshot from
+    the payload on every transition.
+  - **`fill(path, params, search, pattern, selected)` is `pub` surface**, and
+    the front's spec has no such function — it has rakun front 22 writing the
+    request's process dictionary before dispatch. That cannot be how it works:
+    jhonstart declares no dependency on rakun, rakun's member is
+    `targets: ["commonJS"]` and has no BEAM row at all, and a server reaching
+    into another library's process-dictionary keys would be coupled to them
+    forever. So the seam is here. It is also what makes `snapshot()` assertable
+    — the front's test plan asks for "`snapshot()` over a stubbed host module",
+    and a stub you cannot seed is a stub you cannot assert.
+  - 5 further assertions, green on both rows (16 in the suite).
+
 - **The router is a compiled module (front 26 of 1.0.10-beta, step 1).**
   `src/router.d.bp` is deleted and `src/router.bp` takes its place in the build
   tree. The declaration file gave two reasons nothing in it was promotable:

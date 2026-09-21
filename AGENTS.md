@@ -54,7 +54,10 @@ repository/jhonstart/
 │       │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │       │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
 │       │   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
-│       │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `decodePairs`
+│       │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `decodePairs`, `snapshot`/`fill`
+│       │   ├── router_runtime.mjs ← HOST (js): the router's store and the History API half of `navigate`
+│       │   ├── sidecars/
+│       │   │   └── jhonstart_router.erl ← HOST (BEAM): the same cells over the calling process's dictionary. NOT a `files` entry — `shipErlSidecars` finds it under the package's `src/sidecars/`
 │       │   └── server.d.bp    ← Http ContextBase: request() + loaders (host-bound/async; GATED)
 │       └── test/
 │           ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows

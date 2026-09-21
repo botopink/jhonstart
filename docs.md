@@ -386,6 +386,59 @@ where querystring's `split("=")` keeps only `b` — an input querystring's own
 header records as not round-tripping. When the shim defect closes this becomes
 `querystring.parse` and nothing else moves.
 
+### The snapshot, the five cells and `fill`
+
+```bp
+pub fn snapshot() -> RouterState
+pub fn fill(path, params, search, pattern, selected) -> i32
+```
+
+`snapshot()` reads five host cells and builds the record. Each read maps
+**one-to-one** onto a key of rakun front 23's payload envelope, so the record
+the server builds and the record the client rebuilds are built from the same
+five values:
+
+| `RouterState` field | cell | payload key (front 23) |
+|---|---|---|
+| `path` | `__jhRoutePath()` | `p` — the pathname |
+| `params` | `__jhRouteParams()` | `m` — querystring-encoded |
+| `search` | `__jhRouteSearch()` | `q` — querystring-encoded |
+| `pattern` | `__jhRoutePattern()` | `r` — the matched pattern, bracket spelling kept |
+| `selected` | `__jhRouteSelected()` | — per-layout, supplied during the render |
+
+The two pair-shaped values travel querystring-encoded. No JSON, no record
+serialization, nothing that has to agree between an Erlang term and a JS
+object. `snapshot()` performs no `?T` unwrap that can fail: `decodePairs`
+answers `[]` for an empty string and every cell answers a total value.
+
+`fill` is the one writer, and it is `pub` **surface**, not an internal. The
+five values go in together — a half-updated snapshot is a component reading the
+previous route's params against the next route's pattern. A server adapter
+calls it once per request; a client transition calls it with the values the
+`__onze` payload carried, then re-renders. Nothing here is reactive: the router
+is a snapshot, not a subscription.
+
+Both halves ship with the package:
+
+| row | host | store |
+|---|---|---|
+| commonJS | `src/router_runtime.mjs` | a module-global |
+| erlang | `src/sidecars/jhonstart_router.erl` | the calling process's dictionary — a request is a process, the snapshot dies with it, and two concurrent renders cannot see each other's route |
+
+An unfilled snapshot answers `""`/`[]`/`0` rather than raising: rendering a
+component outside a request is a legitimate thing to do, and it is how the
+package's own tests render the server pass.
+
+**Every cell carries both targets.** The front's spec calls for the five reads
+to be `#[@External.Erlang]` only; that is not writable. This module is compiled
+on both rows of the core member, and an erlang-only cell reds the commonJS row
+at its *call site* (`` `__jhRoutePath` has no `#[@External.<Target>(…)]` for the
+node backend ``) the moment `snapshot()` calls it — a declared and never-called
+cell is fine, which is why `client_runtime.bp`'s node-only `clientRender` does
+not red the erlang row. The dual form is also what the mechanism needs: the
+client rebuilds the snapshot on every transition and cannot do that through a
+cell that exists only on the server.
+
 ## App layer (Next-style) — declared, host-bound
 
 - `Link(href, …)` — client navigation (front 27's `src/link.bp`; not shipped

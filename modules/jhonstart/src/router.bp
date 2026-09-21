@@ -140,3 +140,102 @@ fn decodePair(chunk: string) -> #(string, string) {
     if (cut < 0) return #(chunk, "");
     return #(chunk.slice(0, cut), chunk.slice(cut + 1, chunk.length));
 }
+
+// ── step 2: the host cells and the snapshot builder ─────────────────────────
+//
+// Five reads and one write. Each read maps ONE-TO-ONE onto a key of front 23's
+// payload envelope, so the record the server builds and the record the client
+// rebuilds are built from the same five values:
+//
+//   | `RouterState` field | cell                | payload key (front 23)     |
+//   |---------------------|---------------------|----------------------------|
+//   | `path`              | `__jhRoutePath()`   | `p` — the pathname         |
+//   | `params`            | `__jhRouteParams()` | `m` — querystring-encoded  |
+//   | `search`            | `__jhRouteSearch()` | `q` — querystring-encoded  |
+//   | `pattern`           | `__jhRoutePattern()`| `r` — the matched pattern  |
+//   | `selected`          | `__jhRouteSelected()`| — per-layout, not in the payload |
+//
+// The two pair-shaped values travel querystring-encoded. No JSON, no record
+// serialization, nothing that has to agree between an Erlang term and a JS
+// object.
+//
+// EVERY cell carries BOTH targets, and the front's README says the five reads
+// are `#[@External.Erlang]` only. That is not writable: this module is compiled
+// on both rows of the core member, and an erlang-only cell reds the commonJS
+// row AT ITS CALL SITE — `` `__jhRoutePath` has no `#[@External.<Target>(…)]`
+// for the node backend `` — the moment `snapshot()` calls it. (A declared and
+// never-called cell is fine, which is why `client_runtime.bp`'s node-only
+// `clientRender` does not red the erlang row.) Measured 2026-09-21. The dual
+// form is also what the front's own mechanism needs: § *What crosses* has the
+// client rebuilding the snapshot from the payload on every transition, and it
+// cannot do that through a cell that exists only on the server.
+
+#[@External.Node("./router_runtime.mjs", "path"),
+  @External.Erlang("jhonstart_router", "path")]
+pub declare fn __jhRoutePath() -> string;
+
+#[@External.Node("./router_runtime.mjs", "params"),
+  @External.Erlang("jhonstart_router", "params")]
+pub declare fn __jhRouteParams() -> string;
+
+#[@External.Node("./router_runtime.mjs", "search"),
+  @External.Erlang("jhonstart_router", "search")]
+pub declare fn __jhRouteSearch() -> string;
+
+#[@External.Node("./router_runtime.mjs", "pattern"),
+  @External.Erlang("jhonstart_router", "pattern")]
+pub declare fn __jhRoutePattern() -> string;
+
+#[@External.Node("./router_runtime.mjs", "selected"),
+  @External.Erlang("jhonstart_router", "selected")]
+pub declare fn __jhRouteSelected() -> i32;
+
+// The one writer. The five values go in TOGETHER because a half-updated
+// snapshot is a component reading the previous route's params against the next
+// route's pattern.
+//
+// The README has no filler: it has front 22 writing the request's process
+// dictionary before dispatch. That cannot be how it works. jhonstart declares
+// no dependency on rakun, rakun's member is `targets: ["commonJS"]` so it has
+// no BEAM row at all, and a server that reached into another library's process
+// dictionary keys would be coupled to them forever. So the seam is HERE and it
+// is `pub`: front 28's server adapter calls it once per request, and fronts 27
+// and 29 call it with the values the `__onze` payload carried on every client
+// transition. It is also what makes `snapshot()` assertable — the front's own
+// test plan asks for "`snapshot()` over a stubbed host module", and a stub you
+// cannot seed is a stub you cannot assert.
+#[@External.Node("./router_runtime.mjs", "fill"),
+  @External.Erlang("jhonstart_router", "fill")]
+pub declare fn __jhRouteFill(
+    path: string,
+    params: string,
+    search: string,
+    pattern: string,
+    selected: i32,
+) -> i32;
+
+// Install a route snapshot for the render that follows. `params` and `search`
+// are querystring-encoded exactly as the payload's `m` and `q` carry them.
+// The `-> i32` is the ecosystem's shape for a host cell whose value is not
+// used; it is not a status code and callers ignore it.
+pub fn fill(
+    path: string,
+    params: string,
+    search: string,
+    pattern: string,
+    selected: i32,
+) -> i32 {
+    return __jhRouteFill(path, params, search, pattern, selected);
+}
+
+// The snapshot the render reads. No `?T` unwrap that can fail: `decodePairs`
+// answers `[]` for an empty string, and every cell answers a total value.
+pub fn snapshot() -> RouterState {
+    return RouterState(
+        path: __jhRoutePath(),
+        params: decodePairs(__jhRouteParams()),
+        search: decodePairs(__jhRouteSearch()),
+        pattern: __jhRoutePattern(),
+        selected: __jhRouteSelected(),
+    );
+}
