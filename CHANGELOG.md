@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **The element surface, step 5 — the shared files and the docs.** `docs.md`
+  gains the constructor table, the three names that could not be the obvious
+  one (`htmlTag`, `timeTag`, `main`) with their reasons and the `main`
+  caveat, the consumer import a template resolution needs, and the two things
+  the surface deliberately does not do (escape, and be void-aware in
+  `renderToString`). `AGENTS.md`'s "the `Element` model has no **attribute**
+  slot" line was stale — `attrs` landed — and is corrected in both the
+  workspace and the `src/` index; `elements.bp` and `test/elements_test.bp`
+  join the tree diagram and the module table. The whole front: 42 public
+  functions (38 tag constructors, `el`, `voidEl`, `isVoidTag`,
+  `isRawTextTag`), 15 inline `test {}` blocks plus 3 in the flat suite,
+  **27/27 on commonJS and 27/27 on erlang** from a 9/9 baseline on each, and
+  not one line changed in `element.bp`, `hooks.bp` or `html.bp`.
 - **The element surface, step 4 — `modules/jhonstart/test/elements_test.bp`.**
   The `html """…"""` DSL resolves a lowercase tag to a bare `tag(...)` call in
   the **caller's** scope, so the only honest resolution test is one written

@@ -23,11 +23,38 @@ Every other `src/*.bp` belongs to fronts 26–32/67. This front ADDS `elements.b
   `pub fn` a consumer can import
 
 ## Steps
-- [ ] 0 — baseline measured: `botopink test` in `modules/jhonstart` on commonJS and erlang
-      (9/9 each at HEAD), and the eight existing constructors re-read in `src/element.bp`
-- [ ] 1..N — the README's steps in order; commit each one that reaches green
-- [ ] the ten dependent fronts' needs are covered (24: form/input/button · 67: + label/select/textarea
-      · 26/27/29/30/53: nav/section/article/header/main/h2 · 31: html/body/head) — check against the
-      README's own table, do not re-derive it from memory
-- [ ] `root.bp` gains `pub mod elements;` and `botopink.json` `files` gains the module
-- [ ] AGENTS.md + CHANGELOG.md + docs.md in the same commit; gate green; push front/94-elements
+
+- [x] 0 — baseline measured: `botopink test` in `modules/jhonstart`, **9/9 commonJS, 9/9 erlang**
+      at `e068998` (3 element + 4 hooks + 2 html_test); the eight existing constructors re-read
+- [x] 1 — `el`, `voidEl`, `isVoidTag`, `isRawTextTag` + 4 inline tests · 13/13 on each target
+      (`pub mod elements;` + the manifest `files` entry landed HERE, not in step 5: an
+      unregistered module is not compiled and its `test {}` blocks never run)
+- [x] 2 — the thirty-two non-void constructors + 7 inline tests · 20/20 on each target
+- [x] 3 — the six void constructors + 4 inline tests · 24/24 on each target
+- [x] 4 — `test/elements_test.bp`, the flat suite, 3 blocks · 27/27 on each target
+- [x] 5 — `root.bp`, `botopink.json`, `docs.md`, `AGENTS.md` (workspace + `src/`), `CHANGELOG.md`
+- [x] the ten dependent fronts' needs, checked against the README's own table:
+      24 form/input/button ✓ · 67 + label/select/textarea ✓ · 26/27/29/30/53 nav/section/article/
+      header/main/h2 ✓ · 31 htmlTag/body/head ✓ · 32 meta/link/title ✓ · 53 timeTag ✓
+- [x] the front's two spec example files (`specs/.../94-.../examples/{form,document-shell}-example.bp`)
+      were run against this surface as a throwaway flat-suite check: 8/8 and 5/5, on both targets,
+      unmodified apart from the import line. They live in the meta repo and were not edited.
+
+## Not this front (meta-repo `specs/`, which this worktree must not touch)
+
+- fronts 24/26/27/28/29/30/31/32/53/67 deleting their local constructors and importing here
+- front 31's `## Blocked` entry for `global-error.bp`
+- the `language-gaps.md` row "New jhonstart element constructors"
+- front 23's `renderNode` calling `isVoidTag`/`isRawTextTag`
+- unfreezing `element.bp`'s `renderToString` so it stops closing a void element
+- `zig build test-libs -- --lib jhonstart` (the ecosystem gate runs in `repository/botopink-lang`,
+  which other threads own; the per-member `botopink test` on both targets is what was measured)
+
+## Found while building
+
+- **`link/2` draws an erlc warning on OTP 26+.** The erlang backend emits
+  `-compile({no_auto_import,[...]})` only for a user fn whose name AND arity are in the compiler's
+  BIF catalog (`libs/std/src/erlang.bp`), which lists `link/1` only — but OTP 26 added
+  `erlang:link/2`, so the front README's arity argument does not hold. Warning, not error: the
+  local definition wins and the erlang row is green. The durable fix is one catalog entry in
+  botopink-lang.

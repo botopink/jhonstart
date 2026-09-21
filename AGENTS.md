@@ -18,9 +18,9 @@ to the builder pipeline at comptime. The compiler is **unaware** of jhonstart (h
 "rakun|jhonstart" modules/compiler-core/src` gate); the framework is a pure
 client, reached with `from "jhonstart"`, never embedded.
 
-The UI **core + hooks + the `html` markup DSL are real botopink**
-(`modules/jhonstart/src/{element,hooks,html}.bp` — all in the core member's
-`botopink.json` compiled set): an
+The UI **core + hooks + the element surface + the `html` markup DSL are real
+botopink** (`modules/jhonstart/src/{element,hooks,elements,html}.bp` — all in
+the core member's `botopink.json` compiled set): an
 `Element` tree, builders, a synchronous SSR renderer, the hook family, and the
 `html """…"""` comptime expander — no host intrinsics, no async. Only the
 host-bound surface (client navigation, the Http server context) stays as `.d.bp`
@@ -108,7 +108,7 @@ are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
 
 | Layer | Analog | ContextBase | Surface |
 |---|---|---|---|
-| core | React | `Element` | `element.bp` + `hooks.bp` + `html.bp` (**compiled**) |
+| core | React | `Element` | `element.bp` + `elements.bp` + `hooks.bp` + `html.bp` (**compiled**) |
 | app | Next.js | `Http` | `router`, `server` (declared, host-bound) |
 
 ## Conventions
@@ -180,7 +180,7 @@ jhonstart is a *consumer*. What it relies on:
 `windows-2022` (`escript` ships cleanly only on linux + macos). Both target
 rows are hard cells — no `allow_fail`. Nothing about jhonstart is
 commonJS-only: `renderToString` turns an `Element` tree into a string, which is
-pure string work on either backend, and the core suite is 9/9 on erlang. The
+pure string work on either backend, and the core suite is 27/27 on erlang. The
 examples stage reads each example's own manifest target, so it is pinned to the
 commonJS row and runs once.
 

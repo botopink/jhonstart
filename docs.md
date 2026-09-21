@@ -1,8 +1,9 @@
 # jhonstart — reference
 
 > A React/Next-style UI framework written in botopink, on the language's own
-> primitives. Status: **core + hooks + the `html` markup DSL implemented in real
-> `.bp`** (`Element` tree, builders, synchronous `renderToString`, the
+> primitives. Status: **core + hooks + the element surface + the `html` markup
+> DSL implemented in real `.bp`** (`Element` tree, builders, the forty-six HTML
+> constructors, synchronous `renderToString`, the
 > `state`/`effect`/`memo`/`ref`/`reducer` family, and the `html """…"""` authoring
 > DSL — all compiled & runtime-tested). Only the router and the Http server
 > context remain declarative (`.d.bp`), each gated on a generic language gap (see
@@ -323,17 +324,20 @@ by a plain call. See `examples/jhonstart-html`.
 
 ## V1 limits
 
-- **Implemented now** (`element.bp` + `hooks.bp` + `html.bp`, compiled +
+- **Implemented now** (`element.bp` + `elements.bp` + `hooks.bp` + `html.bp`, compiled +
   `test {}`-checked): the `Element` type, builders (`Children` args, list-form
-  render), a synchronous `renderToString`, the `state`/`effect`/`memo`/`ref`/
-  `reducer` hook family (real SSR bodies), and the `html """…"""` markup DSL
+  render), the element surface (`el`/`voidEl`, `isVoidTag`/`isRawTextTag` and
+  thirty-eight further tag constructors), a synchronous `renderToString`, the
+  `state`/`effect`/`memo`/`ref`/`reducer` hook family (real SSR bodies), and the `html """…"""` markup DSL
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - `router`/`server` host hooks (`router`/`request`, `#[@External.Node]`), `Link`
-    and form controls (the `Element` model has no attribute slot for
-    `href`/`value`/`onClick`) — `Router` and `Request` expose their fields as
-    zero-argument methods (`router.pathname()`, `req.params()`);
+  - `router`/`server` host hooks (`router`/`request`, `#[@External.Node]`) —
+    `Router` and `Request` expose their fields as zero-argument methods
+    (`router.pathname()`, `req.params()`). `Link` and the form controls are no
+    longer gated on an attribute slot: `Element` carries `attrs`, and
+    `elements.bp` ships `form`/`input`/`button`/`label`/`select`/`textarea`;
+    what `Link` still needs is the host navigation runtime;
   - the `#[@future]` + `await` data-loading path (`use-await-prefix`,
     `async-generators`);
   - the trailing-lambda children sugar (`div { … }`) and lone-child / `string`
