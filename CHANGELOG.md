@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **The six route hooks (front 26, step 3).** `router`, `pathname`, `params`,
+  `searchParams`, `selectedLayoutSegment` and `selectedLayoutSegments`, each
+  `pub fn … -> @Context<Element, T>` and each one read of `snapshot()` and
+  nothing else — a hook that did work of its own would be a second place for
+  the route to be interpreted. Nouns, never `useRouter`, never the doubled
+  `use usePathname()`.
+- **Measured: `use` is not decoration for an array-valued hook.** A hook called
+  without `use` keeps its `@Context<Element, T>` type. That type is transparent
+  to a property or a method (`ps.length`, `segs.join("/")`, `r.param("slug")`)
+  and **not** to a typed parameter — `pairValue(params(), "slug")` is
+  `type mismatch: expected array, got Context`, and binding through a `val`
+  does not change it. Only `use` strips the capability: inside a `#[@context]`
+  body `pairValue(use params(), …)` is exactly the array, and
+  `test/router_test.bp`'s `ActiveNav` asserts the rendered markup to prove it.
+  The front's spec says a hook "called WITHOUT `use` also type-checks and
+  returns the [value]"; that holds for the two `string` hooks and not for the
+  three array-valued ones.
+
 - **The route snapshot has a host half on both rows (front 26, step 2).**
   `snapshot()` reads five cells and builds `RouterState`; each maps one-to-one
   onto a key of rakun front 23's payload envelope (`p`/`m`/`q`/`r`, plus the

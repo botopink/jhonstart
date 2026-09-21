@@ -239,3 +239,55 @@ pub fn snapshot() -> RouterState {
         selected: __jhRouteSelected(),
     );
 }
+
+// ── step 3: the five views, as hooks ────────────────────────────────────────
+//
+// Next.js splits route state into five hooks over one internal record
+// (`useRouter`, `usePathname`, `useParams`, `useSearchParams`,
+// `useSelectedLayoutSegment(s)`). jhonstart spells them as NOUNS — the keyword
+// `use` is the activation and the name is the noun (decision 88 of
+// 1.0.10-beta) — so they are `router`, `pathname`, `params`, `searchParams`,
+// `selectedLayoutSegment` and `selectedLayoutSegments`. Never `useRouter`, and
+// never the doubled `use usePathname()`.
+//
+// Each returns `@Context<Element, T>`, which is what makes `use` legal on it
+// inside a `#[@context]` body whose owner is `Element` — the same capability
+// `hooks.bp` uses for `state`/`memo`. `use f(x)` lowers to `f(x)` on every
+// backend, so each is ALSO an ordinary call: the server render calls them
+// directly, and `test/router_test.bp` exercises the bodies that way, exactly as
+// `hooks.bp`'s own tests call `state` and `memo` without `use`.
+//
+// They are thin on purpose. Each is one read of `snapshot()` and nothing else;
+// a hook that did work of its own would be a second place for the route to be
+// interpreted.
+
+pub fn router() -> @Context<Element, RouterState> {
+    return snapshot();
+}
+
+pub fn pathname() -> @Context<Element, string> {
+    return snapshot().path;
+}
+
+pub fn params() -> @Context<Element, Array<#(string, string)>> {
+    return snapshot().params;
+}
+
+// Reading the search params marks a render DYNAMIC on the server — a route
+// whose output depends on the query cannot be cached as static. rakun front 23
+// does the marking in its own `searchParams(route)` accessor; see
+// `AGENTS.md` § *The `query` hole* for why that guarantee does not hold for
+// everyone today, and what would close it.
+pub fn searchParams() -> @Context<Element, Array<#(string, string)>> {
+    return snapshot().search;
+}
+
+pub fn selectedLayoutSegment() -> @Context<Element, string> {
+    return snapshot().segment();
+}
+
+// Root-first, because `pattern` is root-first and `segments` is derived from it
+// by dropping the empty parts — there is no reordering anywhere on the path.
+pub fn selectedLayoutSegments() -> @Context<Element, Array<string>> {
+    return snapshot().segments();
+}

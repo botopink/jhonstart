@@ -439,6 +439,62 @@ not red the erlang row. The dual form is also what the mechanism needs: the
 client rebuilds the snapshot on every transition and cannot do that through a
 cell that exists only on the server.
 
+### The six hooks
+
+Next.js splits route state into five hooks over one internal record
+(`useRouter`, `usePathname`, `useParams`, `useSearchParams`,
+`useSelectedLayoutSegment(s)`). jhonstart spells them as **nouns** — the keyword
+`use` is the activation and the name is the noun — so there is no `useRouter`
+and never a doubled `use usePathname()`.
+
+```bp
+pub fn router() -> @Context<Element, RouterState>
+pub fn pathname() -> @Context<Element, string>
+pub fn params() -> @Context<Element, Array<#(string, string)>>
+pub fn searchParams() -> @Context<Element, Array<#(string, string)>>
+pub fn selectedLayoutSegment() -> @Context<Element, string>
+pub fn selectedLayoutSegments() -> @Context<Element, Array<string>>
+```
+
+```bp
+#[@context]
+fn ActiveNav() -> Element {
+    val here = use pathname();
+    val seg = use selectedLayoutSegment();
+    val ps = use params();
+    return div([
+            span([text(here, attrs: [])], attrs: []),
+            span([text(seg, attrs: [])], attrs: [#("class", "active")]),
+            span([text(pairValue(ps, "slug"), attrs: [])], attrs: []),
+        ], attrs: []);
+}
+```
+
+The binding never reuses the hook's name (`val r = use router()`, never
+`val router = …`): a local that shadows a module-level `pub fn` shadows it for
+an importer too.
+
+`selectedLayoutSegments()` answers **root-first**, because `pattern` is
+root-first and `segments` is derived from it by dropping the empty parts —
+nothing on the path reorders.
+
+**`use` is not decoration.** `use f(x)` lowers to `f(x)` on every backend, so a
+hook is also an ordinary call and the server render uses it that way. But a
+hook called *without* `use` keeps its `@Context<Element, T>` type, and that
+type is transparent to a property or a method (`ps.length`, `segs.join("/")`,
+`r.param("slug")`) and **not** to a typed parameter:
+
+```bp
+val ps = params();
+pairValue(ps, "slug")   // type mismatch: expected array, got Context
+```
+
+Binding through a `val` does not change it — only `use` strips the capability,
+and inside a `#[@context]` body `pairValue(use params(), …)` is exactly the
+array. So a hook whose `T` is an array is usable as a value only under `use`;
+`pathname()` and `selectedLayoutSegment()`, whose `T` is a `string`, compare
+directly either way.
+
 ## App layer (Next-style) — declared, host-bound
 
 - `Link(href, …)` — client navigation (front 27's `src/link.bp`; not shipped

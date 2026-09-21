@@ -17,7 +17,14 @@ import {
     decodePairs,
     fill,
     snapshot,
+    router,
+    pathname,
+    params,
+    searchParams,
+    selectedLayoutSegment,
+    selectedLayoutSegments,
 } from "router";
+import {Element, div, span, text, renderToString} from "element";
 
 // ── step 1: the record and its accessors ────────────────────────────────────
 
@@ -173,4 +180,66 @@ test "router: a fill replaces the WHOLE snapshot, never one field of it" {
     assert r.path == "/b";
     assert r.param("x") == "";
     assert r.searchParam("s") == "";
+}
+
+// ── step 3: the six hooks ───────────────────────────────────────────────────
+//
+// `use f(x)` lowers to `f(x)` on every backend, so a hook body is exercised by
+// DIRECT CALL — the first-render value, which on the server is the only value.
+// `ActiveNav` below is the activating form; it type-checks the capability and,
+// called plainly, renders the server pass, exactly as `hooks.bp` does with
+// `Counter`.
+
+// A hook called WITHOUT `use` keeps its `@Context<Element, T>` type, and the
+// type is transparent to a PROPERTY or METHOD (`ps.length`, `segs.join("/")`,
+// `r.param("slug")`) but not to a typed PARAMETER: `pairValue(params(), …)`
+// and `segmentAt(selectedLayoutSegments(), 0)` are both
+// `type mismatch: expected array, got Context`, and binding through a `val`
+// does not change it — only `use` strips the capability. Measured 2026-09-21.
+// So the direct-call form asserts through properties and methods, and the
+// `use` form below asserts the unwrapped value.
+test "router: each hook answers the field it names, called without `use`" {
+    val ignored = fill("/blog/hi", "slug=hi", "sort=new", "/blog/[slug]", 0);
+    assert pathname() == "/blog/hi";
+    val ps = params();
+    assert ps.length == 1;
+    val qs = searchParams();
+    assert qs.length == 1;
+    val r = router();
+    assert r.pattern == "/blog/[slug]";
+    assert r.param("slug") == "hi";
+}
+
+test "router: selectedLayoutSegment(s) answer the layout depth, root-first" {
+    val ignored = fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 0);
+    val segs = selectedLayoutSegments();
+    assert segs.length == 2;
+    assert segs.join("/") == "blog/[slug]";
+    assert selectedLayoutSegment() == "blog";
+    val deeper = fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 1);
+    assert selectedLayoutSegment() == "[slug]";
+}
+
+// A component by the rule: `#[@context]` on the fn, a return that is the owner
+// (`Element`), and every `use` in the static prefix. The binding never reuses
+// the hook's name (`val r = use router()`, never `val router = …`) — a local
+// that shadows a module-level `pub fn` shadows it for an importer too.
+#[@context]
+fn ActiveNav() -> Element {
+    val here = use pathname();
+    val seg = use selectedLayoutSegment();
+    val ps = use params();
+    return div([
+            span([text(here, attrs: [])], attrs: []),
+            span([text(seg, attrs: [])], attrs: [#("class", "active")]),
+            span([text(pairValue(ps, "slug"), attrs: [])], attrs: []),
+        ], attrs: []);
+}
+
+test "router: a component activating the hooks renders the server pass" {
+    val ignored = fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 0);
+    val e = ActiveNav();
+    assert e.tag == "div";
+    assert e.children.length == 3;
+    assert renderToString(e) == "<div><span>/blog/hi</span><span class=\"active\">blog</span><span>hi</span></div>";
 }
