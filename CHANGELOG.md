@@ -2,6 +2,80 @@
 
 ## Unreleased
 
+- **Front 28 — server components: `server.d.bp` is promoted to `server.bp`.**
+  The declaration file listed three blockers and all three are answered rather
+  than carried.
+  - **`RequestData`** — six fields (`method`, `path`, `params`, `query`,
+    `headers`, `cookies`), every plural one `Array<#(string, string)>`: the
+    shape front 26's snapshot uses, the shape `decodePairs` produces and the
+    shape `Element.attrs` takes, so a value read off the request reaches an
+    attribute with no conversion. No `Dict` (naming `dict.Dict<string, string>`
+    across a module boundary is unexercised anywhere in this tree) and **no
+    `body` field** — a render never reads one; form bodies are front 24's and
+    route-handler bodies front 25's.
+  - **Four accessors that cannot fail** — `param`, `queryParam`, `header`,
+    `cookie`, each a plain `string` and `""` when absent. All four funnel
+    through front 26's `pairValue`, so "the value of `slug`, or the empty
+    string" cannot mean two things in one package. Field names and method names
+    are disjoint, the rule `RouterState` already follows.
+  - **`request()`, `fillRequest()`, `cookies()`, `headers()`** over six host
+    cells, plus `renderServerComponent(component) -> @Future<string>` — one
+    `await`, then a synchronous render, over an **unstarted thunk**
+    `fn() -> @Future<Element>` so that a page which grows a second loader moves
+    to front 02 without changing what it hands anybody.
+  - **The `Http` phantom `@Context` base and the `Request` behavior are gone.**
+    Decision 89 unwraps `@Future<Element>` to the owner `Element`, so one base
+    serves the whole render tree and a memberless second base would be a base
+    nothing implements. `AGENTS.md` § *The `Http` base, and why it is gone*.
+  - **The async data layer is no longer gated.** `#[@future] fn … -> @Future<T>`
+    with a statement-level `await` compiles and RUNS on both rows, `test` blocks
+    included — measured, not assumed.
+- **The six cells are jhonstart's own, dual-target, with both host halves
+  shipped** (`src/server_runtime.mjs`, `src/sidecars/jhonstart_server.erl`) —
+  the spec binds them to front 62's `rakun_request_context` with no Node cell,
+  and neither half is writable. Measured against compiler `2e6bb4ac`: an
+  erlang-only cell reds the **commonJS compile** at its call site (`` `__jhReqMethod`
+  has no `#[@External.<Target>(…)]` for the node backend ``), taking the whole
+  core member down on a row it is not even gated on; and `rakun_request_context`
+  has no BEAM row to bind to at all, because rakun's member is
+  `targets: ["commonJS"]`, so on erlang — this front's *assigned* target — every
+  cell would answer `{error,undef}` and no assertion that reads the request
+  could run. So the seam is here and it is `pub`: `fillRequest` is the one
+  writer and front 62's dispatcher calls it once per request. Front 26 reached
+  the same conclusion for the route snapshot and for the same reason.
+- **`decodePairs`, not `querystring.parse`.** `libs/std/src/querystring.bp` is
+  dead on the erlang row — reached through `from "std"` it emits a bare local
+  `slice/3` it never defines. Re-measured 2026-09-21 against `2e6bb4ac`;
+  `repro/erlang-std-slice-shim/` is the jhonstart-free package. One decoder in
+  the package, which is the argument `pairValue` already makes.
+- **Measured: a bare function name used as a value is unbound on erlang.**
+  `renderServerComponent(Page)` compiles on commonJS and fails
+  `variable 'Page' is unbound` on erlang; `{ -> Page(ps) }` is green on both.
+  A compiler defect, reported rather than worked around, and the same shape
+  rakun's front 23 records for the fields of its `ElementView`. Every call site
+  in this package spells the lambda.
+- **Measured: decision 90 works.** A `#[@future] fn … -> @Future<Element>` body
+  activates a hook (`val here = use pathname()`) with **no** `#[@context]`
+  beside it, green on both rows. R5 is what makes that necessary rather than
+  convenient: `#[@future] #[@context]` is `effect-duplicate-annotation`. A
+  *client* component still carries `#[@context]` (decision 88) — a plain
+  `fn … -> Element` that writes `use` is `use-without-context-effect`.
+- **What front 28 deliberately does not ship.** No escaping — front 01's
+  `escape.html` / `escape.attribute` do not exist in `2e6bb4ac`, and a stand-in
+  here would be a second answer to "what is an escaped `&`" the day they land;
+  the suite PINS the unescaped answer so the change is a red cell. No
+  `awaitAll`/`race`/`allSettled` — `@Future` is eager on erlang
+  (`libs/std/src/http.bp:16-18`), independent loaders awaited in sequence cost
+  the **sum** of their round trips, and the fix is front 02's spawn-and-gather
+  over unstarted tasks. No `ElementView<Element>` adapter — front 26's
+  `AGENTS.md` hands it here, front 28's own spec does not ask for it, and the
+  structural obstacle front 26 recorded has not moved.
+- `docs.md` gains § *Server components (`server.bp`) — compiled`, and its *App
+  layer* and *V1 limits* sections lose the stale "gated" rows.
+- The core member measures **68/68 on both rows** (51/51 before front 28). All
+  17 request assertions RUN on the erlang row — none is type-checked-only and
+  none is a commonJS-only claim.
+
 - **Front 26 closeout — `encodePairs`, and what fronts 27–32 consume.**
   - `encodePairs(pairs) -> string` is `decodePairs` reversed and ships for the
     same reason: `querystring.stringify` has no `slice` of its own, but it

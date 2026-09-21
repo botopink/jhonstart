@@ -43,7 +43,7 @@ manifest** — so `repository/` contributes `jhonstart` (the member
 `repository/jhonstart/modules/jhonstart/`), `jhonstart-counter`,
 `jhonstart-html` and `jhonstart-todo`, and never the umbrella. The member's
 `files` — `root.bp`, `element.bp`, `hooks.bp`, `html.bp`, `router.bp`,
-`elements.bp`, `client_runtime.bp`, `server.d.bp` — are the only modules a
+`elements.bp`, `client_runtime.bp`, `server.bp` — are the only modules a
 consumer sees. A
 `{ "workspace": true }` dependency consults no root at all. Nothing about
 jhonstart is embedded; the compiler core never names it.
@@ -538,16 +538,202 @@ A navigation never disturbs the snapshot: `fill` is the only writer of route
 state, and the suite asserts that a `push` leaves the current `path` and
 `params` exactly as they were.
 
+## Server components (`server.bp`) — compiled
+
+Promoted from `server.d.bp` (front 28). The declaration file listed three
+blockers; all three are answered rather than carried. The async data layer is
+**not** gated any more — `#[@future] fn … -> @Future<T>` with a statement-level
+`await` compiles and RUNS on both rows, `test` blocks included — `request()`
+keeps a host half and now ships it, and the `Http` phantom `@Context` base and
+the `Request` behavior are **gone** (see `AGENTS.md` § *The `Http` base, and why
+it is gone*).
+
+### `RequestData` — the request as a record
+
+```bp
+pub type RequestData(
+    method: string,
+    path: string,
+    params: Array<#(string, string)>,
+    query: Array<#(string, string)>,
+    headers: Array<#(string, string)>,
+    cookies: Array<#(string, string)>,
+)
+```
+
+Six fields, every plural one an `Array<#(string, string)>` — the shape the route
+snapshot uses, the shape `decodePairs` produces and the shape `Element.attrs`
+takes, so a value read off the request is handed straight to an attribute with
+no conversion. No `Dict`: naming `dict.Dict<string, string>` as a type across a
+module boundary is unexercised anywhere in this tree, and the pair list is what
+actually crosses the wire.
+
+There is **no `body` field**, and its absence is a decision: a render never
+reads one. Form bodies are front 24's and route-handler bodies are front 25's.
+
+| Accessor | Reads | Absent key |
+|---|---|---|
+| `r.param(name)` | `params` | `""` |
+| `r.queryParam(name)` | `query` | `""` |
+| `r.header(name)` | `headers` | `""` |
+| `r.cookie(name)` | `cookies` | `""` |
+
+Every accessor answers a plain `string` and never raises. That is the
+ecosystem's decided shape and not laziness — rakun's `Request` does exactly this
+— because an optional would force `.unwrapOr` at every call site in every page.
+All four funnel through front 26's `pairValue`, so "the value of `slug`, or the
+empty string" cannot mean two different things in one package; a duplicated key
+answers the FIRST match, in every accessor.
+
+Field names and method names are **disjoint** — `params` the field, `param(n)`
+the method, `query` the field, `queryParam(n)` the method — so a field read
+never shadows a method. `method` and `path` are plain fields with no accessor:
+there is nothing to look up by name in a single string.
+
+### The six cells, and where they point
+
+```bp
+pub fn fillRequest(method, path, params, query, headers, cookies) -> i32
+pub fn request() -> RequestData
+pub fn cookies() -> Array<#(string, string)>
+pub fn headers() -> Array<#(string, string)>
+```
+
+`params`, `query`, `headers` and `cookies` travel **querystring-encoded**
+(`k=v&k=v`), the same encoding the route snapshot's `m`/`q` use and the same
+encoding front 23's payload carries. No JSON, no record serialization, nothing
+that has to agree between an Erlang term and a JS object. They are decoded with
+front 26's `decodePairs` — see *`decodePairs` — and why it is not
+`querystring.parse`* above; that std module is dead on the erlang row.
+
+The cells name **`jhonstart_server`** / **`./server_runtime.mjs`**, not front
+62's `rakun_request_context`, and both halves ship with the module
+(`src/sidecars/jhonstart_server.erl`, `src/server_runtime.mjs`) exactly as the
+router's do. Two measurements force it, and `AGENTS.md` § *Why the request cells
+are jhonstart's own* carries them: an erlang-only cell reds the **commonJS
+compile** at its call site, and rakun's member is `targets: ["commonJS"]` so
+`rakun_request_context` has no BEAM row to bind to at all. `fillRequest` is the
+one writer and the seam front 62's dispatcher calls once per request — six
+values at once, never one at a time, because a half-updated request is a
+component reading the previous reader's cookie against this reader's path.
+
+It is **not** the router's `fill` under another name and the two stores stay
+separate on purpose: a route snapshot is re-filled DURING a render (its
+`selected` is the layout depth and changes per layout) while a request is filled
+once and is constant for the whole render.
+
+`after()`, `connection()`, `draftMode()` and per-request memoization are front
+62's and are called from there directly. `cookies()` and `headers()` are the
+only two shortcuts re-exported here.
+
+`request()` is a plain function, not a hook, until front 19 step 2 lands: with
+decisions 89 and 90 it is re-declared `-> @Context<Element, Request>` and
+activated `val r = use request()` inside the `#[@future]` body itself.
+
+### The server-component convention
+
+A server component is a `#[@future] pub fn` taking its route params and
+returning `@Future<Element>`. There is no decorator for it and there will not be
+one — the marker is `#[@future]`, and the language enforces it in **both**
+directions:
+
+| Written | Compiler says |
+|---|---|
+| `pub fn f() -> @Future<i32>` | `a function returning @Future/@Iterator/@FutureGenerator needs an effect annotation` |
+| `#[@future] pub fn f() -> i32` | `effect-wrapper-mismatch: `#[@future]` requires a `-> @Future<…>` return type` |
+| `#[@future] #[@context] fn Page() -> @Future<Element>` | `effect-duplicate-annotation: at most one #[@<effect>] annotation per fn.` |
+| `fn Widget() -> Element { val c = use state(0); }` | `use-without-context-effect: `use` needs `#[@context]` on the enclosing fn` |
+
+Row three is why **decision 90** exists: a `#[@future]` body activates hooks
+**without** `#[@context]`, because `@Future<Element>` unwraps to the owner
+`Element` (decision 89) and R5 forbids writing the second annotation anyway. A
+CLIENT component — a plain `fn … -> Element` that activates a hook — does carry
+`#[@context]` (decision 88). Both are asserted in `test/server_test.bp`.
+
+```bp
+#[@future]
+pub fn renderServerComponent(component: fn() -> @Future<Element>) -> @Future<string>
+```
+
+Awaits exactly once and renders synchronously afterwards. The parameter is an
+**unstarted thunk**, not an already-running `@Future<Element>`, so a page that
+grows a second loader moves to front 02 without changing what it hands anybody.
+
+> **Call it with a lambda, never with a bare function name.**
+> `renderServerComponent({ -> Page(params) })` is green on both rows;
+> `renderServerComponent(Page)` compiles on commonJS and fails
+> `variable 'Page' is unbound` on erlang. A bare function name used as a value
+> is a compiler defect, measured against `2e6bb4ac` and reported, not worked
+> around. It is the same rule rakun's front 23 records for the fields of its
+> `ElementView`.
+
+### The loader convention, and why `@Future` being eager changes it
+
+A loader is an ordinary `#[@future] fn name(args) -> @Future<T>`. `server.bp`
+ships **no** loader machinery: `libs/std/src/http.bp:55` already has
+`fetch(url) -> @Future<Response>`, a database loader is front 08's, and
+parallel awaiting (`all`, `race`, `allSettled`) is **front 02's**.
+
+**Every `await` is at statement level**, in the component or loader body. Never
+as the last statement of a lambda: `§2.38` makes a lambda's last statement an
+implicit-return expression and no file in this tree awaits inside one. So a
+component that needs N rows awaits **one** loader returning `Array<T>` and maps
+synchronously afterwards — not N awaits inside a `map`.
+
+```bp
+#[@future]
+fn loadPost(slug: string) -> @Future<Post> { … }
+
+#[@future]
+pub fn PostPage(params: Array<#(string, string)>) -> @Future<Element> {
+    val post = await loadPost(pairValue(params, "slug"));
+    val comments = await loadComments(post.id);
+    return article([
+            h1([text(post.title, attrs: [])], attrs: []),
+            ul(comments.map({ c -> commentRow(c); }), attrs: []),
+        ], attrs: []);
+}
+```
+
+**`@Future` is EAGER on the erlang row.** `libs/std/src/http.bp:16-18` states
+it: *"Erlang is eager: `@Future<T>` resolves to `T` … so the caller's
+`await fetch(url)` is identity on that backend."* Two `#[@future]` loaders do
+**not** load in parallel because they are futures — they run in the order the
+body reaches them and the page costs the **sum** of its loaders. Porting the
+Next.js pattern shape-for-shape and stopping there produces a page slower than
+the synchronous version.
+
+The two above are **dependent** (`loadComments` needs `post.id`), so sequence is
+what they actually are. When loaders are **independent** the answer is front
+02's spawn-and-gather over **unstarted tasks** —
+`[{ -> loadPost(slug) }, { -> loadSidebar() }]` — never a `map` over futures,
+which would simply run them in order. jhonstart provides no second answer and
+exports no `awaitAll`-style helper.
+
+### Escaping is not this file's
+
+`renderToString` writes `e.value` and every attribute value straight into the
+output (`element.bp:56`, `:63-65`) and neither escapes. A server component
+renders attacker-influenced text — a post body, a comment, a search term echoed
+back — so every such value goes through front 01's `escape.html` (text) and
+`escape.attribute` (attribute values) **at the point the untrusted value enters
+the tree**. `server.bp` hand-rolls no escaping and re-exports none: front 01's
+`libs/std/src/escape.bp` does not exist in compiler `2e6bb4ac` yet, and a
+stand-in here would be a second answer to "what is an escaped `&`" the day it
+lands. `test/server_test.bp` pins the unescaped answer so the change is a red
+cell rather than a silent difference.
+
+The `__onze` payload is front 23's to build and to escape. Nothing from
+`server.bp` crosses to the client: a value read from a header or a cookie must
+not be reachable from an island's props, and the check that it is not is front
+68's build-time graph walk.
+
 ## App layer (Next-style) — declared, host-bound
 
 - `Link(href, …)` — client navigation (front 27's `src/link.bp`; not shipped
   yet). The router itself is no longer declared: see *The router* above.
-- `request() -> @Context<Http, Request>` — server hook; used inside a server
-  component (`#[@future] fn … -> @Future<Element>` — the legacy `*fn`
-  carrier was removed in v0.beta.19). A `#[@future]` body cannot carry
-  `#[@context]` today (`effect-duplicate-annotation`: at most one
-  `#[@<effect>]` annotation per fn), so a server component
-  cannot activate it yet — question 90 of 1.0.10-beta.
+- The server context is no longer declared either: see *Server components*
+  above. `server.bp` is compiled, with both host halves shipped.
 - File routing (`app/`, `page.bp`, `layout.bp`, `[id]`) is a **convention** (V1),
   wired manually until a CLI/build step lands.
 - `renderToString(app)` (SSR, real `.bp`) / client `mount` (host).
@@ -560,18 +746,26 @@ state, and the suite asserts that a `push` leaves the current `path` and
   thirty-eight further tag constructors), a synchronous `renderToString`, the
   `state`/`effect`/`memo`/`ref`/`reducer` hook family (real SSR bodies), the
   route snapshot and its six hooks and six navigation verbs (`router.bp`, with
-  both host halves), and the `html """…"""` markup DSL
+  both host halves), the request record, its four accessors, `request()` and
+  the server-component convention (`server.bp`, with both host halves), and the
+  `html """…"""` markup DSL
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - the `server` host hook (`request()`, `#[@External.Node]`) — `Request`
-    exposes its fields as zero-argument methods (`req.params()`). The router is
-    no longer here: `router.bp` is compiled, with both host halves shipped (see
-    *The router*). `Link` and the form controls are no longer gated on an
-    attribute slot either: `Element` carries `attrs`, and `elements.bp` ships
+  - `use request()` — decided and unwritten. `request()` is a plain function
+    returning `RequestData`; front 19 step 2 (decisions 89 + 90) is what makes
+    it `-> @Context<Element, Request>`, activated inside the `#[@future]` body.
+    The server surface itself is no longer gated: `server.bp` is compiled with
+    both host halves shipped (see *Server components*). `Link` and the form
+    controls are no longer gated on an attribute slot either: `Element` carries
+    `attrs`, and `elements.bp` ships
     `form`/`input`/`button`/`label`/`select`/`textarea`; `Link` is front 27's
     `src/link.bp` and it reads the router rather than replacing it;
-  - the `#[@future]` + `await` data-loading path (`use-await-prefix`,
-    `async-generators`);
+  - parallel loading. `@Future` is eager on the erlang row, so independent
+    loaders awaited in sequence cost the sum of their round trips; the
+    spawn-and-gather over unstarted tasks is front 02's and jhonstart ships no
+    second answer;
+  - HTML escaping. `renderToString` escapes nothing and front 01's
+    `escape.html` / `escape.attribute` do not exist yet;
   - the trailing-lambda children sugar (`div { … }`) and lone-child / `string`
     `Children` *rendering* (type-checks today; render needs normalization).

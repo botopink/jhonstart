@@ -22,10 +22,12 @@ The UI **core + hooks + the element surface + the `html` markup DSL are real
 botopink** (`modules/jhonstart/src/{element,hooks,elements,html}.bp` — all in
 the core member's `botopink.json` compiled set): an
 `Element` tree, builders, a synchronous SSR renderer, the hook family, and the
-`html """…"""` comptime expander — no host intrinsics, no async. Only the
-host-bound surface (client navigation, the Http server context) stays as `.d.bp`
-declarations, each with an explicit "STILL GATED" note. Nothing is embedded into
-the prelude.
+`html """…"""` comptime expander — no host intrinsics, no async. Since fronts 26
+and 28 there is **no `.d.bp` module left**: the route snapshot and the request
+are compiled and each ships its own host half on both rows
+(`router_runtime.mjs` / `sidecars/jhonstart_router.erl`, `server_runtime.mjs` /
+`sidecars/jhonstart_server.erl`). Client navigation (front 27's `Link`) is the
+only surface still to come. Nothing is embedded into the prelude.
 
 ## Tree
 
@@ -44,10 +46,10 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   └── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, router.bp, elements.bp, client_runtime.bp, server.d.bp]
+│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, router.bp, elements.bp, client_runtime.bp, server.bp]
 │       ├── src/
 │       │   ├── AGENTS.md
-│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod router; pub mod elements; mod client_runtime;`
+│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod router; pub mod elements; pub mod server; mod client_runtime;`
 │       │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │       │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
 │       │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
@@ -57,10 +59,13 @@ repository/jhonstart/
 │       │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `decodePairs`, `snapshot`/`fill`
 │       │   ├── router_runtime.mjs ← HOST (js): the router's store and the History API half of `navigate`
 │       │   ├── sidecars/
-│       │   │   └── jhonstart_router.erl ← HOST (BEAM): the same cells over the calling process's dictionary. NOT a `files` entry — `shipErlSidecars` finds it under the package's `src/sidecars/`
-│       │   └── server.d.bp    ← Http ContextBase: request() + loaders (host-bound/async; GATED)
+│       │   │   ├── jhonstart_router.erl ← HOST (BEAM): the same cells over the calling process's dictionary. NOT a `files` entry — `shipErlSidecars` finds it under the package's `src/sidecars/`
+│       │   │   └── jhonstart_server.erl ← HOST (BEAM): the request's six cells + `fill/6`, same process dictionary, same non-`files` discovery
+│       │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`fillRequest`/`cookies`/`headers`, `renderServerComponent`
+│       │   └── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
 │       └── test/
 │           ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
+│           ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `#[@future]` component and loader conventions (front 28) — both rows
 │           ├── html_test.bp     ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
 │           └── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
 ├── examples/
@@ -107,20 +112,19 @@ is how `examples/jhonstart-counter` and `-todo` came to build and then die with
 (`src/codegen/commonJS.zig`, the require path of a dependency's sibling
 module); naming the module is the workaround and reads better anyway.
 
-The
-host-bound declaration module `server.d.bp` is **not** in the
-tree: it is wired through the core member's `botopink.json` `files` (consumer surface, loaded
-with `.declaration = true` for a `from "jhonstart"` consumer). `.d.bp` modules
-are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
-`<name>/mod.bp`), mirroring how `libs/std` keeps its ambient `.d.bp` out of
-`root.bp`.
+There is no declaration module left in this package. `.d.bp` modules are not
+resolved by `mod` paths (the resolver follows only `<name>.bp` /
+`<name>/mod.bp`), so a `.d.bp` had to be wired through `files` alone and was
+never in the build tree — which is exactly why `router.d.bp` and `server.d.bp`
+were promoted rather than filled in. A host-bound module here is now an ordinary
+`.bp` that ships its two host halves beside it.
 
 ## Layers
 
 | Layer | Analog | ContextBase | Surface |
 |---|---|---|---|
 | core | React | `Element` | `element.bp` + `elements.bp` + `hooks.bp` + `html.bp` (**compiled**) |
-| app | Next.js | `Http` | `router` (**compiled** — front 26), `server` (declared, host-bound) |
+| app | Next.js | `Element` | `router` (**compiled** — front 26), `server` (**compiled** — front 28) |
 
 ## Conventions
 
@@ -171,9 +175,12 @@ jhonstart is a *consumer*. What it relies on:
   walk uses a stack + `indexOf` span recovery rather than a recursive descent —
   see `html.bp`'s header.
 - **Still gated** (router / server, all generic core work):
-  - `use-await-prefix` / `async-generators` (`tasks/v0.beta.1/`) for the server
-    data layer (the `#[@future]` annotation surface itself landed in
-    v0.beta.12; the prefix/generator wiring on top is the remaining gap);
+  - (closed) the server data layer. `#[@future] fn … -> @Future<T>` with a
+    statement-level `await` compiles and RUNS on both rows, `test` blocks
+    included — measured for front 28 against compiler `2e6bb4ac`. What remains
+    of `use-await-prefix` / `async-generators` is not on this path;
+  - `use request()` — front 19 step 2 (decisions 89 + 90). `request()` is a
+    plain function returning `RequestData` until it lands;
   - (closed) the `Element` model **does** carry an `attrs: Array<#(string,
     string)>` slot, so `href`/`value`/`class` render in pure `.bp`; what `Link`
     still lacks is the host navigation runtime, not an attribute slot.
@@ -282,6 +289,124 @@ own snapshot and never touches `PageContext`, so nothing here papers over the
 hole. It is recorded because fronts 28 and 30 — the two that decide what may be
 cached — inherit it.
 
+## Front 28 — the request, and the three things it dropped
+
+### The `Http` base, and why it is gone
+
+`server.d.bp` carried a `behavior Request` with three bodyless methods and a
+phantom `@Context` base called `Http` — "no members … supplied by the host, the
+server-side mirror of `Element`". Front 28 drops both, and the reason is
+decision 89 rather than taste: `contextInfoFromReturn` looks through
+`@Future<T>` and takes `T`'s owner, so `#[@future] fn Page() -> @Future<Element>`
+is owned by **`Element`**. One base serves the whole render tree, a client hook
+is type-legal inside a server component, and the client boundary is front 29's
+`#[client]` rule rather than a type. A second, memberless base would be a base
+nothing implements and a base no `use` could ever resolve against.
+
+The `Request` behavior goes with it. A behavior with bodyless methods had no
+verified implementor anywhere in this tree; `RequestData` is a plain record, the
+same call front 26 made for `RouterState`, and a record is what a `use`
+capability has to yield anyway.
+
+`server.d.bp` was never in the build tree (`.d.bp` is not resolved by `mod`), so
+no built consumer existed to break.
+
+### Why the request cells are jhonstart's own
+
+Front 28's README binds the six cells to front 62's
+`#[@External.Erlang("rakun_request_context", …)]` and says there is to be no
+Node cell in the file. Neither half is writable, and both halves were measured
+against compiler `2e6bb4ac` on 2026-09-21:
+
+1. **An erlang-only cell reds the commonJS COMPILE at its call site.** Not at
+   run time — the README's test plan expects "a js run of `request()` is
+   expected to fail at the first cell", and it is worse than that:
+
+   ```text
+   error: `__jhReqMethod` has no `#[@External.<Target>(…)]` for the node backend
+    --> src/main.bp:5:12
+   ```
+
+   `modules/jhonstart` is compiled on **both** rows, so an erlang-only cell
+   takes the whole member — every landed assertion in it — off the commonJS
+   row the moment `request()` calls it. Front 26 measured the same thing for
+   the router's five reads and carries the same note.
+
+2. **`rakun_request_context` has no BEAM row to bind to.** rakun's member is
+   `targets: ["commonJS"]`. On erlang — front 28's *assigned* target — every
+   cell answers `{error,undef}` at run time, so no assertion that reads the
+   request could RUN, and `botopink build --target erlang` would still exit 0
+   because a build transpiles and never invokes `erlc`.
+
+So the seam is **here** and it is `pub`, which is the conclusion front 26 already
+reached and wrote down for the route snapshot: a server that reached into
+another library's process dictionary keys would be coupled to them forever.
+`jhonstart_server` / `server_runtime.mjs` are the two halves, cell for cell;
+`fillRequest(method, path, params, query, headers, cookies)` is the one writer
+and the seam front 62's dispatcher calls once per request. If front 62 would
+rather own the module name, it is one line per accessor in `server.bp` and
+nothing else in jhonstart moves — which is the property the README was after.
+
+`fillRequest` is deliberately **not** front 26's `fill` under another name, and
+the two stores stay separate: a route snapshot is re-filled DURING a render (its
+`selected` is the layout depth) while a request is filled once and is constant
+for the whole render. Folding them would make "the request" mutate mid-page.
+
+### Two things front 28 does NOT provide
+
+1. **`escape.html` / `escape.attribute`.** They are front 01's and
+   `libs/std/src/escape.bp` does **not exist** in compiler `2e6bb4ac` — the
+   nineteen std modules have no escaping among them. `renderToString` escapes
+   nothing (`element.bp:56`, frozen), so a server component renders
+   attacker-influenced text verbatim today. `server.bp` hand-rolls no
+   replacement: a stand-in would be a second answer to "what is an escaped `&`"
+   the day the real one lands. `test/server_test.bp` PINS the unescaped answer,
+   so the change shows as a red cell rather than a silent difference.
+2. **Parallel awaiting.** No `awaitAll`, no `race`, no `allSettled`. `@Future`
+   is eager on the erlang row (`libs/std/src/http.bp:16-18`), so two loaders
+   awaited in sequence cost the **sum** of their round trips even when their
+   results are independent. The fix is front 02's spawn-and-gather over
+   **unstarted tasks** (`[{ -> loadPost(s) }, { -> loadSidebar() }]`), not a
+   `map` over futures, which would simply run them in order. jhonstart names
+   front 02 and ships no second answer.
+
+### The `ElementView<Element>` adapter is still unassignable here
+
+§ *What jhonstart fronts 27–32 consume from front 26* hands the adapter to front
+28 "together with the `dependencies` entry that makes it possible and the
+targets decision that entry forces". Front 28's own README does **not** ask for
+it — it cites rakun 23 and 62 read-only and nothing more — and the structural
+obstacle front 26 recorded has not moved: `ElementView<El>` is rakun's type, so
+the adapter needs `import { ElementView } from "rakun"`, jhonstart declares no
+dependency on rakun, and rakun's member is `targets: ["commonJS"]`, so the entry
+would red jhonstart's erlang row — the row front 28 is assigned to. It is not
+written here. The two specs disagree about who owns it and that is a spec
+question, not a code one.
+
+### What fronts 29–32 consume from front 28
+
+| What | Where | Shape |
+|---|---|---|
+| The request | `RequestData(method, path, params, query, headers, cookies)` | a plain record, no behavior. Every plural field `Array<#(string, string)>`; **no `body` field** — form bodies are front 24's, route-handler bodies front 25's |
+| Its accessors | `r.param(n)` · `r.queryParam(n)` · `r.header(n)` · `r.cookie(n)` | plain `string`, `""` when absent, never raises. All four through front 26's `pairValue`, so a duplicated key means one thing |
+| The build | `request()` | six cells in, the record out. A plain function, not a hook, until front 19 step 2 |
+| **The writer** | `fillRequest(method, path, params, query, headers, cookies)` | the ONE way request state is installed. The four pair-shaped values go in querystring-encoded (`k=v&k=v`), exactly as front 23's payload carries them. Six at once — a half-updated request is a component reading the previous reader's cookie |
+| The shortcuts | `cookies()` · `headers()` | the only two re-exported. `after`, `connection`, `draftMode` and memoization are front 62's, called from there |
+| The render entry | `renderServerComponent(component) -> @Future<string>` | takes an **unstarted thunk** `fn() -> @Future<Element>`, awaits exactly once, renders synchronously afterwards |
+| The host halves | `src/server_runtime.mjs` · `src/sidecars/jhonstart_server.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, it dies with it, two concurrent renders cannot see each other's cookies |
+
+**Two call-site rules.** The first only shows on the erlang row and is a compiler
+defect, not a convention: **a bare function name used as a value lowers to an
+unbound erlang variable**, so `renderServerComponent({ -> Page(ps) })` is green
+on both rows while `renderServerComponent(Page)` compiles on commonJS and fails
+`variable 'Page' is unbound` on erlang. It is the same shape rakun's front 23
+records for the fields of its `ElementView` and it is **reported, not worked
+around**. The second shows on both: one effect annotation per fn (R5), so a
+server component is `#[@future]` **alone** — decision 90 makes the wrapper effect
+activate hooks on its own, and `#[@future] #[@context]` is
+`effect-duplicate-annotation`. A *client* component still carries `#[@context]`
+(decision 88).
+
 ## CI
 
 `.github/workflows/test.yml` runs `zig build test-libs -- --lib jhonstart
@@ -290,7 +415,7 @@ cached — inherit it.
 `windows-2022` (`escript` ships cleanly only on linux + macos). Both target
 rows are hard cells — no `allow_fail`. Nothing about jhonstart is
 commonJS-only: `renderToString` turns an `Element` tree into a string, which is
-pure string work on either backend, and the core suite is 27/27 on erlang. The
+pure string work on either backend, and the core suite is 68/68 on erlang. The
 examples stage reads each example's own manifest target, so it is pinned to the
 commonJS row and runs once.
 
@@ -304,15 +429,17 @@ the umbrella has no row, and `jhonstart-counter` / `jhonstart-html` /
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 51/51 | ✓ 51/51 |
+| `jhonstart` | ✓ 68/68 | ✓ 68/68 |
 | `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
 | `jhonstart-html` | ✓ 7/7 | ✓ 7/7 |
 | `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
 
-The core member was 27/27 on both rows before front 26; the router adds 24,
-all of which RUN on the erlang row — none is type-checked-only and none is a
-commonJS-only claim. The earlier reading of this row, `9/9`, was stale: it
-predates `elements.bp`.
+The core member was 51/51 on both rows before front 28 (27/27 before front 26);
+the request adds 17, all of which RUN on the erlang row — none is
+type-checked-only and none is a commonJS-only claim, which is what the six cells
+carrying both targets buys. Counted with the pinned compiler `2e6bb4ac` by
+summing the per-module summaries: `botopink test` prints one summary PER MODULE,
+so its last line is the last module's count and not the run's total.
 
 `jhonstart-counter` and `jhonstart-todo` **restrict** `targets` to
 `["commonJS"]` (a member may only restrict the workspace's targets, never widen
