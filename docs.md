@@ -5,9 +5,13 @@
 > DSL implemented in real `.bp`** (`Element` tree, builders, the forty-six HTML
 > constructors, synchronous `renderToString`, the
 > `state`/`effect`/`memo`/`ref`/`reducer` family, and the `html """…"""` authoring
-> DSL — all compiled & runtime-tested). Only the router and the Http server
-> context remain declarative (`.d.bp`), each gated on a generic language gap (see
-> **V1 limits**). Specs: `tasks/v0.beta.7/specs/jhonstart.md`,
+> DSL — all compiled & runtime-tested). **No `.d.bp` remains**: 1.0.10-beta's
+> front 26 promoted `router.d.bp`, front 28 promoted `server.d.bp`, and front 27
+> landed `link.bp`/`reconcile.bp` as real modules. What is still gated is the
+> *client* half — the delegated click handler, prefetch, link status and the
+> reconciler driver — and it waits on onze front 68's generated bundle and rakun
+> front 60's route-kind table, not on a language gap (see **V1 limits**).
+> Specs: `tasks/v0.beta.7/specs/jhonstart.md`,
 > `tasks/v0.beta.8/specs/jhonstart-html.md`.
 
 ## Loading
