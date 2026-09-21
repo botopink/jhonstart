@@ -15,6 +15,7 @@
     "client_runtime.bp",
     "server.bp",
     "link.bp",
-    "reconcile.bp"
+    "reconcile.bp",
+    "client.bp"
   ]
 }

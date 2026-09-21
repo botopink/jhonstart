@@ -29,7 +29,11 @@ are compiled and each ships its own host half on both rows
 `sidecars/jhonstart_server.erl`). Client navigation is compiled too since
 front 27 — but only its RENDER-TIME half (`link.bp`, `reconcile.bp`, both pure,
 no host cell of any target): the browser half waits on front 68's generated
-bundle and front 60's route-kind table, and is not stubbed. Nothing is embedded
+bundle and front 60's route-kind table, and is not stubbed. The server/client
+BOUNDARY is compiled since front 29 (`client.bp`, also pure): `#[client]` and
+`#[clientProps]` are comptime markers with four refusals, and the island, the
+hole and the poison pill are ordinary `.bp`; what ENFORCES the boundary over the
+module graph is front 68's and is not stubbed either. Nothing is embedded
 into the prelude.
 
 ## Tree
@@ -49,10 +53,10 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   └── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, router.bp, elements.bp, client_runtime.bp, server.bp, link.bp, reconcile.bp]
+│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, router.bp, elements.bp, client_runtime.bp, server.bp, link.bp, reconcile.bp, client.bp]
 │       ├── src/
 │       │   ├── AGENTS.md
-│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod router; pub mod elements; pub mod server; pub mod link; pub mod reconcile; mod client_runtime;`
+│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod router; pub mod elements; pub mod server; pub mod link; pub mod reconcile; pub mod client; mod client_runtime;`
 │       │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │       │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
 │       │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
@@ -67,12 +71,14 @@ repository/jhonstart/
 │       │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`fillRequest`/`cookies`/`headers`, `renderServerComponent`
 │       │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
 │       │   ├── link.bp        ← COMPILED (front 27), PURE: `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`. NO host cell — the browser half is front 68's
-│       │   └── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
+│       │   ├── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
+│       │   └── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-onze-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
 │       └── test/
 │           ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │           ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `#[@future]` component and loader conventions (front 28) — both rows
 │           ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table and the layout key (front 27) — both rows
 │           ├── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, the whole remount decision without a DOM (front 27) — both rows
+│           ├── client_test.bp   ← `botopink test` flat suite: the `#[client]` emit, a whitelisted props record, the island, the hole and the poison pill (front 29) — both rows
 │           ├── html_test.bp     ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
 │           └── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
 ├── examples/
@@ -111,10 +117,12 @@ in front-number order and never reorders or edits another front's line;
 `botopink.json`'s `files` list takes the same entries in the same order.
 
 Front 27's own README § Step 5 says its two lines are HANDED to front 94 rather
-than written by the front. That is not what the landed tree does: front 26
-(`d9f1f3c`), front 94 (`dc979b6`) and front 28 (`6d6c007`) each appended their
-own line to `root.bp` and `botopink.json` in their own commit, and front 27 does
-the same. Recorded as a spec/tree disagreement, not resolved here.
+than written by the front, and front 29's § Step 5 and § *Does not touch* say the
+same. That is not what the landed tree does: front 26 (`d9f1f3c`), front 94
+(`dc979b6`) and front 28 (`6d6c007`) each appended their own line to `root.bp`
+and `botopink.json` in their own commit, and fronts 27 and 29 do the same.
+Recorded as a spec/tree disagreement, not resolved here — front 94 is closed and
+there is nobody left to hand a line to.
 
 **A sibling-module import always names its module** — `import { Element } from
 "element";`, never the bare `import { Element };`. Both type-check, but
@@ -137,7 +145,7 @@ were promoted rather than filled in. A host-bound module here is now an ordinary
 | Layer | Analog | ContextBase | Surface |
 |---|---|---|---|
 | core | React | `Element` | `element.bp` + `elements.bp` + `hooks.bp` + `html.bp` (**compiled**) |
-| app | Next.js | `Element` | `router` (**compiled** — front 26), `server` (**compiled** — front 28), `link` + `reconcile` (**compiled, pure** — front 27) |
+| app | Next.js | `Element` | `router` (**compiled** — front 26), `server` (**compiled** — front 28), `link` + `reconcile` (**compiled, pure** — front 27), `client` (**compiled, pure** — front 29) |
 
 ## Conventions
 
@@ -504,6 +512,93 @@ they point in opposite directions:
    cell that answers what nobody can check is exactly what `router.d.bp`'s
    one-line `Link` was, and the reason it never became real.
 
+## Front 29 — the client boundary, and what it does NOT check
+
+`client.bp` is the boundary's VOCABULARY. It is pure — no host cell of any
+target — so all 22 assertions run on both rows and an island renders during the
+server pass exactly as it renders in the browser.
+
+| What | Where | Shape |
+|---|---|---|
+| The marker | `#[client]` | a `@Decl`-first comptime fn. Emits `pub fn __jhClient_<Name>() -> string` — a PURE function, never a call into a host registry, because an `@emit` fires on every target and a Node-only call would break the erlang server render |
+| The props rule | `#[clientProps]` | on the props RECORD, because `@Decl` does not expose a function's parameters. Whitelist: `string` · `i32` · `f64` · `bool` |
+| The island marker | `islandId(n)` · `islandAttrOf(id)` · `islandAttr(n)` | decision 77: `islandAttrOf` is the ONE occurrence of `"data-onze-i"` in this tree. Front 23 fills `RenderHooks.islandAttr` from `islandAttr`; front 68's entry imports the same function |
+| The island | `Island(id, component, props)` · `clientMount(island, children)` | the placeholder carries the id and NOTHING else; the component name and encoded props go to the payload's `i` row |
+| The payload row | `islandEntry(island)` | `#(id, component, "k=v&k=v")`, encoded with front 26's `encodePairs` — not `std/querystring.stringify`, which is dead on the erlang row |
+| The decode | `propsOf(raw)` | the pure half of the front's `propsFor(name)`; `propsOf("")` is `[]` |
+| The hole | `serverSlotAttr()` · `serverSlot(children)` | `data-onze-s="1"` — the server-rendered subtree the client ADOPTS and must not reconstruct |
+| The poison pill | `serverOnly()` | the value is meaningless; its presence in a module's import list is the signal |
+
+**What is enforced today** — four comptime refusals, no flag that turns them off
+(decision 67), each located at the annotation: `#[client]` on a non-`fn`;
+`#[client]` on a fn whose reflected `returnType` is not `Element` (a
+`#[@future]` server component reflects as `"Future"`); `#[clientProps]` on an
+enum; a field outside the four-scalar whitelist.
+
+**What is NOT enforced by anything in this tree**, and it is the front's whole
+reason to exist, so it is written here rather than implied:
+
+- that a `#[client]` component's parameter record carries `#[clientProps]` at
+  all — `@Decl` has no parameters;
+- that no module reachable from a `#[client]` component imports `serverOnly`, or
+  `request`/`cookies`/`headers`;
+- that the props written into an island's `i` row are the ones the record
+  declares.
+
+All three are module-GRAPH predicates. **Front 29 defines the boundary; front 68
+enforces it.** Today a secret read on the server still reaches the browser if it
+is written into an island's props, and nothing here notices.
+
+### The whitelist is four names, not the spec's six
+
+`Field.typeName` cannot express `string[]` or `i32[]`. Measured against compiler
+`2e6bb4ac` over one record carrying a field of each shape:
+
+```text
+a: string -> "string"   e: Array<string>            -> "Array"
+b: i32    -> "i32"      f: string[]                 -> ""
+c: f64    -> "f64"      g: Array<i32>               -> "Array"
+d: bool   -> "bool"     h: Element                  -> "Element"
+                        i: fn(x: i32) -> i32        -> ""
+                        j: #(string, string)        -> ""
+                        k: Array<#(string, string)> -> "Array"
+```
+
+The element type is ERASED, so `Array<string>` and `Array<Element>` are the same
+string; admitting `"Array"` would admit an array of `Element`s through a check
+whose whole purpose is to refuse exactly that. The refusal wins — no array
+crosses today, an array-valued prop is spelled as an encoded `string`, and the
+front's first § Language gaps row widens from "no parameters on `Decl`" to "no
+ELEMENT TYPE on `Field`".
+
+### What front 68 has to bring, and why none of it is stubbed here
+
+| Missing | Owner | Note |
+|---|---|---|
+| `hydrate()` — the PER-ISLAND hydrate point: walks `[data-onze-i]`, decodes that island's props from the payload's `i` row, starts the component | 68 | it is not the bundle entry and it mounts no links and no forms; front 68's generated entry calls it, then front 27's `__onzeLinkMount()` and front 67's `__jhFormMount()` once each |
+| `islandProps(name)` / `__onzeClientPropsRaw(name)` and the `propsFor(name)` wrapper | 68 | `propsFor` is then `return propsOf(__onzeClientPropsRaw(name));` and nothing else in `client.bp` moves |
+| every "may not" rule above | 68 | the walk over the client module graph |
+
+Same two measurements front 27 records, re-measured for this file: a **called**
+node-only cell reds the ERLANG build at the call site and this module is
+compiled on both rows, so a `propsFor` wrapper would take every landed assertion
+off erlang; and a **declared, never called** node-only cell is fine, but the
+module it would name — `jhonstart/client-runtime` — is front 68's generated
+bundle and does not exist, so the declaration would emit a `require` of a file
+nobody writes.
+
+### One naming rule, and the checker defect behind it
+
+**No local may be named after an imported builder.** A local `val` leaks into
+the module scope the checker sees for every top-level declaration that appears
+AFTER its body — so `val p = LikeProps(…)` in a `test {}` reds a `#[@context]`
+component declared further down with `error: type mismatch: expected Element,
+got LikeProps`, at a call site that is correct, with no line or column. Measured
+on both rows against `2e6bb4ac`; twelve jhonstart-free lines in
+[`repro/local-binding-leaks-to-later-decls/`](repro/local-binding-leaks-to-later-decls/).
+`p`, `a`, `li`, `text`, `form`, `link`, `title` and `body` are all exported tag
+constructors, so this is one declaration order away from any file in this tree.
+
 ## CI
 
 `.github/workflows/test.yml` runs `zig build test-libs -- --lib jhonstart
@@ -526,21 +621,22 @@ the umbrella has no row, and `jhonstart-counter` / `jhonstart-html` /
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 103/103 | ✓ 103/103 |
+| `jhonstart` | ✓ 125/125 | ✓ 125/125 |
 | `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
 | `jhonstart-html` | ✓ 7/7 | ✓ 7/7 |
 | `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
 
-The core member was 68/68 on both rows before front 27, 51/51 before front 28
-and 27/27 before front 26; client navigation adds 35 — 25 in `link_test.bp`, 10
-in `reconcile_test.bp` — and every one of them RUNS on **both** rows, because
-`link.bp` and `reconcile.bp` reach no host cell at all. Front 27's assigned
-target is commonJS; the erlang column is not an extra but the front's own claim
-that `Link` is pure, which is how the server pass is known to emit the exact
-anchor the browser runtime later queries for. Counted with the pinned compiler
+The core member was 103/103 on both rows before front 29, 68/68 before front 27,
+51/51 before front 28 and 27/27 before front 26; the client boundary adds 22, all
+of them in `client_test.bp`, and every one RUNS on **both** rows because
+`client.bp` reaches no host cell at all. Front 29's assigned target is commonJS;
+the erlang column is not an extra but the front's own claim that `clientMount`
+and `serverSlot` are pure — a placeholder that did not render on the server
+would be a boundary that never starts. The same holds for front 27's 35 (25 in
+`link_test.bp`, 10 in `reconcile_test.bp`). Counted with the pinned compiler
 `2e6bb4ac` by summing the per-module summaries: `botopink test` prints one
 summary PER MODULE, so its last line is the last module's count and not the
-run's total (for the record: 3 + 15 + 4 + 3 + 2 + 25 + 10 + 24 + 17).
+run's total (for the record: 3 + 15 + 4 + 22 + 3 + 2 + 25 + 10 + 24 + 17).
 
 `jhonstart-counter` and `jhonstart-todo` **restrict** `targets` to
 `["commonJS"]` (a member may only restrict the workspace's targets, never widen

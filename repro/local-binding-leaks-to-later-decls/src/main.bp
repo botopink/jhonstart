@@ -1,0 +1,22 @@
+//// A local `val` declared in one top-level body is still visible to the
+//// CHECKER in the body of every top-level declaration that appears after it.
+////
+//// `holder`'s `v` is a local. `later` is a different function and names `v`
+//// with nothing in scope to bind it to — and it TYPE-CHECKS. The program then
+//// dies at run time on commonJS and at `erlc` on erlang.
+////
+//// Order is the whole defect: move `later` ABOVE `holder` and the same module
+//// is correctly rejected.
+
+fn holder() -> string {
+    val v = "inner";
+    return v;
+}
+
+fn later() -> string {
+    return v;
+}
+
+test "a name bound in another function's body compiles here" {
+    assert later() == "inner";
+}

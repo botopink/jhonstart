@@ -867,6 +867,217 @@ Two measurements make stubbing them the wrong move rather than a shortcut:
    answer no one can check is exactly the shape `router.d.bp`'s one-line `Link`
    was, and the reason it never became real.
 
+## The client boundary (`client.bp`) — compiled
+
+Next.js `'use client'` does two things: it marks a module as the boundary, and it
+makes everything imported from that module part of the client bundle. botopink
+has no directive syntax and the milestone forbids compiler changes, so jhonstart
+splits those two into the two places they belong: **`#[client]` marks the
+component** (here), and **front 68 walks the module graph** (not here).
+
+> **Read this first.** `#[client]` is a convention with four comptime refusals
+> around it. **Front 29 defines the boundary; front 68 enforces it at build
+> time.** 29 without 68 is a convention nobody walks — a secret read on the
+> server still reaches the browser today if someone writes it into an island's
+> props, and nothing in this package notices. § *What is checked today* below
+> says exactly which line is which.
+
+### `#[client]` — the marker
+
+```bp
+#[client]
+#[@context]
+pub fn LikeButton(props: LikeProps) -> Element {
+    val c = use state(props.likes);
+    return button([text(c.value.toString() + " likes", attrs: [])], attrs: [
+        #("data-onze-on-click", "LikeButton:like"),
+    ]);
+}
+```
+
+It is an ordinary `@Decl`-first comptime function. It emits **one pure
+declaration** — `pub fn __jhClient_LikeButton() -> string { return
+"LikeButton"; }` — and checks placement.
+
+The emitted declaration is a pure function returning a string and **not** a call
+into a runtime registry, deliberately: an `@emit` fires on *every* target, so
+emitting a call into a Node-only cell would make every `#[client]` component
+fail to link during the erlang server render — the exact case the boundary
+exists to support. A pure marker links everywhere and carries the same
+information; front 68 reads the set of `__jhClient_*` names off the graph.
+
+`#[client]` is a decorator and `#[@context]` is the effect (decision 88), so the
+two coexist on one component. A **server** component is `#[@future] fn … ->
+@Future<Element>` and cannot be marked client: its reflected `returnType` is
+`"Future"`, which the second check below rejects.
+
+Applying it requires importing it — `import { client, clientProps } from
+"jhonstart";` — and **`botopink check` cannot see the emitted name**: `check`
+skips decorator invocation entirely, so `__jhClient_<Name>` reads as unbound
+there. The gate is `botopink test`, never `check`.
+
+### `#[clientProps]` — the serializable whitelist
+
+The rule that actually causes production incidents is that props crossing the
+boundary must be serializable. It is checked on the **record**, not on the
+component, because `@Decl` exposes `fields`/`variants`/`methods`/`returnType`
+and **does not expose a function's parameters** — so `#[client]` alone can check
+nothing about props. That one omission is why the marker is split in two.
+
+```bp
+#[clientProps]
+pub type LikeProps(postId: string, likes: i32)
+```
+
+The whitelist is **closed**: `string`, `i32`, `f64`, `bool`. Anything else is
+refused rather than guessed at, with a message located at the declaration.
+`Element` is not on it — a client component receives server-rendered children as
+*children*, never as a prop.
+
+**It is four names and not the six the front specified,** and that is a
+deliberate tightening. `Field.typeName` cannot express `string[]` or `i32[]`:
+measured against compiler `2e6bb4ac`, `Array<string>` and `Array<Element>` both
+reflect as `"Array"` (the element type is erased) and `string[]`, a function
+type and a tuple type all reflect as `""`. Admitting `"Array"` would admit an
+array of `Element`s through a check whose whole purpose is to refuse exactly
+that. So no array crosses today; an array-valued prop is spelled as an encoded
+`string` until reflection can name its element type.
+
+### The island — and the one place its marker is spelled
+
+During the server render a client component contributes an **island**. The
+element carries the id and nothing else; the component name and the encoded
+props live in front 23's payload, in the `i` array as `[id, component, props]`,
+which is how the client finds the island without parsing attributes off the DOM
+— and what makes the boundary auditable: every crossing value is in one place,
+in render order, and front 68 can walk it.
+
+| Function | Shape |
+|---|---|
+| `islandId(ordinal)` | `0` → `"i0"` — what an ordinal is written as |
+| `islandAttrOf(id)` | `#("data-onze-i", id)` — **the only occurrence of the attribute name in this tree** |
+| `islandAttr(ordinal)` | `0` → `#("data-onze-i", "i0")` — decision 77's export |
+| `Island(id, component, props)` | one island; `props` is `Array<#(string, string)>` |
+| `clientMount(island, children)` | the placeholder: `<div data-onze-i="i0">…children…</div>` |
+| `islandEntry(island)` | the payload row `#(id, component, "k=v&k=v")` |
+| `propsOf(raw)` | the inverse decode; `propsOf("")` is `[]` |
+
+```text
+renderToString(clientMount(Island(id: "i0", component: "Counter",
+                                  props: [#("start", "3")]), []))
+  == "<div data-onze-i=\"i0\"></div>"
+
+islandEntry(Island(id: "i0", component: "Counter", props: [#("start", "3")]))
+  == #("i0", "Counter", "start=3")
+```
+
+**Decision 77 — one definition, passed in, never two that must agree.** Front 23
+assigns the ordinals in render order and fills `RenderHooks.islandAttr` from
+`islandAttr` rather than spelling the pair a second time; front 68's generated
+entry imports the same function for the selector it walks. It must pass a
+**lambda** — `islandAttr: { n -> islandAttr(n) }`, never the bare name — because
+a bare function name used as a value lowers to an unbound erlang variable, and
+the field must then be read into a local before it is called (`val f =
+hooks.islandAttr; f(0)`).
+
+The encoder is front 26's `encodePairs`, not `std/querystring.stringify`: that
+module is dead on the erlang row, which is why front 26 spelled the codec in
+`router.bp` in the first place. It does **not** percent-encode, so a prop value
+containing `&` or `=` does not round-trip — front 26's codec to widen, not a
+second answer to grow here. Nothing about the payload is escaped or built here;
+front 23 collects the rows and escapes the script.
+
+### The hole — `serverSlot`
+
+A client component may wrap server-rendered children: the Context Provider
+pattern puts a `'use client'` provider in the root layout with the entire server
+tree inside it. The provider is client code; its children are not.
+
+So the payload has a **hole**: inside `data-onze-i`, the subtree is server markup
+the client must adopt as-is and must not re-render — re-rendering it would need
+the server's data and the server's secrets. jhonstart marks the hole explicitly.
+
+```text
+renderToString(serverSlot([])) == "<div data-onze-s=\"1\"></div>"
+```
+
+Three rules follow, and **front 68** enforces all three:
+
+1. a `data-onze-s` subtree is adopted by the client reconciler, never
+   reconstructed;
+2. a server component may be a *child* of a client component and never a *prop*
+   of one — which is why `Element` is off the whitelist;
+3. a client component may not read request scope: `request()`, `cookies()` and
+   `headers()` are `server.bp`'s, and reaching them from a `#[client]` module is
+   a build failure, not a runtime one.
+
+### `serverOnly` — the poison pill
+
+```bp
+pub fn serverOnly() -> i32
+```
+
+`import 'server-only'` upstream is a module that exists only to fail the build
+when it lands in the client graph. This is the same trick in botopink's
+vocabulary: a module that touches the server imports `serverOnly`, and front 68
+fails the build when a module reachable from a `#[client]` component imports it.
+**The returned value is meaningless and is never read** — its presence in a
+module's import list is the whole signal.
+
+### What is checked today, and what is not
+
+Enforced **today**, at comptime, as a refusal with no flag that turns it off
+(decision 67 — a boundary that warns is a boundary that is ignored). Each is
+located at the annotation; measured against compiler `2e6bb4ac`:
+
+| Refusal | Message |
+|---|---|
+| `#[client]` on anything but a `fn` | `#[client] must annotate a function` |
+| `#[client]` on a fn not returning `Element` (a server component is `"Future"`) | `#[client] must annotate a component returning Element` |
+| `#[clientProps]` on an enum-shaped `type` | `#[clientProps] must annotate a record, not an enum` |
+| a field outside the four-scalar whitelist | ``a client prop must be serializable; 'e' is Element`` |
+
+**Not** enforced by anything in this package:
+
+- that a `#[client]` component's parameter record carries `#[clientProps]` at
+  all — `@Decl` has no parameters, so a client component declared with a bare
+  `Element` parameter is accepted;
+- that no module reachable from a `#[client]` component imports `serverOnly`, or
+  `request`/`cookies`/`headers`;
+- that the props written into the payload's `i` row are the ones the
+  `#[clientProps]` record declares — `islandEntry` encodes what it is handed.
+
+All three are module-**graph** predicates and there is no graph here.
+
+### The front-68 contract
+
+| Front 68 input | Produced by |
+|---|---|
+| the set of client component names | the `__jhClient_<Name>` functions `#[client]` emits |
+| the island rows | `islandEntry` per island, collected into the payload's `i` key by front 23 |
+| the island selector | `islandAttr(ordinal)` — decision 77, the only spelling of the pair |
+| the client module graph | the transitive imports of every module declaring one |
+| the poison-pill predicate | a module in that graph importing `serverOnly` |
+| the request-scope predicate | a module in that graph importing `request`/`cookies`/`headers` from `server.bp` |
+
+### What is NOT shipped, and what it needs
+
+| Missing | Needs |
+|---|---|
+| `hydrate()` — walks every `[data-onze-i]`, decodes that island's props from the payload's `i` row and starts the component | front 68's generated module `jhonstart/client-runtime`, which the cell would bind to. It is the **per-island** hydrate point, not the bundle entry: front 68 generates the entry, which calls `hydrate()` and then front 27's link mount and front 67's form mount once each |
+| `__onzeClientPropsRaw(name)` and the `propsFor(name)` wrapper over it | the same module. `propsFor` is then `return propsOf(__onzeClientPropsRaw(name));` and nothing else moves |
+| every "may not" rule above | front 68's walk over the client module graph |
+
+Neither cell is declared and neither is stubbed, for the two measurements
+`link.bp` records for its own four cells and this file re-measured:
+
+1. a **called** node-only cell reds the **erlang** build at its call site, and
+   this module is compiled on both rows of the core member — a `propsFor`
+   wrapper would take every landed assertion off erlang;
+2. a **declared and never called** node-only cell is fine, but the module it
+   names does not exist, so the declaration would emit a `require` of a file
+   nobody writes — silently at build time, loudly at run time.
+
 ## App layer (Next-style) — declared, host-bound
 
 - `Link` is no longer declared: see *Client navigation* above. `link.bp` and
@@ -891,7 +1102,11 @@ Two measurements make stubbing them the wrong move rather than a shortcut:
   the server-component convention (`server.bp`, with both host halves), the
   render-time half of client navigation — `Link`, `LinkProps` and its five
   `with*` helpers, `prefetchMode`, `layoutKey`, `layoutKeys`, `sharedDepth`,
-  `linkStatusOf` (`link.bp` + `reconcile.bp`, pure, no host cell) — and the
+  `linkStatusOf` (`link.bp` + `reconcile.bp`, pure, no host cell), the client
+  boundary — `#[client]`, `#[clientProps]` and the four comptime refusals
+  around them, `islandId`/`islandAttrOf`/`islandAttr`, `Island`, `clientMount`,
+  `islandEntry`, `propsOf`, `serverSlotAttr`/`serverSlot` and the `serverOnly`
+  poison pill (`client.bp`, pure, no host cell) — and the
   `html """…"""` markup DSL
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
@@ -911,6 +1126,15 @@ Two measurements make stubbing them the wrong move rather than a shortcut:
     `__onzeLinkRouteKind`), the `linkStatus()` hook and the transition driver
     `reconcile(current, target)` wait on front 68's generated bundle and front
     60's route-kind table, and are not stubbed;
+  - the **build-time half** of the client boundary. `client.bp` ships the
+    markers, the island and the hole; the two `#[@External.Node]` cells
+    (`hydrate`, `islandProps`), the `propsFor(name)` wrapper over the second,
+    and every "may not" rule — no `serverOnly` in the client graph, no request
+    scope in a client module, a server component as a child and never a prop —
+    wait on **front 68**'s walk over the module graph and its generated bundle,
+    and are not stubbed. **Today the boundary is a vocabulary with four
+    comptime refusals, not a guarantee**: a secret read on the server still
+    reaches the browser if it is written into an island's props;
   - parallel loading. `@Future` is eager on the erlang row, so independent
     loaders awaited in sequence cost the sum of their round trips; the
     spawn-and-gather over unstarted tasks is front 02's and jhonstart ships no

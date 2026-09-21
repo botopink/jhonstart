@@ -31,4 +31,5 @@ pub mod elements;     // front 94
 pub mod server;       // front 28, replacing server.d.bp
 pub mod link;         // front 27
 pub mod reconcile;    // front 27
+pub mod client;       // front 29
 mod client_runtime;

@@ -1,0 +1,9 @@
+{
+  "name": "local-binding-leaks-to-later-decls",
+  "version": "0.0.1",
+  "description": "Minimal repro, no jhonstart: a local val declared in one top-level body stays visible to the checker in every top-level body declared after it",
+  "src": "src/",
+  "entry": "main.bp",
+  "target": "commonJS",
+  "targets": ["commonJS", "erlang"]
+}

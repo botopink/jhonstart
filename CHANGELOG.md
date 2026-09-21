@@ -2,6 +2,99 @@
 
 ## Unreleased
 
+- **Front 29 — the server/client boundary: `client.bp`.** Next.js `'use client'`
+  is a string literal the bundler reads; botopink has no directive syntax and
+  the milestone forbids compiler changes, so the boundary is built out of
+  annotation processing: `#[client]` marks a component, `#[clientProps]` marks
+  the record its props travel in, and the server render contributes an
+  **island** — `<div data-onze-i="i0">` — whose component name and encoded props
+  live in front 23's payload rather than on the element. The file is **pure**:
+  it declares no host cell of any target, so all 22 new assertions run on
+  **both** rows and an island renders during the server pass exactly as it
+  renders in the browser. The member goes 103 → **125** on each row.
+  - **Front 29 defines the boundary; front 68 enforces it.** The front's
+    priority line is a security claim, and this commit does not land it. What is
+    enforced today is four comptime REFUSALS with no flag that turns them off
+    (decision 67): `#[client]` on a non-`fn`; `#[client]` on a fn whose reflected
+    `returnType` is not `Element` (a `#[@future]` server component reflects as
+    `"Future"`, so it cannot be marked client); `#[clientProps]` on an
+    enum-shaped `type`; a field outside the whitelist, named with its type. What
+    is **not** enforced by anything in this tree: that a `#[client]` component's
+    parameter record carries `#[clientProps]` at all (`@Decl` exposes no
+    function parameters), that no module reachable from a client component
+    imports `serverOnly` or `request`/`cookies`/`headers`, and that the props
+    written into an island's `i` row are the ones the record declares. All three
+    are module-GRAPH predicates. Today a secret read on the server still reaches
+    the browser if it is written into an island's props, and nothing here
+    notices; `client.bp`'s header, `AGENTS.md` and `docs.md` all say so rather
+    than implying the decorator is a sandbox.
+  - **The emitted marker is a PURE function.** `#[client]` emits
+    `pub fn __jhClient_<Name>() -> string`, not a call into a runtime registry:
+    an `@emit` fires on EVERY target, so emitting a call into a Node-only cell
+    would make every `#[client]` component fail to link during the erlang server
+    render — the exact case the boundary exists to support. The `@emit` comes
+    before the `fail` checks, matching rakun's ordering, so a misplaced
+    declaration wires up nothing. `botopink check` skips decorator invocation
+    entirely and reads the emitted name as unbound; the gate is `botopink test`.
+  - **The whitelist is four names and not the spec's six.** § Step 2 asks for
+    `string[]` and `i32[]` too, and `Field.typeName` cannot express either.
+    Measured against compiler `2e6bb4ac` over one record carrying a field of
+    each shape: `Array<string>` and `Array<Element>` both reflect as `"Array"`
+    (the element type is erased), and `string[]`, a function type and a tuple
+    type all reflect as `""`. Admitting `"Array"` would admit an array of
+    `Element`s through a check whose whole purpose is to refuse exactly that, so
+    the refusal wins: no array crosses today and an array-valued prop is spelled
+    as an encoded `string`. The front's first § Language gaps row widens from
+    "no parameters on `Decl`" to "no ELEMENT TYPE on `Field`".
+  - **Decision 77 — one definition, passed in.** `islandAttrOf(id)` is the only
+    occurrence of `"data-onze-i"` in this tree; `islandId(ordinal)` is the only
+    spelling of an island id; `islandAttr(ordinal)` composes the two and is what
+    front 23 fills `RenderHooks.islandAttr` from and what front 68's generated
+    entry imports. It must be passed as a **lambda** — `{ n -> islandAttr(n) }`
+    — because a bare function name used as a value lowers to an unbound erlang
+    variable, and the field must be read into a local before it is called.
+    `serverSlotAttr()` gets the same treatment for `data-onze-s`.
+  - **`clientMount` carries the id and nothing else**, and `islandEntry` is the
+    payload's `i` row `#(id, component, "k=v&k=v")`. Putting the name and the
+    props in the payload rather than on the element is what makes the boundary
+    auditable: every crossing value is in one place, in render order, and front
+    68 can walk it. The encoder is front 26's `encodePairs` and not
+    `std/querystring.stringify`, which the spec asks for and which is dead on
+    the erlang row — one encoder in the package, the same argument `pairValue`
+    makes about decoders. It does not percent-encode; a prop value containing
+    `&` or `=` does not round-trip, and that is front 26's codec to widen.
+  - **`serverSlot` marks the hole.** A client provider may wrap the whole
+    server-rendered tree; the subtree inside `data-onze-i` is server markup the
+    client must ADOPT and must not re-render, because re-rendering it would need
+    the server's data and the server's secrets. `Element` is deliberately off
+    the whitelist for the same reason: server output reaches a client component
+    as CHILDREN, never as a PROP.
+  - **`hydrate()` and `propsFor(name)` are absent, not stubbed.** Both name
+    front 68's generated module `jhonstart/client-runtime`, which does not
+    exist. Re-measured for this file: a **called** node-only cell reds the
+    ERLANG build at its call site and this module is compiled on both rows, so a
+    `propsFor` wrapper would take every landed assertion off erlang; a
+    **declared and never called** one is fine, but the module it names would
+    emit a `require` of a file nobody writes. What ships instead is `propsOf`,
+    the whole pure decode `propsFor` performs — `propsFor` is then two lines.
+    Three acceptance rows are declared unassertable in the test-file header with
+    the reason and the exact front that supplies them.
+  - **New compiler defect, measured and reported, not worked around.** A local
+    `val` declared in one top-level body stays visible to the CHECKER in the
+    body of every top-level declaration that appears after it in the same
+    module: the name compiles where nothing declares it (and dies `v is not
+    defined` at run time, `variable 'V' is unbound` at `erlc`), and it SHADOWS a
+    function of the same name, rejecting a correct call site with a type
+    mismatch naming a record that call never mentions — with no line and no
+    column. Order is the whole defect. Twelve jhonstart-free lines in
+    [`repro/local-binding-leaks-to-later-decls/`](repro/local-binding-leaks-to-later-decls/),
+    owner `00 · 01-checker`.
+  - `pub mod client;` and the `files` entry are appended here, as fronts 26, 94,
+    28 and 27 each appended their own. The front's § Step 5 and § *Does not
+    touch* say both lines are HANDED to front 94; front 94 is closed and there
+    is nobody to hand them to. Recorded in `AGENTS.md` as a spec/tree
+    disagreement.
+
 - **Front 27 — client navigation: `link.bp` and `reconcile.bp`, the render-time
   half.** `router.d.bp`'s one-line `declare fn Link` explained why it never
   became real — "`Element` … has NO attribute slot … a real `.bp` `Link` would

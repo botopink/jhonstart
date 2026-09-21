@@ -144,6 +144,74 @@ argues against, so the cost of this defect is one function and a note, not zero.
 
 ---
 
+## `local-binding-leaks-to-later-decls/` — owner `00 · 01-checker`
+
+**A local `val` declared in one top-level body stays visible to the checker in
+the body of every top-level declaration that appears after it in the same
+module.**
+
+Measured 2026-09-21 against the pinned compiler `2e6bb4ac`, on **both** rows —
+it is a checker answer, so every target is wrong in the same place.
+
+```sh
+cd repro/local-binding-leaks-to-later-decls
+botopink test --target commonJS   # compiles; 0 passed, 1 failed — `v is not defined`
+botopink test --target erlang     # compiles; erlc: `variable 'V' is unbound`
+```
+
+### The two shapes, and they are one defect
+
+**a) The leaked name binds where nothing declares it.** The module compiles and
+dies at run time. This is the repro's `src/main.bp`, twelve lines:
+
+```bp
+fn holder() -> string { val v = "inner"; return v; }
+fn later()  -> string { return v; }
+test "t" { assert later() == "inner"; }
+```
+
+```text
+commonJS   FAIL t  (v is not defined)  at main.bp:3
+erlang     main.erl:8:5: variable 'V' is unbound
+```
+
+**b) The leaked name SHADOWS a function of the same name**, and the module is
+rejected at a call site that is correct:
+
+```bp
+type Box(n: i32)
+fn p(n: i32) -> i32 { return n; }
+test "a val in a test block" { val p = Box(n: 1); assert p.n == 1; }
+fn later() -> i32 { return p(2); }
+```
+
+```text
+error: type mismatch: expected i32, got Box
+```
+
+No line, no column — the diagnostic names neither the leaking binding nor the
+call it broke.
+
+**Order is the whole defect.** Move `later` ABOVE the body that declares the
+local and shape (a) is correctly rejected as unbound, and shape (b) compiles and
+passes. A `val` inside a `test {}` block leaks exactly as one inside an ordinary
+`fn` body does; a *later* `test {}` block is unaffected, only later
+declarations.
+
+### Why jhonstart cannot work around it
+
+It can only avoid it, and only by luck. `test/client_test.bp` writes
+`val like = LikeProps(…)` rather than the `val p` anyone would write, because
+`p` is one of `element.bp`'s builders and a `#[@context]` component declared
+further down the same file calls `p([text(…)], attrs: [])`. Nothing warns; the
+file simply reds at the component with a type mismatch naming a record the
+component never mentions. Every `.bp` file in this ecosystem that binds a local
+named after an imported builder — `p`, `a`, `li`, `text`, `form`, `link`,
+`title`, `body` are all exported tag constructors — is one declaration order
+away from the same red.
+
+---
+
 ## Secondary finding, no repro directory — a bare `print(x)` call
 
 Not a jhonstart bug (see `AGENTS.md` § CI), but measured here and worth routing:
