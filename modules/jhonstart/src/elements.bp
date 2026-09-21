@@ -80,6 +80,266 @@ pub fn isRawTextTag(tag: string) -> bool {
     return raws.contains(tag);
 }
 
+// ── the non-void constructors ──
+//
+// Each one is `element.bp`'s declaration with the name and the tag string
+// changed and nothing else: same parameter names, same order, same types, same
+// declared default.
+
+// sectioning and flow
+//
+// The document's structural tags. `main` ships under its own name because the
+// consuming fronts import it that way — see the caveat in `docs.md`: a module
+// that declares the program entry point `fn main()` must not also import `main`
+// from "jhonstart" in that same module; `el("main", kids, attrs: [])` is the
+// remedy.
+
+pub fn a(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("a", children, attrs);
+}
+
+pub fn nav(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("nav", children, attrs);
+}
+
+pub fn section(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("section", children, attrs);
+}
+
+pub fn article(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("article", children, attrs);
+}
+
+pub fn header(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("header", children, attrs);
+}
+
+pub fn footer(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("footer", children, attrs);
+}
+
+pub fn main(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("main", children, attrs);
+}
+
+pub fn aside(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("aside", children, attrs);
+}
+
+// headings and text-level
+//
+// `h1` lives in `element.bp`; the rest live here. `timeTag` carries the `<time>`
+// tag under a different name because `time` is a std module, and a consumer
+// doing `import {time} from "std"` in the same file would collide.
+
+pub fn h2(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("h2", children, attrs);
+}
+
+pub fn h3(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("h3", children, attrs);
+}
+
+pub fn h4(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("h4", children, attrs);
+}
+
+pub fn h5(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("h5", children, attrs);
+}
+
+pub fn h6(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("h6", children, attrs);
+}
+
+pub fn label(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("label", children, attrs);
+}
+
+pub fn timeTag(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("time", children, attrs);
+}
+
+// forms
+//
+// The non-void half of the form surface; `input` is void and lives below.
+
+pub fn form(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("form", children, attrs);
+}
+
+pub fn button(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("button", children, attrs);
+}
+
+pub fn select(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("select", children, attrs);
+}
+
+pub fn option(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("option", children, attrs);
+}
+
+pub fn textarea(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("textarea", children, attrs);
+}
+
+// tables
+
+pub fn table(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("table", children, attrs);
+}
+
+pub fn thead(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("thead", children, attrs);
+}
+
+pub fn tbody(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("tbody", children, attrs);
+}
+
+pub fn tr(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("tr", children, attrs);
+}
+
+pub fn th(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("th", children, attrs);
+}
+
+pub fn td(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("td", children, attrs);
+}
+
+// document
+//
+// `htmlTag` carries the `<html>` tag because `html` is already a `pub fn` in
+// this package — the `html """…"""` template fn — and two `pub fn html`
+// reachable from `import {…} from "jhonstart"` is a collision. The DSL keeps
+// the name.
+//
+// `script` and `style` are the two raw-text elements (`isRawTextTag`): their
+// text content must reach the output unescaped.
+
+pub fn htmlTag(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("html", children, attrs);
+}
+
+pub fn head(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("head", children, attrs);
+}
+
+pub fn body(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("body", children, attrs);
+}
+
+pub fn title(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("title", children, attrs);
+}
+
+pub fn script(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("script", children, attrs);
+}
+
+pub fn style(
+    children: Children,
+    attrs: Array<#(string, string)> = [],
+) -> Element {
+    return el("style", children, attrs);
+}
+
 test "el builds a tag the named surface does not carry" {
     assert renderToString(el("figure", [text("x", attrs: [])], attrs: [])) == "<figure>x</figure>";
 }
@@ -118,4 +378,61 @@ test "isRawTextTag is script and style — escapable raw text is not raw text" {
     assert isRawTextTag("title") == false;
     assert isRawTextTag("textarea") == false;
     assert isRawTextTag("div") == false;
+}
+
+test "a constructor renders its tag, nested" {
+    val out = renderToString(section([h2([text("Posts", attrs: [])], attrs: [])], attrs: []));
+    assert out == "<section><h2>Posts</h2></section>";
+}
+
+test "a renamed constructor still renders the HTML tag" {
+    assert htmlTag([], attrs: []).tag == "html";
+    assert timeTag([text("now", attrs: [])], attrs: []).tag == "time";
+    assert renderToString(timeTag([text("now", attrs: [])], attrs: [])) == "<time>now</time>";
+}
+
+test "attribute order is the array order" {
+    val out = renderToString(a([text("x", attrs: [])], attrs: [#("href", "/p"), #("rel", "next")]));
+    assert out == "<a href=\"/p\" rel=\"next\">x</a>";
+}
+
+test "an attribute value is stored verbatim — escaping belongs to the renderer" {
+    val out = renderToString(a([text("x", attrs: [])], attrs: [#("href", "/a&b")]));
+    assert out == "<a href=\"/a&b\">x</a>";
+}
+
+test "the form surface builds the shape front 24 binds an action to" {
+    val f = form([
+            label([text("Title", attrs: [])], attrs: [#("for", "title")]),
+            select([option([text("a", attrs: [])], attrs: [#("value", "a")])], attrs: [#("name", "kind")]),
+            textarea([], attrs: [#("name", "body")]),
+            button([text("Save", attrs: [])], attrs: [#("type", "submit")]),
+        ], attrs: [#("data-onze-a", "createPost")]);
+    assert renderToString(f) == "<form data-onze-a=\"createPost\"><label for=\"title\">Title</label><select name=\"kind\"><option value=\"a\">a</option></select><textarea name=\"body\"></textarea><button type=\"submit\">Save</button></form>";
+}
+
+test "the document shell and the table surface build" {
+    val doc = htmlTag([
+            head([title([text("Home", attrs: [])], attrs: [])], attrs: []),
+            body([table([
+                        thead([tr([th([text("h", attrs: [])], attrs: [])], attrs: [])], attrs: []),
+                        tbody([tr([td([text("c", attrs: [])], attrs: [])], attrs: [])], attrs: []),
+                    ], attrs: [])], attrs: []),
+        ], attrs: [#("lang", "en")]);
+    assert renderToString(doc) == "<html lang=\"en\"><head><title>Home</title></head><body><table><thead><tr><th>h</th></tr></thead><tbody><tr><td>c</td></tr></tbody></table></body></html>";
+}
+
+test "the sectioning tags carry their own names" {
+    assert nav([], attrs: []).tag == "nav";
+    assert article([], attrs: []).tag == "article";
+    assert header([], attrs: []).tag == "header";
+    assert footer([], attrs: []).tag == "footer";
+    assert main([], attrs: []).tag == "main";
+    assert aside([], attrs: []).tag == "aside";
+    assert h3([], attrs: []).tag == "h3";
+    assert h4([], attrs: []).tag == "h4";
+    assert h5([], attrs: []).tag == "h5";
+    assert h6([], attrs: []).tag == "h6";
+    assert script([], attrs: []).tag == "script";
+    assert style([], attrs: []).tag == "style";
 }

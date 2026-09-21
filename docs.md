@@ -184,6 +184,33 @@ Two builders and two predicates:
 | `isVoidTag(tag: string) -> bool` | The HTML spec's void-element list — `area`, `base`, `br`, `col`, `embed`, `hr`, `img`, `input`, `link`, `meta`, `param`, `source`, `track`, `wbr`. Written once here so a void-aware renderer consults it instead of restating it |
 | `isRawTextTag(tag: string) -> bool` | `script` and `style` — the two elements whose text content is raw text and must **not** be HTML-escaped. `title` and `textarea` are *escapable* raw text, where escaping is correct, and are deliberately absent |
 
+### The tags
+
+| Group | Constructors |
+|---|---|
+| in `element.bp` (frozen) | `text`, `fragment`, `div`, `span`, `p`, `h1`, `ul`, `li` |
+| sectioning and flow | `a`, `nav`, `section`, `article`, `header`, `footer`, `main`, `aside` |
+| headings and text-level | `h2`, `h3`, `h4`, `h5`, `h6`, `label`, `timeTag` |
+| forms | `form`, `button`, `select`, `option`, `textarea` |
+| tables | `table`, `thead`, `tbody`, `tr`, `th`, `td` |
+| document | `htmlTag`, `head`, `body`, `title`, `script`, `style` |
+
+Anything else is `el("<tag>", children, attrs: [])`.
+
+### Three names that could not be the obvious one
+
+| Tag | Constructor | Why |
+|---|---|---|
+| `<html>` | `htmlTag` | `html` is already a `pub fn` in this package — the `html """…"""` template fn — and two `pub fn html` reachable from `import {…} from "jhonstart"` is a collision. The DSL keeps the name |
+| `<time>` | `timeTag` | `time` is a std module, and a consumer doing `import {time} from "std"` in the same file would collide |
+| `<main>` | `main` | Shipped under its own name, because the consuming fronts import it that way |
+
+**The `main` caveat.** A module that declares the program entry point `fn main()`
+must not also `import {main} from "jhonstart"` in that same module. The remedy is
+`el("main", children, attrs: [])`. Import aliasing is *not* a remedy: `import
+{main as mainTag} from "jhonstart"` parses, but nothing outside the parser reads
+the alias for a package import, so the binding still lands under `main`.
+
 **Attribute values are stored verbatim.** A constructor never escapes: an `href`
 of `/a&b` is kept as `/a&b`. Escaping happens once, at render, in the renderer
 that emits HTML; doing it in the constructor as well would double-escape the

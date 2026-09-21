@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **The element surface, step 2 — the thirty-two non-void constructors.**
+  Sectioning and flow (`a`, `nav`, `section`, `article`, `header`, `footer`,
+  `main`, `aside`), headings and text-level (`h2`–`h6`, `label`, `timeTag`),
+  forms (`form`, `button`, `select`, `option`, `textarea`), tables (`table`,
+  `thead`, `tbody`, `tr`, `th`, `td`) and document (`htmlTag`, `head`, `body`,
+  `title`, `script`, `style`). Each declaration is `element.bp`'s with the name
+  and the tag string changed and nothing else — same parameter names, same
+  order, same types, same declared default — and each body is one `el(...)`
+  call. Three names could not be the obvious one: `htmlTag` (the package
+  already exports the `html """…"""` template fn), `timeTag` (`time` is a std
+  module a consumer may import in the same file) and, unchanged, `main` —
+  which carries the caveat that a module declaring `fn main()` must not also
+  import `main`, since a package import alias parses and is then ignored.
+  Attribute order is the array order, and attribute values are verbatim; both
+  are asserted. 7 further inline `test {}` blocks, 20/20 on commonJS and on
+  erlang.
 - **The element surface — `modules/jhonstart/src/elements.bp`** (1.0.10-beta
   front 94), step 1: the two builders every constructor in the file goes
   through, `el(tag, children, attrs)` and `voidEl(tag, attrs)` (which stores no
