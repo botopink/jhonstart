@@ -1,0 +1,9 @@
+{
+  "name": "erlang-imported-fn-field",
+  "version": "0.0.1",
+  "description": "Minimal repro, no jhonstart: calling a record's function-typed field across a module boundary emits an undefined local function on the erlang backend",
+  "src": "src/",
+  "entry": "main.bp",
+  "target": "erlang",
+  "targets": ["commonJS", "erlang"]
+}

@@ -42,7 +42,7 @@ fn StatefulBadge() -> Element {
 }
 
 fn main() {
-    print(renderToString(counterView(0)));
+    @print(renderToString(counterView(0)));
 }
 
 test "the counter view renders its count and sign" {

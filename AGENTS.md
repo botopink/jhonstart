@@ -59,11 +59,12 @@ repository/jhonstart/
 │       └── test/
 │           ├── html_test.bp     ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
 │           └── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
-└── examples/
-    ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node (targets [commonJS])
-    ├── jhonstart-html/     ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang])
-    ├── jhonstart-todo/     ← MEMBER: builders + hooks + SSR (targets [commonJS])
-    └── jhonstart-app/      ← NOT a member: no botopink.json, so the `examples/*` glob skips it (by design)
+├── examples/
+│   ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node (targets [commonJS])
+│   ├── jhonstart-html/     ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang])
+│   ├── jhonstart-todo/     ← MEMBER: builders + hooks + SSR (targets [commonJS])
+│   └── jhonstart-app/      ← NOT a member: no botopink.json, so the `examples/*` glob skips it (by design)
+└── repro/                  ← NOT members: jhonstart-free packages handed back to botopink-lang, one per open compiler defect (see repro/README.md)
 ```
 
 There is **no `modules/jhonstart-test/` yet.** The front's `<lib>-test` member
@@ -76,6 +77,12 @@ takes only a child holding a `botopink.json`, silently — a directory that want
 to be a member declares itself. `jhonstart-app` is the aspirational app-layer
 sketch (file routing, `[id]` segments) and does not parse today, so it is
 neither a runner row nor a gate row. Do not give it a manifest until it builds.
+
+`repro/` is outside both globs, so nothing builds or runs it: each subdirectory
+is a self-contained package with **no jhonstart in it**, written to hand a
+compiler defect back to its owning front as a measurement rather than a
+description. A directory is deleted in the commit that lands the fix. See
+[`repro/README.md`](repro/README.md).
 
 ## Module tree (`root.bp`)
 
@@ -193,18 +200,49 @@ the umbrella has no row, and `jhonstart-counter` / `jhonstart-html` /
 | lib | commonJS | erlang |
 |---|---|---|
 | `jhonstart` | ✓ 9/9 | ✓ 9/9 |
-| `jhonstart-counter` | ✓ 4/4 | ~ (outside its `targets`) |
+| `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
 | `jhonstart-html` | ✓ 7/7 | ✓ 7/7 |
-| `jhonstart-todo` | ✓ 3/3 | ~ (outside its `targets`) |
+| `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
 
 `jhonstart-counter` and `jhonstart-todo` **restrict** `targets` to
 `["commonJS"]` (a member may only restrict the workspace's targets, never widen
-them). Their erlang cell is a pre-existing codegen red, not a packaging one: an
-imported function called unqualified is emitted unqualified into the test
-escript — `main.erl:59: function print/1 undefined`, `main.erl:68: function
-set/2 undefined`. Owner: `00 · 13-module-identity` (`codegen/crossModule.zig`,
-the module-atom sites). `jhonstart-html` declares no `targets` and inherits
-both, because it is green on both.
+them), so the runner marks their erlang cell `~` and skips it; the erlang column
+above is what `--include-unsupported` measures underneath the restriction, which
+is what the compiler's `scripts/restricted-targets.txt` ledger pins.
+`jhonstart-html` declares no `targets` and inherits both, because it is green on
+both.
+
+### The two erlang reds, measured 2026-09-21 (`botopink-lang` feat `ecf9fd1c`)
+
+A restriction had hidden them since the examples were written. They are **two
+unrelated defects**, not one, and an earlier reading of this section — "an
+imported function called unqualified", owner `00 · 13-module-identity` — was
+wrong about both: neither name is imported, and the module-atom machinery is not
+involved.
+
+1. **`function print/1 undefined`** — both examples, and **ours**. Their `main`
+   called `print(…)` rather than `@print(…)`. The bare spelling type-checks on
+   every target (a `registerBuiltins` binding plus a `pub declare fn print` in
+   the prelude) but only commonJS lowers it; erlang emits an undefined local,
+   beam an `unresolved_call`, wasm a trap. `@print` is the only form
+   `botopink-lang/docs.md` shows and the form `jhonstart-html` already used,
+   which is why that example was green while these two were not. Fixed here.
+   This was never test-only: `botopink run --target erlang` failed identically,
+   and `botopink build --target erlang` exited 0 only because a build
+   transpiles without ever invoking `erlc`. The missing diagnostic is routed to
+   botopink-lang in [`repro/README.md`](repro/README.md).
+
+2. **`function set/2 undefined`** — `jhonstart-counter` only, and **not ours**.
+   `c.set(5)` on a `State<T>` — `set` is a `fn(next: T)` field (G1) — lowers
+   correctly inside the module that declares the record (`(element(3, C))(5)`)
+   and to a bare undefined local across a module boundary, which every consumer
+   of `jhonstart/hooks` is by construction. commonJS is green on both sides.
+   Owner: `00 · 02-erlang`; the erlang backend collects function-typed fields
+   only from the module's own `type` declarations, and the cross-module export
+   index carries field names without their types. Minimal jhonstart-free repro
+   and the exact site: [`repro/erlang-imported-fn-field/`](repro/erlang-imported-fn-field/).
+   The one test that hits it is left exactly as written — a workaround in the
+   example would only hide the defect.
 
 Bootstrap path mirrors the other lib repos: check out this lib + a
 fresh `botopink-lang` clone, place this lib under

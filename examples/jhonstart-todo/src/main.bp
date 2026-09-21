@@ -38,7 +38,7 @@ pub fn TodoApp() -> Element {
 }
 
 fn main() {
-    print(renderToString(todoView(["buy milk", "write docs"])));
+    @print(renderToString(todoView(["buy milk", "write docs"])));
 }
 
 test "the todo view renders one li per item plus a count" {

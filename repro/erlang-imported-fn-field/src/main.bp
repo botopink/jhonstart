@@ -1,0 +1,20 @@
+mod cell;
+
+import { Cell, cell } from "cell";
+
+// Across the module boundary the SAME call lowers to a bare local call that no
+// module of the program defines:
+//
+//     C = cell:cell(0),
+//     set(C, 5).
+//
+//     .botopinkbuild/test-out/main.erl: function set/2 undefined
+//     escript: There were compilation errors.
+//
+// The field READ resolves (`element(2, C)`), so the record's SHAPE is known
+// here — only its fields' TYPES are not. commonJS is green on both cells.
+test "across a module boundary the fn-typed field is callable" {
+    val c = cell(0);
+    assert c.value == 0;
+    c.set(5);
+}

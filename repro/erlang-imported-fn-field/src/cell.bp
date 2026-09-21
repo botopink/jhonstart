@@ -1,0 +1,27 @@
+// The OWNING module: a record with a function-typed field, and a constructor.
+//
+// Nothing here is jhonstart, and nothing here is generic, `@Context`-wrapped or
+// otherwise exotic — the defect needs only a record whose field has a function
+// type and a consumer in a different module.
+
+pub type Cell(
+    value: i32,
+    set: fn(next: i32),
+)
+
+pub fn cell(initial: i32) -> Cell {
+    return Cell(value: initial, set: { next -> });
+}
+
+// In the owning module the call lowers correctly — the erlang backend reads the
+// field and applies what it holds:
+//
+//     C = cell(0),
+//     (element(3, C))(5).
+//
+// This cell is green on erlang.
+test "in the owning module the fn-typed field is callable" {
+    val c = cell(0);
+    assert c.value == 0;
+    c.set(5);
+}

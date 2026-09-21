@@ -74,7 +74,7 @@ fn Counter() -> Element {
 }
 
 fn main() {
-    print(renderToString(Counter()));   // synchronous SSR — a pure string
+    @print(renderToString(Counter()));   // synchronous SSR — a pure string
 }
 ```
 

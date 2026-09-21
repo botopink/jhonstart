@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+- **`jhonstart-counter` and `jhonstart-todo` on the erlang row — one library
+  error fixed, one compiler defect handed back.** The compiler's new
+  `scripts/restricted-targets.txt` runs every cell a member's `targets`
+  excludes and pinned both examples at `build`, the token for *nothing
+  compiled, so no test ran*. Reproduced, and they are **two unrelated
+  defects**, not the single cross-module one `AGENTS.md` claimed:
+  - `function print/1 undefined`, in both, was **ours**: `main` wrote
+    `print(…)` where the language reference only ever shows `@print(…)`. The
+    bare call type-checks on every target and only commonJS lowers it (erlang
+    emits an undefined local, beam an `unresolved_call`, wasm a trap), which
+    is why the sibling `jhonstart-html` — already written with `@print` — was
+    green on erlang all along. Fixed in both examples and in `docs.md`'s
+    quickstart. It was never a test-mode problem: `botopink run --target
+    erlang` failed the same way, and `botopink build --target erlang` exited 0
+    only because a build transpiles without invoking `erlc`.
+  - `function set/2 undefined`, in `jhonstart-counter` only, is **not ours**
+    and is left standing: calling a record's function-typed field (`c.set(5)`
+    on `State<T>`, gap G1) lowers correctly inside the declaring module and to
+    a bare undefined local across a module boundary — which every consumer of
+    `jhonstart/hooks` is. Handed to `00 · 02-erlang` as a self-contained
+    jhonstart-free package under the new `repro/` directory, with the two
+    collection sites in `codegen/erlang.zig` named. Working around it in the
+    example would only have hidden it.
+
+  So `jhonstart-todo` is now **3/3 on erlang** and `jhonstart-counter` still
+  does not compile there. Neither `targets` array was widened — the ledger
+  measures what a restriction hides, and lifting one is its own decision.
+
 - **The element surface, step 5 — the shared files and the docs.** `docs.md`
   gains the constructor table, the three names that could not be the obvious
   one (`htmlTag`, `timeTag`, `main`) with their reasons and the `main`
