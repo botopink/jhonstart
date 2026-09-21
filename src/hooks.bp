@@ -1,14 +1,21 @@
-// jhonstart/hooks — the client hook surface, as *real* botopink (F1).
+// jhonstart/hooks — the hook surface, as *real* botopink (F1).
 //
-// Every hook is a function whose return implements `@Context<Element, _>`: that
-// capability is what makes the `use` prefix legal on it, and only inside a
-// component (a `-> Element` body) — enforced by the language's context-inference,
-// not by jhonstart. The hooks are pure and synchronous: they model the FIRST
-// render (SSR). `state` yields its initial value, `memo` computes eagerly,
+// Every hook is `pub fn <noun>(…) -> @Context<Element, R>`: a NOUN, never a `use`
+// prefix in the name — the keyword is the activation (`val c = use state(0)`),
+// and it is legal only in a `#[@context]` body whose return type is the owner
+// (`Element` — a component) or is itself `@Context<Element, _>` (a custom hook).
+// Enforced by the language's context-inference (decision 88 of 1.0.10-beta),
+// not by jhonstart. `use f(x)` lowers to `f(x)` on every backend: nothing is
+// renamed to React's `useState`, no dependency array is inferred — a hook that
+// takes one declares it (`memo(compute, deps)`).
+//
+// The bodies here are pure and synchronous: they model the FIRST render (the
+// server pass). `state` yields its initial value, `memo` computes eagerly,
 // `effect` is a no-op, `ref`/`reducer` seed their boxes. Client re-render
-// reactivity is the host runtime's job (the `use` prefix lowers to the target's
-// hook convention — React `useState`/… on `commonJS`); the bodies here carry no
-// host runtime, so they are exercised directly in `test {}` below.
+// reactivity is the client runtime's job — `client_runtime.mjs` exports the same
+// five nouns with hook semantics, and the client build resolves `hooks` to it
+// (see `client_runtime.bp`); the bodies here carry no host runtime, so they are
+// exercised directly in `test {}` below.
 //
 // Promoted from `hooks.d.bp` once the gaps landed: G1 (a function-typed field —
 // `set: fn(next: T)`) and G2 (a labeled tuple type as the transient
@@ -62,9 +69,9 @@ pub fn reducer<S, A>(
 // ── tests ──────────────────────────────────────────────────────────────────
 //
 // The hook BODIES are pure `.bp`, so they are exercised by calling them directly
-// (the `use` prefix's per-target lowering — React hooks on `commonJS` — is the
-// host runtime's concern and is verified to *type-check* by `Counter` below, not
-// run here). This is the SSR/first-render contract.
+// — without `use` a hook is an ordinary call, the first-render value. `Counter`
+// below is the activating form (`#[@context]` + `use`), which lowers to the same
+// calls; it type-checks the capability and is rendered as the server pass.
 
 test "state yields its initial value and a callable setter" {
     val c = state(7);
@@ -89,22 +96,29 @@ test "memo computes eagerly; ref/reducer seed their boxes" {
 }
 
 test "a custom hook composes State and stays the {value,set} shape" {
-    val c = useCounter(5);
+    val c = counter(5);
     assert c.value == 5;
     c.set(6);
 }
 
-// A custom hook: an ordinary fn whose return is another hook's `@Context`. Its
-// `use` legality propagates transitively (context-inference); here it just
-// re-exposes `state`'s `State<i32>`.
-fn useCounter(start: i32) -> @Context<Element, State<i32>> {
-    return state(start);
+test "a component activating hooks renders the server pass when called plainly" {
+    val e = Counter();
+    assert e.tag == "div";
 }
 
-// A component using `use` — proves the capability type-checks (the `use` prefix
-// is legal because `state`/`memo` return `@Context<Element, _>` and `Counter`
-// returns `Element`). Not executed: the `commonJS` lowering maps `use state` to
-// React's `useState`, which belongs to the client runtime, not this SSR test.
+// A custom hook by the rule: a noun (`counter`, not `useCounter`), a return that
+// is another hook's `@Context<Element, _>`, and `#[@context]` so its body may
+// activate `state`. Here it just re-exposes `state`'s `State<i32>`.
+#[@context]
+fn counter(start: i32) -> @Context<Element, State<i32>> {
+    val s = use state(start);
+    return s;
+}
+
+// A component: `#[@context]` on the fn, a return that is the owner (`Element`),
+// and every `use` in the static prefix. Called without `use` from the test it
+// runs as the server pass — `use state(0)` is `state(0)`, the initial cell.
+#[@context]
 fn Counter() -> Element {
     val c = use state(0);
     val doubled = use memo({ ->

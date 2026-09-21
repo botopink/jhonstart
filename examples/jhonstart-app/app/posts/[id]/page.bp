@@ -4,6 +4,8 @@
 // async-generators (tasks/v0.beta.1), the host-bound `request()`/router, and
 // an Element attribute model. Kept as the intended app-layer surface; the
 // functional examples are jhonstart-counter / jhonstart-todo / jhonstart-html.
+// Under decision 88 (1.0.10-beta) `use request()` needs `#[@context]` on the
+// fn, which cannot sit beside `#[@future]` yet — question 90; unchanged here.
 //
 // jhonstart-app — a dynamic, server-rendered route (`app/posts/[id]/page.bp`).
 //

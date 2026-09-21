@@ -4,8 +4,7 @@
     "target": "commonJS",
     "dependencies": {
         "jhonstart": {
-            "git": "https://github.com/botopink/jhonstart.git",
-            "branch": "feat"
+            "path": "../.."
         }
     }
 }

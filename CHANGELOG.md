@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **`use` activation after decision 88 (botopink-lang 1.0.10-beta front 19):**
+  `use f(x)` lowers to `f(x)` on every backend and a body that activates a hook
+  carries `#[@context]`. Every component and custom hook is annotated
+  (`hooks.bp`'s `Counter`/`counter`, the counter and todo examples); hooks are
+  nouns — `useCounter` → `counter`, `useRouter` → `router` (and its host
+  symbol), `useToggle` → `toggle` — called as `use counter(…)`, bound under
+  another name. `hooks.bp`'s header no longer claims the prefix lowers to
+  React's `useState`. `router.d.bp` imports `Element`.
+- **Client runtime.** `src/client_runtime.mjs` exports the five nouns with hook
+  semantics (plus `render(component, commit)`) over jhonstart's own re-render
+  loop; the client build resolves `jhonstart/hooks` to it. `src/client_runtime.bp`
+  (`mod`, not consumer surface) carries the `clientRender` cell whose
+  `./client_runtime.mjs` require makes `botopink build` ship the sidecar.
+  `examples/jhonstart-counter/client.mjs` runs the built `Counter` under it on
+  node and prints the re-renders after `set`.
+- The three examples depend on jhonstart by `{ "path": "../.." }` (decision
+  76), the checkout they live in — a `git` dependency resolved by name to
+  `repository/jhonstart`, the main checkout, from inside a worktree.
+
 - **1.0.3 surface** (botopink-lang front 12): `Element` and `State<T>` are
   `type Name(fields)`; `Router` / `Request` are `behavior`s whose bodiless members
   end with `;`; the hook shapes are labeled tuple types — `effect` yields `#()`,

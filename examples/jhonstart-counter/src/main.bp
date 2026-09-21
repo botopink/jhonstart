@@ -1,12 +1,14 @@
 // jhonstart-counter — the React-core showcase, as a pure SSR client.
 //
-// A component is a plain `fn(...) -> Element`. `counterView` is a PURE view:
-// given a count it builds the markup, so it renders synchronously with
-// `renderToString` and is directly testable. `Counter` is the stateful,
-// idiomatic form — `use state(0)` makes it a client component whose re-renders
-// the host runtime drives (the `use` prefix lowers to the target's hook
-// convention); it type-checks here and the host runs it. Interactivity
-// (buttons / event handlers) is host-bound and lives outside this pure core.
+// `counterView` is a PURE view: given a count it builds the markup, so it renders
+// synchronously with `renderToString` and is directly testable. `Counter` is the
+// stateful, idiomatic form — a `#[@context] fn … -> Element` component whose
+// body activates `state` with `use` (decision 88 of 1.0.10-beta). `use state(0)`
+// lowers to `state(0)` on every backend: called here it is the server pass (the
+// initial cell); in the browser the client build resolves `jhonstart/hooks` to
+// `jhonstart/client_runtime`, whose `state` re-renders on `set` (see jhonstart's
+// `client_runtime.bp`). Interactivity (buttons / event handlers) is host-bound
+// and lives outside this pure core.
 
 import { Element, div, p, span, text, state, renderToString } from "jhonstart";
 
@@ -19,19 +21,17 @@ fn counterView(count: i32) -> Element {
     ], []);
 }
 
-// Stateful component (idiomatic hooks). Type-checks the `use`/@Context
-// capability; the host runtime renders it client-side.
-fn Counter() -> Element {
+// Stateful component (idiomatic hooks): `#[@context]` lets the body activate a
+// hook; every `use` sits in the static prefix. Rendered below as the server pass.
+#[@context]
+pub fn Counter() -> Element {
     val c = use state(0);
     return counterView(c.value);
 }
 
-// SSR-rendered component that consumes a hook (B3 gap): `use state` lowers to
-// the client runtime's `useState` (React), so a `use`-prefixed component can't
-// be rendered in a plain `botopink test` process. The hook BODIES are pure
-// botopink, though, so a server-rendered component calls the hook DIRECTLY (no
-// `use` prefix) and the result renders synchronously to its SSR string — the
-// first-render contract a server would emit.
+// A component reading a hook WITHOUT `use`: an ordinary call, the first-render
+// value — legal in any body, no `#[@context]` needed. It renders synchronously
+// to its SSR string, the same string `Counter()` produces when called plainly.
 fn StatefulBadge() -> Element {
     val c = state(7);
     val doubled = c.value + c.value;
@@ -59,6 +59,10 @@ test "the state hook seeds the initial count and exposes a setter" {
 test "renderToString of a component consuming a hook produces the SSR string" {
     assert renderToString(StatefulBadge()) ==
         "<div><p>count: 7</p><span>x2=14</span></div>";
+}
+
+test "a #[@context] component activating `use state` renders the server pass" {
+    assert renderToString(Counter()) == "<div><p>count: 0</p><span>non-negative</span></div>";
 }
 
 // LIMITATION (recorded, not a forced test): a builder called with a LONE child

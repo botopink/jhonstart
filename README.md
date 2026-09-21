@@ -5,8 +5,9 @@
 > React/Next-style UI framework written in botopink — on the language's own
 > primitives. No compiler-core support; reached via `from "jhonstart"`.
 
-Components are plain functions returning `Element`; hooks are the
-`@Context<Element, _>` capability gated by the `use` prefix; server components
+Components are `#[@context]` functions returning `Element`; hooks are nouns
+(`state`, `memo`, `router` — no `use` prefix) returning the `@Context<Element, _>`
+capability, activated by the `use` keyword; server components
 are `#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12);
 the JSX-like `html """…"""` DSL reuses `expr-templates` (`@Expr<Element>`),
 expanding markup to the builder pipeline at comptime.
@@ -14,7 +15,7 @@ expanding markup to the builder pipeline at comptime.
 ## Install
 
 ```bp
-import {component, html, useState, useEffect} from "jhonstart";
+import {html, div, p, text, state, effect, renderToString} from "jhonstart";
 ```
 
 ## Quick example
@@ -22,11 +23,12 @@ import {component, html, useState, useEffect} from "jhonstart";
 ```bp
 import {div, p, text, state, renderToString} from "jhonstart";
 
+#[@context]
 fn Counter() -> Element {
     val c = use state(0);
     return div([
-        p([text("count: " + c.value.toString())]),
-    ]);
+        p([text("count: " + c.value.toString(), [])], []),
+    ], []);
 }
 
 fn main() {
@@ -37,7 +39,9 @@ fn main() {
 ## Status
 
 - ✅ `Element` tree + builders + synchronous `renderToString`.
-- ✅ Hook family (`state`, `effect`, `memo`, `ref`, `reducer`).
+- ✅ Hook family (`state`, `effect`, `memo`, `ref`, `reducer`) — pure server-pass
+  bodies, plus `client_runtime.mjs` with the same nouns over a re-render loop
+  for the client build.
 - ✅ `html """…"""` comptime expander (real `.bp`, single-pass).
 - 🟡 Router + Http server context: still declarative (`.d.bp`), each gated on a
   generic language gap.

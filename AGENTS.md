@@ -7,8 +7,10 @@
 
 botopink's **React/Next-style** UI framework, written *in* botopink on the
 language's own primitives — **no jhonstart-specific compiler features**.
-Components are plain functions returning `Element`; hooks are the
-`@Context<Element, _>` capability gated by the `use` prefix; server components are
+Components are `#[@context]` functions returning `Element`; hooks are nouns
+(`state`, `router` — never `useState`) returning the `@Context<Element, _>`
+capability, activated by the `use` keyword (decision 88 of 1.0.10-beta:
+`use f(x)` lowers to `f(x)` on every backend); server components are
 `#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12;
 `*fn` was the legacy carrier and the parser now rejects it); the JSX-like
 `html """…"""` DSL reuses `expr-templates` (`@Expr<Element>`), expanding markup
@@ -29,15 +31,17 @@ the prelude.
 ```text
 repository/jhonstart/
 ├── AGENTS.md          ← you are here
-├── botopink.json      ← manifest (files: element.bp, hooks.bp, html.bp, router.d.bp, server.d.bp)
+├── botopink.json      ← manifest (files: element.bp, hooks.bp, html.bp, client_runtime.bp, router.d.bp, server.d.bp)
 ├── docs.md            ← user-facing reference
 ├── src/
 │   ├── AGENTS.md
-│   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html;`
+│   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; mod client_runtime;`
 │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
-│   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>) + test {} (imports `Element`)
+│   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
 │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
-│   ├── router.d.bp    ← Router/useRouter/Link (host-bound navigation; GATED)
+│   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
+│   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
+│   ├── router.d.bp    ← Router/router/Link (host-bound navigation; GATED)
 │   └── server.d.bp    ← Http ContextBase: request() + loaders (host-bound/async; GATED)
 └── test/
     └── html_test.bp   ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
@@ -83,10 +87,22 @@ are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
 - Builders take a `Children` arg (`div([a, b])` / single / `string` — the G4
   coercion); the **list form** is what V1 renders and what `html` emits. The
   trailing-lambda sugar (`div { [a, b] }`) is a recorded follow-up.
-- Hook bodies are pure/synchronous (SSR / first render): `state` yields its
-  initial value, `memo` computes eagerly, `effect` is a no-op. The `use` prefix's
-  per-target lowering (React `useState`/… on `commonJS`) is the host runtime's
-  job — so hook bodies are unit-tested by **direct call** (no `use`) in `test {}`.
+- A hook is `pub fn <noun>(…) -> @Context<Element, R>` — the noun, never a
+  `use` prefix (`counter`, `router`, `toggle`; not `useCounter`). Activation is
+  `val x = use <noun>(…)` in the static prefix of a `#[@context]` body whose
+  return is `Element` (a component) or `@Context<Element, _>` (a custom hook);
+  the binding never reuses the hook's name (`val r = use router()`).
+- Hook bodies are pure/synchronous (the server pass / first render): `state`
+  yields its initial value, `memo` computes eagerly, `effect` is a no-op. `use
+  f(x)` lowers to `f(x)` on every backend, so hook bodies are unit-tested by
+  **direct call** (no `use`) in `test {}`, and a `#[@context]` component called
+  plainly renders the server pass. Client reactivity is `src/client_runtime.mjs`
+  (the same nouns over jhonstart's own loop), which the client build resolves
+  `jhonstart/hooks` to — the bundler's substitution (front 68); under node,
+  `examples/jhonstart-counter/client.mjs` seeds `require.cache` the same way.
+  The five nouns are not re-declared in `client_runtime.bp`: a package's import
+  surface is flat and a second `state` shadows `hooks.state` for every consumer
+  (last module wins, silently, even from a non-`pub` `mod` — measured).
 - `renderToString` is **synchronous** (`.bp`); SSR needs no async.
 - Components are PascalCase (`Counter`, `Page`); fns/builders camelCase.
 - Not embedded: do **not** wire jhonstart into `comptime/stdlib/prelude.zig` or
@@ -177,6 +193,11 @@ fix the red instead.
 After `botopink test`, the gate builds every `examples/*/` that has a
 `botopink.json` (`runExamplesGate`, each with its own manifest target,
 into a throwaway `--out`); CI runs the same function once per workflow.
+Each example depends on jhonstart by `{ "path": "../.." }` (decision 76 of
+1.0.10-beta): the checkout it lives in. A `git` dependency resolves by **name
+across the library roots** — in a worktree under `.tasks/` that is
+`repository/jhonstart`, the main checkout, so the gate would test a checkout
+other than the one being committed.
 `scripts/known-broken-examples.txt` lists the examples allowed to fail —
 `examples/<name>  <reason>` per line — and cannot rot: a listed example
 that builds, or a listed path that no longer exists, fails the gate too.
@@ -196,3 +217,20 @@ The examples pass `attrs` explicitly to the element builders (`text("x", [])`,
 `div([…], [])`): the `attrs = []` default added by the bracket-prop commit is
 not applied by the compiler yet (botopink-lang 1.0.4-beta 06 N1), so a
 one-argument call does not type-check.
+
+`examples/jhonstart-counter/client.mjs` runs the **built** counter under the
+client runtime on node (`botopink build && node client.mjs`): it seeds
+`require.cache` so `main.js`'s `jhonstart/hooks` resolves to
+`out/jhonstart/client_runtime.mjs`, renders `Counter`, then re-renders after
+`set(3)` and `set(-2)` — four lines, the first being the program's own `main()`
+at load. The sidecar is shipped by `botopink build` from the jhonstart checkout
+it finds **by name** across the library roots (`shipMjsSidecars`,
+botopink-lang `modules/compiler-cli/src/cli/libs.zig`), not through the `path`
+dependency — and a miss is **silent**: the build still succeeds, the sidecar is
+absent, and only `node client.mjs` fails. From a checkout whose directory is not
+named `jhonstart` (a worktree under `.tasks/`), point `BOTOPINK_LIB_ROOTS` at a
+root holding a REAL directory named `jhonstart` — `manifest.scanRoots`
+(botopink-lang `modules/manifest/src/root.zig`) names an entry by its directory
+basename and keeps `kind == .directory` only, so a symlinked entry is skipped;
+`botopink.json` and a symlinked `src/` inside it are enough. Reported to
+botopink-lang; the fix is the resolved dependency dir as owner.

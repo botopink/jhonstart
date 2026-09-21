@@ -11,18 +11,27 @@
 
 ## Component model
 
-A **component** is any `fn(...) -> Element`. A **hook** is any function whose
-return implements `@Context<Element, _>`; the `use` prefix is only legal inside a
-component body (enforced by the language's context-inference, not by jhonstart).
+A **component** is a `#[@context] fn(...) -> Element`. A **hook** is a function
+named by its **noun** — `state`, `effect`, `memo`, `ref`, `reducer`, `router`;
+never a `use` prefix in the name — whose return implements
+`@Context<Element, _>`. The keyword `use` is the activation: `val c = use
+state(0)` is legal only in a `#[@context]` body whose return type is `Element`
+(a component) or is itself `@Context<Element, _>` (a custom hook), and every
+`use` sits in the body's **static prefix** — before any `if`, `case`, `loop` or
+`return`, at any nesting. A body without `#[@context]` that activates a hook is
+`use-without-context-effect`; `#[@Context]` with a capital is an unknown
+annotation silently ignored. All of this is the language's context-inference
+(decision 88 of 1.0.10-beta), not jhonstart.
 
 ```bp
 import { div, p, text, state, renderToString } from "jhonstart";
 
+#[@context]
 fn Counter() -> Element {
     val c = use state(0);
     return div([
-        p([text("count: " + c.value.toString())]),
-    ]);
+        p([text("count: " + c.value.toString(), [])], []),
+    ], []);
 }
 
 fn main() {
@@ -32,15 +41,20 @@ fn main() {
 
 Children are written as a **list** (`div([a, b])`). A hook yields its value via
 `use`: `val c = use state(0)` binds `c : State<i32>` (`c.value`, `c.set(n)`); the
-`{value, set}` form also destructures — `val {value, set} = use state(0)`.
+`{value, set}` form also destructures — `val {value, set} = use state(0)`. A
+binding never reuses the hook's name (`val r = use router()`, not `val router`).
+Called **without** `use`, a hook is an ordinary call — the first-render value —
+legal in any body; that is how the tests read the hooks.
 
 ## Hooks
 
-Hook **bodies are pure and synchronous** — they model the first render (SSR):
-`state` yields its initial value, `memo` computes eagerly, `effect` is a no-op,
-`ref`/`reducer` seed their boxes. Client re-render reactivity is the host
-runtime's job: the `use` prefix lowers to the target's hook convention (React
-`useState`/`useEffect`/… on `commonJS`).
+Hook **bodies are pure and synchronous** — they model the first render (the
+server pass): `state` yields its initial value, `memo` computes eagerly,
+`effect` is a no-op, `ref`/`reducer` seed their boxes. `use f(x)` lowers to
+`f(x)` on **every** backend — nothing is renamed to React's `useState`, no
+dependency array is inferred (a hook that takes one declares it: `memo(compute,
+deps)`). Client re-render reactivity is the **client runtime**'s job: see
+*Client runtime* below.
 
 | Hook | Returns (via `use`) | Notes |
 |---|---|---|
@@ -50,14 +64,41 @@ runtime's job: the `use` prefix lowers to the target's hook convention (React
 | `ref<T>(initial)` | `#(current: T)` | mutable handle |
 | `reducer<S,A>(reduce, init)` | `#(state: S, dispatch: fn(action: A))` | reducer state |
 
-Custom hooks compose the primitives — their return implements
-`@Context<Element, _>`, propagated transitively:
+Custom hooks compose the primitives — a noun for a name, `#[@context]` on the
+fn, a return that implements `@Context<Element, _>`:
 
 ```bp
-fn useCounter(start: i32) -> @Context<Element, State<i32>> {
-    return state(start);
+#[@context]
+fn counter(start: i32) -> @Context<Element, State<i32>> {
+    val s = use state(start);
+    return s;
+}
+
+#[@context]
+fn Widget() -> Element {
+    val c = use counter(5);   // `use` + the noun; never `use useCounter()`
+    …
 }
 ```
+
+## Client runtime
+
+The client build resolves `jhonstart/hooks` to `jhonstart/client_runtime.mjs`
+(`src/client_runtime.mjs`, shipped next to the emitted modules by `botopink
+build`): the same five nouns, the same signatures and shapes, over jhonstart's
+own minimal render loop — cursor-indexed cells (the static-prefix rule is what
+keeps the order stable), `set`/`dispatch` schedule one re-render per microtask,
+effects run after commit when their `deps` change; `render(component, commit)`
+drives a component and hands every committed tree to `commit`. Outside a render
+every cell yields its first-render value, so the module is a drop-in for the
+pure bodies. The substitution itself is the client bundler's step (front 68,
+1.0.10-beta); under node it is a `require.cache` seed — `examples/jhonstart-
+counter/client.mjs` runs the built `Counter` that way and prints the re-renders
+after `set(3)` and `set(-2)`. `src/client_runtime.bp` carries the one bp-typed
+cell, `clientRender`, whose `#[@External.Node("./client_runtime.mjs", "render")]`
+is what makes the CLI ship the sidecar; the five nouns are not re-declared in
+bp, because a package's import surface is flat and a second `state` would
+shadow `hooks.state` for every consumer.
 
 ## DOM builders & rendering
 
@@ -128,11 +169,15 @@ by a plain call. See `examples/jhonstart-html`.
 
 ## App layer (Next-style) — declared, host-bound
 
-- `useRouter() -> @Context<Element, Router>`, `Link(href, …)` — client navigation
-  (host runtime; `Link` also needs an Element attribute slot for `href`).
+- `router() -> @Context<Element, Router>` (`val r = use router()`), `Link(href,
+  …)` — client navigation (host runtime; `Link` also needs an Element attribute
+  slot for `href`).
 - `request() -> @Context<Http, Request>` — server hook; used inside a server
   component (`#[@future] fn … -> @Future<Element>` — the legacy `*fn`
-  carrier was removed in v0.beta.19).
+  carrier was removed in v0.beta.19). A `#[@future]` body cannot carry
+  `#[@context]` today (`effect-duplicate-annotation`: at most one
+  `#[@<effect>]` annotation per fn), so a server component
+  cannot activate it yet — question 90 of 1.0.10-beta.
 - File routing (`app/`, `page.bp`, `layout.bp`, `[id]`) is a **convention** (V1),
   wired manually until a CLI/build step lands.
 - `renderToString(app)` (SSR, real `.bp`) / client `mount` (host).
@@ -146,7 +191,7 @@ by a plain call. See `examples/jhonstart-html`.
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - `router`/`server` host hooks (`useRouter`/`request`, `#[@External.Node]`), `Link`
+  - `router`/`server` host hooks (`router`/`request`, `#[@External.Node]`), `Link`
     and form controls (the `Element` model has no attribute slot for
     `href`/`value`/`onClick`) — `Router` and `Request` expose their fields as
     zero-argument methods (`router.pathname()`, `req.params()`);
