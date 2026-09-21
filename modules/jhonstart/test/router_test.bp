@@ -1,0 +1,122 @@
+// `botopink test` flat suite for `src/router.bp` (front 26).
+//
+// Written from a CONSUMER's position, the way `elements_test.bp` is: the
+// module under test is reached by its module name, so what the suite exercises
+// is the surface a `from "jhonstart"` consumer gets, not the module's private
+// interior.
+//
+// Both rows run this file. The front's assigned target is erlang and every
+// assertion below RUNS there; the commonJS row runs the same assertions
+// against the `.mjs` half of the same cells.
+
+import {
+    RouterState,
+    pairValue,
+    patternSegments,
+    segmentAt,
+    decodePairs,
+} from "router";
+
+// ── step 1: the record and its accessors ────────────────────────────────────
+
+fn blogPost() -> RouterState {
+    return RouterState(
+        path: "/blog/hi",
+        params: [#("slug", "hi")],
+        search: [],
+        pattern: "/blog/[slug]",
+        selected: 0,
+    );
+}
+
+test "router: a param is read by name" {
+    assert blogPost().param("slug") == "hi";
+}
+
+test "router: an absent param is the empty string, not a runtime error" {
+    assert blogPost().param("nope") == "";
+    assert blogPost().searchParam("nope") == "";
+}
+
+test "router: searchParam reads the search list, not the params list" {
+    val r = RouterState(
+        path: "/blog",
+        params: [#("slug", "hi")],
+        search: [#("sort", "new")],
+        pattern: "/blog",
+        selected: 0,
+    );
+    assert r.searchParam("sort") == "new";
+    assert r.searchParam("slug") == "";
+    assert r.param("sort") == "";
+}
+
+test "router: pairValue answers the FIRST match of a duplicated key" {
+    val dup = [#("tag", "one"), #("tag", "two")];
+    assert pairValue(dup, "tag") == "one";
+    assert pairValue([], "tag") == "";
+}
+
+test "router: segments keep the bracket spelling and drop the empty parts" {
+    val segs = blogPost().segments();
+    assert segs.length == 2;
+    assert segmentAt(segs, 0) == "blog";
+    assert segmentAt(segs, 1) == "[slug]";
+    assert patternSegments("/").length == 0;
+    assert patternSegments("").length == 0;
+}
+
+test "router: segment answers the layout depth, and out of range is empty" {
+    assert blogPost().segment() == "blog";
+    val deeper = RouterState(
+        path: "/blog/hi",
+        params: [],
+        search: [],
+        pattern: "/blog/[slug]",
+        selected: 1,
+    );
+    assert deeper.segment() == "[slug]";
+    val past = RouterState(
+        path: "/blog/hi",
+        params: [],
+        search: [],
+        pattern: "/blog/[slug]",
+        selected: 7,
+    );
+    assert past.segment() == "";
+}
+
+// ── the pair-list decoder ───────────────────────────────────────────────────
+
+test "router: decodePairs splits ampersand-separated pairs in order" {
+    val out = decodePairs("a=1&b=2&c=3");
+    assert out.length == 3;
+    assert pairValue(out, "a") == "1";
+    assert pairValue(out, "b") == "2";
+    assert pairValue(out, "c") == "3";
+}
+
+test "router: decodePairs strips a leading question mark" {
+    val out = decodePairs("?x=42");
+    assert out.length == 1;
+    assert pairValue(out, "x") == "42";
+}
+
+test "router: an empty query decodes to the empty list, not one empty pair" {
+    assert decodePairs("").length == 0;
+    assert decodePairs("?").length == 0;
+    assert decodePairs("&&").length == 0;
+}
+
+test "router: a chunk with no `=` decodes to an empty value" {
+    val out = decodePairs("flag");
+    assert out.length == 1;
+    assert pairValue(out, "flag") == "";
+}
+
+test "router: an empty value is preserved" {
+    val out = decodePairs("q=&r=1");
+    assert out.length == 2;
+    assert pairValue(out, "q") == "";
+    assert pairValue(out, "r") == "1";
+}

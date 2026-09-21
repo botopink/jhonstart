@@ -44,19 +44,20 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   └── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, elements.bp, client_runtime.bp, router.d.bp, server.d.bp]
+│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, router.bp, elements.bp, client_runtime.bp, server.d.bp]
 │       ├── src/
 │       │   ├── AGENTS.md
-│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod elements; mod client_runtime;`
+│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod router; pub mod elements; mod client_runtime;`
 │       │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │       │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
 │       │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
 │       │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │       │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
 │       │   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
-│       │   ├── router.d.bp    ← Router/router/Link (host-bound navigation; GATED)
+│       │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `decodePairs`
 │       │   └── server.d.bp    ← Http ContextBase: request() + loaders (host-bound/async; GATED)
 │       └── test/
+│           ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │           ├── html_test.bp     ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
 │           └── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
 ├── examples/
@@ -104,8 +105,8 @@ is how `examples/jhonstart-counter` and `-todo` came to build and then die with
 module); naming the module is the workaround and reads better anyway.
 
 The
-host-bound declaration modules `router.d.bp` / `server.d.bp` are **not** in the
-tree: they are wired through the core member's `botopink.json` `files` (consumer surface, loaded
+host-bound declaration module `server.d.bp` is **not** in the
+tree: it is wired through the core member's `botopink.json` `files` (consumer surface, loaded
 with `.declaration = true` for a `from "jhonstart"` consumer). `.d.bp` modules
 are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
 `<name>/mod.bp`), mirroring how `libs/std` keeps its ambient `.d.bp` out of
@@ -116,7 +117,7 @@ are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
 | Layer | Analog | ContextBase | Surface |
 |---|---|---|---|
 | core | React | `Element` | `element.bp` + `elements.bp` + `hooks.bp` + `html.bp` (**compiled**) |
-| app | Next.js | `Http` | `router`, `server` (declared, host-bound) |
+| app | Next.js | `Http` | `router` (**compiled** — front 26), `server` (declared, host-bound) |
 
 ## Conventions
 

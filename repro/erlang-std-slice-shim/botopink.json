@@ -1,0 +1,11 @@
+{
+  "name": "erlang-std-slice-shim",
+  "version": "0.0.1",
+  "description": "a `libs/std` module reached through `from \"std\"` loses the `String.slice` instance-default shim on the erlang row and emits a bare local `slice/3`",
+  "src": "src/",
+  "entry": "main.bp",
+  "target": "commonJS",
+  "files": [
+    "main.bp"
+  ]
+}

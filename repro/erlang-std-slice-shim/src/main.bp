@@ -1,0 +1,33 @@
+// A `libs/std` module reached through `from "std"` loses the `String.slice`
+// instance-default shim on the erlang row.
+//
+// `querystring.parse` is the shortest std entry point that reaches
+// `s.slice(a, b)`: `libs/std/src/querystring.bp:22` strips a leading `?` with
+// `query.slice(1, query.length)`.
+//
+// `chop` below is the SAME expression in a project module, and it is emitted
+// correctly — so the two cells of this package differ only in which module the
+// call sits in.
+
+import {querystring} from "std";
+
+// A project module's own `s.slice(a, b)`: lowers to an emitted
+// `string_slice/3` helper, green on both rows.
+pub fn chop(s: string) -> string {
+    if (s.startsWith("?")) return s.slice(1, s.length);
+    return s;
+}
+
+pub fn main() {
+    @print(chop("?x=1"));
+}
+
+test "a project module's own String.slice" {
+    assert chop("?x=1") == "x=1";
+    assert chop("x=1") == "x=1";
+}
+
+test "the same String.slice reached through a std module" {
+    val out = querystring.parse("?x=42");
+    assert out.length == 1;
+}

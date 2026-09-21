@@ -76,6 +76,74 @@ this shape and is left untouched.
 
 ---
 
+## `erlang-std-slice-shim/` — owner `00 · 02-erlang`
+
+**A `libs/std` module reached through `from "std"` loses the `String.slice`
+instance-default shim on the erlang row and emits a bare local `slice/3`.**
+
+Measured 2026-09-21 against `botopink-lang` feat (`zig-out` binary of the
+workspace checkout).
+
+```sh
+cd repro/erlang-std-slice-shim
+botopink test --target commonJS   # 2 passed, 0 failed
+botopink test --target erlang     # 1 passed, 1 failed — `{error,undef}`
+```
+
+Both cells compile. `botopink build --target erlang` exits **0**; it transpiles
+and never invokes `erlc`, so a build is not a check on this backend.
+
+### What is emitted
+
+`querystring.parse` is the shortest `libs/std` entry point that reaches
+`s.slice(a, b)` — `libs/std/src/querystring.bp:22` strips a leading `?` with
+`query.slice(1, query.length)`. `chop` in `src/main.bp` is the same expression,
+in a project module.
+
+| call site | emitted erlang | result |
+|---|---|---|
+| `src/main.bp` — a project module | `string_slice(S, 1, string:length(S))`, with `string_slice/3` emitted below it | correct |
+| `libs/std/src/querystring.bp` — a std module compiled as a dependency | `slice(Query, 1, string:length(Query))`, and nothing defines `slice/3` | `erlc`: `undefined_function {slice,3}` |
+
+The failure is **not** a compile error the runner reports. The test runner's
+`__bp_load_siblings/0` compiles every `.erl` beside the script with
+`compile:file(Src, [binary, return_errors, …])` and **skips** one that does not
+compile (`_ -> ok`), so `std@querystring` is simply never loaded and the first
+call into it dies `{error,undef}` at run time, pinned to the test rather than to
+the module that failed.
+
+```sh
+$ erl -noshell -eval 'io:format("~p~n",[compile:file("std/querystring.erl",[binary,return_errors,{i,"."}])]), halt(0).'
+{error,[{"std/querystring.erl",[{{41,13},erl_lint,{undefined_function,{slice,3}}}]}],[]}
+```
+
+### Where it is
+
+`modules/compiler-core/src/codegen/erlang.zig`. `String.slice` is a
+**primitive-interface `default fn`** (`libs/std/src/primitives.bp:201`), not a
+bare-symbol prim-op, so the erlang backend reaches it through
+`primDefaultShimNode` → `primDefaultFor`, whose table is filled by
+`collectPreludeInstanceDefaults` — and that call is guarded by
+`comptime_module != null` (`erlang.zig:1425`). A `libs/std` module compiled as
+an ordinary dependency module takes neither path, `primDefaultFor` answers
+`null`, and the method call falls through to the bare
+`b.call(cc.callee, recv_args)` — a local `slice/3` nothing emits.
+
+Closing it means indexing the prelude's instance defaults for every module that
+can call one, not only a comptime module.
+
+### Why jhonstart cannot work around it
+
+Front 26's spec decodes both pair-shaped snapshot values with
+`querystring.parse`, and erlang is that front's assigned target. jhonstart
+therefore carries `decodePairs` in `modules/jhonstart/src/router.bp` — the same
+documented behaviour, spelled in a project module — and the header there says it
+collapses back to `querystring.parse` the moment this closes. A second copy of a
+std function is exactly the duplication the front's own *Definition of done*
+argues against, so the cost of this defect is one function and a note, not zero.
+
+---
+
 ## Secondary finding, no repro directory — a bare `print(x)` call
 
 Not a jhonstart bug (see `AGENTS.md` § CI), but measured here and worth routing:

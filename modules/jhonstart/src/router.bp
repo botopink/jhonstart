@@ -1,0 +1,142 @@
+// jhonstart/router — the route snapshot a component reads.
+//
+// Promoted from `router.d.bp` (front 26 of 1.0.10-beta). The declaration file
+// gave two reasons nothing in it was promotable: `Element` had no attribute
+// slot, and client navigation lives in a host runtime. The first closed
+// (`element.bp`'s `attrs`); the second was never a reason to keep the RECORD
+// host-bound — only the navigation verbs are host calls, and they are six
+// lines at the bottom of this file.
+//
+// `RouterState` is a plain five-field record, not a behavior. A behavior with
+// `val` members has no verified implementor anywhere in this tree, and the
+// concrete record is what the `use` capability has to yield anyway.
+//
+// Field names and method names are kept DISJOINT — `params` the field,
+// `param(name)` the method — so a field read never shadows a method.
+//
+// `segments` is DERIVED from `pattern`, never transported: one value, one
+// source. A transported segment list could disagree with the pattern it came
+// from, and the disagreement would only show on the routes nobody tested.
+
+import {Element} from "element";
+
+pub type RouterState(
+    path: string,
+    params: Array<#(string, string)>,
+    search: Array<#(string, string)>,
+    pattern: string,
+    selected: i32,
+) {
+    pub fn param(self: Self, name: string) -> string {
+        return pairValue(self.params, name);
+    }
+
+    pub fn searchParam(self: Self, name: string) -> string {
+        return pairValue(self.search, name);
+    }
+
+    pub fn segments(self: Self) -> Array<string> {
+        return patternSegments(self.pattern);
+    }
+
+    pub fn segment(self: Self) -> string {
+        return segmentAt(patternSegments(self.pattern), self.selected);
+    }
+}
+
+// The package's ONE pair-list decoder. Fronts 28 and 32 import it from here
+// rather than each growing a copy: three implementations of "the value of
+// `slug`, or the empty string" is three chances to disagree about a duplicate
+// key. This one answers with the FIRST match, and `router_test.bp` asserts it.
+//
+// Written as a `loop` over a typed parameter rather than
+// `pairs.find({…}).unwrapOr(#("", ""))._1`: a tuple read off a value that came
+// back through the optional binder loses its type on the erlang row — the same
+// measurement that made front 22 spell `paramOf(m, name)` and front 23
+// `chunkAt(page, i)`. `headerOfPage` in rakun's `ssr.bp` is the shape.
+pub fn pairValue(pairs: Array<#(string, string)>, name: string) -> string {
+    var found = "";
+    var seen = false;
+    loop (pairs) { p ->
+        if (seen == false) {
+            if (p._0 == name) {
+                found = p._1;
+                seen = true;
+            };
+        };
+    };
+    return found;
+}
+
+// The pattern's segments, root-first, with the empty parts dropped — so
+// `"/blog/[slug]"` is `["blog", "[slug]"]`. The bracket spelling is KEPT: the
+// pattern is what front 22 matched against, and rewriting it here would make
+// the two disagree about what a dynamic segment is called.
+pub fn patternSegments(pattern: string) -> Array<string> {
+    return pattern.split("/").filter({ part ->
+        part != "";
+    });
+}
+
+// Read one segment by index, out of range answering `""`. A typed parameter
+// for the same reason `pairValue` is a loop: `xs.at(i).unwrapOr("")` written
+// at a call site over an array that arrived from a record field or a method
+// reads the element back UNWRAPPED on the erlang row.
+pub fn segmentAt(segments: Array<string>, index: i32) -> string {
+    var found = "";
+    var i = 0;
+    loop (segments) { part ->
+        if (i == index) {
+            found = part;
+        };
+        i = i + 1;
+    };
+    return found;
+}
+
+// ── the pair-list decoder for the two querystring-encoded snapshot values ────
+//
+// This is `std/querystring.parse` spelled here, and it is a STAND-IN with a
+// measured reason, not a second opinion about what a query string is:
+//
+//   `libs/std/src/querystring.bp:22` writes `query.slice(1, query.length)`.
+//   Reached through `from "std"`, that module emits a call to a bare local
+//   `slice/3` on the erlang row and never defines it, so `erlc` refuses the
+//   module with `undefined_function {slice,3}`, the test runner's sibling
+//   loader SKIPS a module that does not compile, and the first
+//   `querystring.parse` call dies `{error,undef}`. The same `s.slice(a, b)` in
+//   a project module lowers correctly to an emitted `string_slice/3` helper —
+//   the loss is specific to a `libs/std` module compiled as a dependency.
+//   Measured 2026-09-21; `repro/erlang-std-slice-shim/` is the jhonstart-free
+//   package, and the defect is the compiler's.
+//
+// erlang is this front's assigned target, so importing a module that cannot
+// run there is not an option. The behaviour is querystring's: a leading `?` is
+// stripped, `""` decodes to `[]` (never `[#("", "")]`), empty chunks are
+// dropped, duplicate keys are preserved in order, and a chunk with no `=`
+// decodes to an empty value. There is exactly ONE divergence, and it is in
+// this one's favour: on a chunk with two `=` (`a=b=c`) querystring's
+// `split("=")` keeps only `b` while this keeps `b=c`. querystring's own header
+// records that input as not round-tripping until percent-encoding lands, so
+// nothing depends on the truncation. When the shim defect closes, this
+// function becomes `querystring.parse` and nothing else in the file moves.
+pub fn decodePairs(query: string) -> Array<#(string, string)> {
+    val body = stripQueryPrefix(query);
+    if (body == "") return [];
+    return body.split("&").filter({ chunk ->
+        chunk != "";
+    }).map({ chunk ->
+        decodePair(chunk);
+    });
+}
+
+fn stripQueryPrefix(query: string) -> string {
+    if (query.startsWith("?")) return query.slice(1, query.length);
+    return query;
+}
+
+fn decodePair(chunk: string) -> #(string, string) {
+    val cut = chunk.indexOf("=");
+    if (cut < 0) return #(chunk, "");
+    return #(chunk.slice(0, cut), chunk.slice(cut + 1, chunk.length));
+}

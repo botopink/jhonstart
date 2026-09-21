@@ -2,6 +2,53 @@
 
 ## Unreleased
 
+- **The router is a compiled module (front 26 of 1.0.10-beta, step 1).**
+  `src/router.d.bp` is deleted and `src/router.bp` takes its place in the build
+  tree. The declaration file gave two reasons nothing in it was promotable:
+  `Element` had no attribute slot, and client navigation lives in a host
+  runtime. The first closed with `element.bp`'s `attrs`; the second was never a
+  reason to keep the *record* host-bound.
+  - `type RouterState(path, params, search, pattern, selected)` — a plain
+    five-field record, **not** a behavior. A behavior with `val` members has no
+    verified implementor anywhere in this tree, and the concrete record is what
+    the `use` capability has to yield anyway. Its accessors are `param(name)`,
+    `searchParam(name)`, `segments()` and `segment()`, and every one answers a
+    plain `string`/`Array<string>` — `""` for an absent key, `""` for an
+    out-of-range layout depth, never `?string`.
+  - Field names and method names are **disjoint** (`params` the field,
+    `param(name)` the method), so a field read never shadows a method.
+  - `segments` is **derived** from `pattern` and never transported. The bracket
+    spelling is kept: `"/blog/[slug]"` → `["blog", "[slug]"]`.
+  - `pairValue(pairs, name)` is the package's **one** pair-list decoder, `pub`,
+    answering the FIRST match of a duplicated key. Fronts 28 and 32 import it
+    from here rather than each growing a copy.
+  - `pairValue`, `patternSegments` and `segmentAt` are loops over typed
+    parameters rather than `find(…)`/`at(i)` + `unwrapOr`: a value that came
+    back through the optional binder loses its type on the erlang row, the
+    measurement behind rakun's `paramOf(m, name)` and `chunkAt(page, i)`.
+  - `test/router_test.bp` — 11 assertions, green on **both** rows.
+- **`decodePairs` instead of `std/querystring.parse`, with the defect handed
+  back.** `libs/std/src/querystring.bp:22` writes `query.slice(1,
+  query.length)`. Reached through `from "std"` that module emits a call to a
+  bare local `slice/3` on the erlang row and never defines it: `erlc` refuses it
+  with `undefined_function {slice,3}`, the test runner's sibling loader skips a
+  module that does not compile, and the first `querystring.parse` call dies
+  `{error,undef}` — pinned to the caller, not to the module that failed. The
+  same `s.slice(a, b)` in a project module lowers correctly to an emitted
+  `string_slice/3`, so the loss is specific to a `libs/std` module compiled as a
+  dependency (`String.slice` is a primitive-interface `default fn`, and
+  `collectPreludeInstanceDefaults` is guarded by `comptime_module != null`).
+  erlang is front 26's assigned target, so `router.bp` carries `decodePairs` —
+  querystring's documented behaviour, spelled in a project module, collapsing
+  back to `querystring.parse` the moment the shim lands.
+  `repro/erlang-std-slice-shim/` is the jhonstart-free package.
+- **`src/root.bp` gains `pub mod router;` and `botopink.json`'s `files` swaps
+  `router.d.bp` for `router.bp`** — the two lines front 94's spec already
+  reserves for front 26, appended in front-number order, no other line touched.
+  Without them `src/router.bp` is *module not reached by any `mod` path — not
+  compiled* and `test/router_test.bp`'s import is refused, so the front has
+  nothing to be green about.
+
 - **`jhonstart-counter` and `jhonstart-todo` on the erlang row — one library
   error fixed, one compiler defect handed back.** The compiler's new
   `scripts/restricted-targets.txt` runs every cell a member's `targets`

@@ -10,9 +10,9 @@
     "element.bp",
     "hooks.bp",
     "html.bp",
+    "router.bp",
     "elements.bp",
     "client_runtime.bp",
-    "router.d.bp",
     "server.d.bp"
   ]
 }

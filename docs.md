@@ -307,11 +307,89 @@ not a whole-template error. Bare `html`/`div`/… are reached unqualified after
 ordinary `fn(...) -> Element` (its body may itself author `html """…"""`) reused
 by a plain call. See `examples/jhonstart-html`.
 
+## The router (`router.bp`) — compiled
+
+`router.bp` is a real module since front 26 of 1.0.10-beta; `router.d.bp` is
+gone. What a component asks for is a **route snapshot**: a five-field record
+the server fills before the render and the client rebuilds after a client-side
+navigation, so the same component code produces the same markup on both sides.
+
+```bp
+pub type RouterState(
+    path: string,                       // "/blog/hi"
+    params: Array<#(string, string)>,   // [#("slug", "hi")]
+    search: Array<#(string, string)>,   // [#("sort", "new")]
+    pattern: string,                    // "/blog/[slug]"
+    selected: i32,                      // the layout depth, root layout 0
+)
+```
+
+Field names and method names are **disjoint** — `params` is the field,
+`param(name)` the method — so a field read never shadows a method.
+
+| Call | Answers |
+|---|---|
+| `r.param(name)` | the path parameter, `""` when absent |
+| `r.searchParam(name)` | the query parameter, `""` when absent |
+| `r.segments()` | the pattern's segments, root-first, bracket spelling kept — `"/blog/[slug]"` → `["blog", "[slug]"]` |
+| `r.segment()` | the segment at `selected`, `""` out of range |
+
+Nothing returns `?string`. A matched route's parameter is always present and
+`""` is the natural answer for one that is not — the shape `rakun`'s
+`http.bp` accessors already use.
+
+`segments` is **derived** from `pattern`, never transported. One value, one
+source: a segment list that travelled separately could disagree with the
+pattern it came from, and the disagreement would only show on the routes
+nobody tested.
+
+### `pairValue` — the package's one pair-list decoder
+
+```bp
+pub fn pairValue(pairs: Array<#(string, string)>, name: string) -> string
+```
+
+The **first** match of a duplicated key, `""` when there is none. It is `pub`
+and it is the only one: fronts 28 and 32 import it from here rather than each
+growing a copy, because three implementations of "the value of `slug`, or the
+empty string" is three chances to disagree about a duplicate key.
+
+It is a `loop` over a typed parameter, not
+`pairs.find({…}).unwrapOr(#("", ""))._1`. A tuple read off a value that came
+back through the optional binder loses its type on the erlang row — the same
+measurement that made rakun's front 22 spell `paramOf(m, name)` and front 23
+`chunkAt(page, i)`. `patternSegments` and `segmentAt` are typed-parameter
+readers for the same reason.
+
+### `decodePairs` — and why it is not `querystring.parse`
+
+```bp
+pub fn decodePairs(query: string) -> Array<#(string, string)>
+```
+
+`std/querystring.parse` is what this front's spec calls for, and it cannot run
+on the front's assigned target. `libs/std/src/querystring.bp:22` writes
+`query.slice(1, query.length)`; reached through `from "std"` that module emits
+a call to a bare local `slice/3` on the erlang row and never defines it, so
+`erlc` refuses the module (`undefined_function {slice,3}`), the test runner's
+sibling loader skips a module that does not compile, and the first
+`querystring.parse` call dies `{error,undef}`. The same `s.slice(a, b)` in a
+project module lowers correctly to an emitted `string_slice/3` — the loss is
+specific to a `libs/std` module compiled as a dependency.
+`repro/erlang-std-slice-shim/` is the jhonstart-free package.
+
+`decodePairs` is querystring's documented behaviour spelled here: a leading `?`
+is stripped, `""` decodes to `[]` (never `[#("", "")]`), empty chunks are
+dropped, duplicate keys are preserved in order, and a chunk with no `=` decodes
+to an empty value. One divergence, in this one's favour: `a=b=c` keeps `b=c`
+where querystring's `split("=")` keeps only `b` — an input querystring's own
+header records as not round-tripping. When the shim defect closes this becomes
+`querystring.parse` and nothing else moves.
+
 ## App layer (Next-style) — declared, host-bound
 
-- `router() -> @Context<Element, Router>` (`val r = use router()`), `Link(href,
-  …)` — client navigation (host runtime; `Link` also needs an Element attribute
-  slot for `href`).
+- `Link(href, …)` — client navigation (front 27's `src/link.bp`; not shipped
+  yet). The router itself is no longer declared: see *The router* above.
 - `request() -> @Context<Http, Request>` — server hook; used inside a server
   component (`#[@future] fn … -> @Future<Element>` — the legacy `*fn`
   carrier was removed in v0.beta.19). A `#[@future]` body cannot carry

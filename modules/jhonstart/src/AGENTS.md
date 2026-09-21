@@ -13,8 +13,9 @@ The UI **core, hooks, and the `html` markup
 DSL are real botopink** — an `Element` tree, builders, a synchronous SSR renderer,
 the hook family, and the `html """…"""` comptime expander, all implemented in
 `.bp` (no host intrinsics, no async). Only the genuinely host-bound surface
-(client navigation, the Http context) stays as `.d.bp` **declarations**, each
-carrying an explicit "STILL GATED" note naming the gap. `botopink test` compiles
+(the Http context) stays as a `.d.bp` **declaration**, carrying an explicit
+"STILL GATED" note naming the gap; `router.d.bp` was promoted to `router.bp` by
+front 26. `botopink test` compiles
 the `.bp` files and runs their `test {}` blocks; the `.d.bp` files are type
 surface for consumers.
 
@@ -26,7 +27,7 @@ surface for consumers.
 | `client_runtime.bp` | **compiled** (`mod`, not `pub mod`) | `clientRender(component, commit)` — the one `#[@External.Node("./client_runtime.mjs", "render")]` cell; its require ships the sidecar (G2). Never called from erlang. The five nouns are deliberately not re-declared (a second `state` shadows `hooks.state` across the flat package surface) |
 | `client_runtime.mjs` | host (js) | the client build's hooks: `state`/`effect`/`memo`/`ref`/`reducer` with hook semantics + `render(component, commit)` over jhonstart's own loop (cursor-indexed cells, microtask-batched re-render, effects after commit by `deps`); first-render values outside a render. The client build resolves `jhonstart/hooks` to it (bundler, front 68); `../../../examples/jhonstart-counter/client.mjs` does it under node. Shipped into a consumer's `out/jhonstart/` by `shipMjsSidecars` — see the workspace `AGENTS.md` § Known defect for when that silently misses |
 | `html.bp` | **compiled** | `html(comptime template: @Expr<string>) -> @ExprCustom<Element>` — the JSX-like `html """…"""` DSL with a real markup front-end: ① a native-JS-only **lexer** walks `template.parts()` into a token stream (tags/attrs/text/holes, each carrying a byte `Span`), ② a **flat stack parser** lowers it twice — to the builder pipeline (`<tag>` → `tag([...])`, text → `text("…")`, `${expr}` → `text(<code>)`, lowercase tags resolved in the **caller's** scope) AND to a generic `CustomNode` reference overlay (tags `label "tag"` + `q.lookup` `ref`, attrs `property`, values/text `string`, holes neutral), returned together via `q.custom(...)`. Mismatched/unexpected/unclosed tags → `q.failAt(span, …)` at the offending tag. Sibling of erika's `erika "…"` SQL front-end. Exercised by `test/html_test.bp` (parity), `test/elements_test.bp` (a tag from `elements.bp` resolving inside a template) + the `jhonstart-html` example member. See the file header for the comptime-eval constraints (no `?T`, no in-body comments, helper closures at fn level not nested in the loop, `i32` cursor only in the flat parser loop) |
-| `router.d.bp` | declarative (GATED) | `Router`, `router` (the hook — `val r = use router()`), `Link` — host-bound navigation (fields read as zero-argument methods); `#[@External.Node]`; the `Element` attribute slot exists (`attrs`), the host navigation runtime is what is missing |
+| `router.bp` | **compiled** | the **route snapshot** (front 26): `type RouterState(path, params, search, pattern, selected)` with `param`/`searchParam`/`segments`/`segment`, the package's ONE pair-list decoder `pairValue` (first match wins), `patternSegments`/`segmentAt`, and `decodePairs` — `std/querystring.parse` spelled here while that module's `slice` shim is dead on the erlang row (`repro/erlang-std-slice-shim/`). `Link` did NOT come along: it is front 27's `src/link.bp` |
 | `server.d.bp` | declarative (GATED) | `Http` ContextBase: `Request`, `request()` — host-bound + async loaders |
 
 The four language gaps the framework surfaced are closed (spec
