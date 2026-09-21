@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **The element surface, step 3 — the six void constructors**: `input`, `img`,
+  `meta`, `link`, `br`, `hr`. They keep the uniform two-parameter shape and
+  drop the children they are handed, through `voidEl`; the one-parameter
+  `input(attrs:)` that would make children an arity error was rejected as a
+  second convention, unreachable from the `html """…"""` DSL's call shape. A test
+  asserts the drop. `link` is an Erlang auto-imported BIF at arity 1 and
+  `link/2` here clears it — the erlang row proves it. `renderToString` is
+  `element.bp`'s frozen in-repo test renderer and is **not** void-aware, so
+  `renderToString(input([], attrs: []))` is `<input></input>`; the tests spell
+  that wrong answer out as a literal, so that the day `element.bp` unfreezes
+  the failing assertions point straight at the lines to change. The render
+  that ships reads `isVoidTag`. 4 further inline `test {}` blocks, 24/24 on
+  commonJS and on erlang.
 - **The element surface, step 2 — the thirty-two non-void constructors.**
   Sectioning and flow (`a`, `nav`, `section`, `article`, `header`, `footer`,
   `main`, `aside`), headings and text-level (`h2`–`h6`, `label`, `timeTag`),

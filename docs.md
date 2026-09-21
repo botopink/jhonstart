@@ -194,8 +194,16 @@ Two builders and two predicates:
 | forms | `form`, `button`, `select`, `option`, `textarea` |
 | tables | `table`, `thead`, `tbody`, `tr`, `th`, `td` |
 | document | `htmlTag`, `head`, `body`, `title`, `script`, `style` |
+| **void** | `input`, `img`, `meta`, `link`, `br`, `hr` |
 
-Anything else is `el("<tag>", children, attrs: [])`.
+Anything else is `el("<tag>", children, attrs: [])`, or `voidEl("<tag>",
+attrs: [])` when it cannot have children.
+
+A void constructor keeps the same two-parameter shape and **drops** the
+children it was handed — `input([text("x", attrs: [])], attrs: []).children` is
+empty. The one-parameter `input(attrs:)` that would make children an arity
+error was rejected: it is a second convention, and it is unreachable from the
+`html """…"""` DSL's call shape.
 
 ### Three names that could not be the obvious one
 
