@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **The six navigation verbs (front 26, step 4).** `push`, `replace`, `back`,
+  `forward`, `refresh` and `prefetch` — free functions over one dual-target
+  cell, never methods: botopink records are immutable and there is no
+  assignment to a `self` field anywhere in this tree, so the record stays a
+  read-only snapshot and navigation is a call against host state. `-> i32` is
+  the ecosystem's shape for a host value nobody reads.
+- **`lastNavigation()` is `pub`.** `push("/x")` on the erlang row *records* a
+  307 for the dispatcher to write; a verb that records where nobody can look is
+  a verb that does nothing, so the recorded `"<kind> <href>"` is readable. Both
+  halves record, so the same three assertions run on both rows and "callable
+  on the erlang target without a host stub crash" is an execution, not a
+  compile.
+- The front's spec says `__jhNavigate` is the only dual-target cell in the
+  file. It is not, and the reason is step 2's measurement rather than a
+  preference: every cell here carries both targets because an erlang-only cell
+  reds the commonJS row at its call site.
+- 3 further assertions, green on both rows (22 in the suite).
+
 - **The six route hooks (front 26, step 3).** `router`, `pathname`, `params`,
   `searchParams`, `selectedLayoutSegment` and `selectedLayoutSegments`, each
   `pub fn … -> @Context<Element, T>` and each one read of `snapshot()` and

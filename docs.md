@@ -495,6 +495,43 @@ array. So a hook whose `T` is an array is usable as a value only under `use`;
 `pathname()` and `selectedLayoutSegment()`, whose `T` is a `string`, compare
 directly either way.
 
+### The navigation verbs
+
+botopink records are immutable and there is no assignment to a `self` field
+anywhere in the tree, so navigation cannot be a method on `RouterState`. It is a
+call against host state, and the record is a read-only snapshot of that state.
+The six are free functions over one cell:
+
+```bp
+pub fn push(href) -> i32       pub fn back() -> i32      pub fn refresh() -> i32
+pub fn replace(href) -> i32    pub fn forward() -> i32   pub fn prefetch(href) -> i32
+```
+
+| Verb | erlang (during a server render) | js (in the browser) |
+|---|---|---|
+| `push(href)` | records a 307 redirect on the response | `history.pushState` + re-render |
+| `replace(href)` | records a 307 redirect on the response | `history.replaceState` + re-render |
+| `back()` / `forward()` | no-op — there is no history on the server | `history.back()` / `history.forward()` |
+| `refresh()` | no-op | re-requests the current route's payload and re-reconciles without a reload |
+| `prefetch(href)` | no-op | warms the client route cache; front 27 drives it |
+
+The `-> i32` is the ecosystem's shape for a host cell whose value is not used
+(`rakun/src/runtime.bp` does the same for `rkScan`/`rkEnter`/`rkDone`). It is
+not a status code and callers ignore it.
+
+```bp
+pub fn lastNavigation() -> string
+```
+
+What the last verb recorded, as `"<kind> <href>"`, and `""` when nothing has.
+On the server this is the redirect a dispatcher turns into a 307; in the
+browser it is the last href the History API was handed. It is `pub` because a
+verb that records where nobody can look is a verb that does nothing.
+
+A navigation never disturbs the snapshot: `fill` is the only writer of route
+state, and the suite asserts that a `push` leaves the current `path` and
+`params` exactly as they were.
+
 ## App layer (Next-style) — declared, host-bound
 
 - `Link(href, …)` — client navigation (front 27's `src/link.bp`; not shipped

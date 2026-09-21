@@ -291,3 +291,75 @@ pub fn selectedLayoutSegment() -> @Context<Element, string> {
 pub fn selectedLayoutSegments() -> @Context<Element, Array<string>> {
     return snapshot().segments();
 }
+
+// ── step 4: the navigation verbs ────────────────────────────────────────────
+//
+// botopink records are immutable and there is no assignment to a `self` field
+// anywhere in this tree, so navigation cannot be a method on `RouterState` the
+// way the 1.0.7 draft had it. It is a call against HOST state, and the record
+// is a read-only snapshot of that state. These are free functions.
+//
+// One cell carries all six, because they mean different things on each side
+// rather than the same thing twice:
+//
+//   | verb                  | erlang (during a server render) | js (in the browser)           |
+//   |-----------------------|---------------------------------|-------------------------------|
+//   | `push(href)`          | records a 307 redirect          | `history.pushState` + re-render |
+//   | `replace(href)`       | records a 307 redirect          | `history.replaceState` + re-render |
+//   | `back()` / `forward()`| no-op — no history on a server  | `history.back()` / `.forward()` |
+//   | `refresh()`           | no-op                           | re-requests the payload and re-reconciles |
+//   | `prefetch(href)`      | no-op                           | warms the client route cache (front 27) |
+//
+// `refresh()` is shared with the server-actions front: a mutation calls the
+// same re-request path, so the payload endpoint and its revalidation semantics
+// belong there and this front only names the verb.
+//
+// The `-> i32` return is the ecosystem's shape for a host cell whose value is
+// not used (`rakun/src/runtime.bp` does the same for `rkScan`/`rkEnter`/
+// `rkDone`). It is not a status code and callers ignore it.
+//
+// The front's README says `__jhNavigate` is the ONLY dual-target cell in this
+// file. It is not, and the reason is step 2's measurement, not a preference:
+// every cell here carries both targets because an erlang-only cell reds the
+// commonJS row at its call site.
+
+#[@External.Node("./router_runtime.mjs", "navigate"),
+  @External.Erlang("jhonstart_router", "navigate")]
+declare fn __jhNavigate(kind: string, href: string) -> i32;
+
+// What the last `push`/`replace`/… recorded, as `"<kind> <href>"`, and `""`
+// when nothing has. On the server this is the redirect the dispatcher turns
+// into a 307 response; in the browser it is the last href the History API was
+// handed. It is `pub` because front 28's dispatcher has to read it — a verb
+// that records where nobody can look is a verb that does nothing.
+#[@External.Node("./router_runtime.mjs", "lastNavigation"),
+  @External.Erlang("jhonstart_router", "last_navigation")]
+pub declare fn __jhLastNavigation() -> string;
+
+pub fn lastNavigation() -> string {
+    return __jhLastNavigation();
+}
+
+pub fn push(href: string) -> i32 {
+    return __jhNavigate("push", href);
+}
+
+pub fn replace(href: string) -> i32 {
+    return __jhNavigate("replace", href);
+}
+
+pub fn back() -> i32 {
+    return __jhNavigate("back", "");
+}
+
+pub fn forward() -> i32 {
+    return __jhNavigate("forward", "");
+}
+
+pub fn refresh() -> i32 {
+    return __jhNavigate("refresh", "");
+}
+
+pub fn prefetch(href: string) -> i32 {
+    return __jhNavigate("prefetch", href);
+}

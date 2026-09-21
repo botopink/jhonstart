@@ -23,6 +23,13 @@ import {
     searchParams,
     selectedLayoutSegment,
     selectedLayoutSegments,
+    push,
+    replace,
+    back,
+    forward,
+    refresh,
+    prefetch,
+    lastNavigation,
 } from "router";
 import {Element, div, span, text, renderToString} from "element";
 
@@ -242,4 +249,37 @@ test "router: a component activating the hooks renders the server pass" {
     assert e.tag == "div";
     assert e.children.length == 3;
     assert renderToString(e) == "<div><span>/blog/hi</span><span class=\"active\">blog</span><span>hi</span></div>";
+}
+
+// ── step 4: the navigation verbs ────────────────────────────────────────────
+//
+// Six verbs, one cell. Every one of these RUNS on the erlang row: the host
+// module is `src/sidecars/jhonstart_router.erl` and it is shipped and loaded
+// by the test runner, so "callable without a host stub crash" is an execution
+// and not a compile.
+
+test "router: push and replace record what the dispatcher turns into a 307" {
+    val a = push("/x");
+    assert lastNavigation() == "push /x";
+    val b = replace("/y");
+    assert lastNavigation() == "replace /y";
+}
+
+test "router: the four server no-ops are callable and return" {
+    val a = back();
+    assert lastNavigation() == "back ";
+    val b = forward();
+    assert lastNavigation() == "forward ";
+    val c = refresh();
+    assert lastNavigation() == "refresh ";
+    val d = prefetch("/z");
+    assert lastNavigation() == "prefetch /z";
+}
+
+test "router: a navigation does not disturb the snapshot" {
+    val seeded = fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 0);
+    val moved = push("/elsewhere");
+    val r = snapshot();
+    assert r.path == "/blog/hi";
+    assert r.param("slug") == "hi";
 }
