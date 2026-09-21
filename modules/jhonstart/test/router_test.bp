@@ -15,6 +15,7 @@ import {
     patternSegments,
     segmentAt,
     decodePairs,
+    encodePairs,
     fill,
     snapshot,
     router,
@@ -282,4 +283,22 @@ test "router: a navigation does not disturb the snapshot" {
     val r = snapshot();
     assert r.path == "/blog/hi";
     assert r.param("slug") == "hi";
+}
+
+// ── the encoder, and the round trip ─────────────────────────────────────────
+
+test "router: encodePairs is decodePairs reversed, with no leading `?`" {
+    assert encodePairs([#("a", "1"), #("b", "2")]) == "a=1&b=2";
+    assert encodePairs([]) == "";
+    assert encodePairs([#("q", "")]) == "q=";
+}
+
+test "router: a snapshot's search list round-trips through both" {
+    val seeded = fill("/p", "", "q=boots&page=2&sort=asc", "/p", 0);
+    val r = snapshot();
+    assert encodePairs(r.search) == "q=boots&page=2&sort=asc";
+    val kept = r.search.filter({ p ->
+        p._0 != "sort";
+    });
+    assert encodePairs(kept) == "q=boots&page=2";
 }

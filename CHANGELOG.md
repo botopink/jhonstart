@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+- **Front 26 closeout — `encodePairs`, and what fronts 27–32 consume.**
+  - `encodePairs(pairs) -> string` is `decodePairs` reversed and ships for the
+    same reason: `querystring.stringify` has no `slice` of its own, but it
+    lives in the module `stripPrefix` kills, and a module `erlc` refuses takes
+    its whole surface down with it. Every front downstream that rewrites a URL
+    needs an encoder, and one encoder in the package is the argument
+    `pairValue` already makes about decoders. No leading `?` — the caller adds
+    it.
+  - `AGENTS.md` gains § *What jhonstart fronts 27–32 consume from front 26* —
+    the whole surface, the two call-site rules that only show at a distance,
+    and the three things front 26 deliberately does **not** provide (a second
+    matcher, the `ElementView` adapter, a `Link`).
+  - The adapter rakun front 23's handoff assigns to "front 26" cannot be
+    written here: `ElementView<El>` is rakun's type, jhonstart declares no
+    dependency on rakun, and rakun's member is `targets: ["commonJS"]`, so
+    adding one would red the very row front 26 is assigned to. It belongs to
+    **front 28**, with the `dependencies` entry and the targets decision that
+    entry forces. Recorded in `AGENTS.md`, not worked around.
+  - Front 26's position on the `query` hole front 23 measured and left open is
+    in the same section: the front **needs** the guarantee, a convention cannot
+    close it, and the three things that would are all front 22's file. This
+    library's `searchParams()` reads its own snapshot and never touches
+    `PageContext`, so nothing here papers over it.
+  - The core member measures **51/51 on both rows** (27/27 before front 26).
+    All 24 router assertions RUN on the erlang row — none is type-checked-only
+    and none is a commonJS-only claim. The CI table's earlier `9/9` was stale:
+    it predates `elements.bp`.
+
 - **The six navigation verbs (front 26, step 4).** `push`, `replace`, `back`,
   `forward`, `refresh` and `prefetch` — free functions over one dual-target
   cell, never methods: botopink records are immutable and there is no

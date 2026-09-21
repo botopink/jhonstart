@@ -141,6 +141,26 @@ fn decodePair(chunk: string) -> #(string, string) {
     return #(chunk.slice(0, cut), chunk.slice(cut + 1, chunk.length));
 }
 
+// The inverse, and it is here for the same reason `decodePairs` is:
+// `std/querystring.stringify` has no `slice` of its own, but it lives in the
+// module `stripPrefix` kills, and a module `erlc` refuses takes its whole
+// surface down with it. Every front downstream that rewrites a URL — front
+// 27's `Link` href, a sort control that keeps the other query parameters —
+// needs an encoder, and one encoder in the package is the same argument
+// `pairValue` makes about decoders.
+//
+// No leading `?`: the caller adds it when composing a URL, exactly as
+// `querystring.stringify` documents.
+pub fn encodePairs(pairs: Array<#(string, string)>) -> string {
+    return pairs.map({ p ->
+        encodePair(p);
+    }).join("&");
+}
+
+fn encodePair(p: #(string, string)) -> string {
+    return p._0 + "=" + p._1;
+}
+
 // ── step 2: the host cells and the snapshot builder ─────────────────────────
 //
 // Five reads and one write. Each read maps ONE-TO-ONE onto a key of front 23's

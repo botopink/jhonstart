@@ -183,6 +183,105 @@ jhonstart is a *consumer*. What it relies on:
   package-default-dsl handle binding following in v0.beta.14 — consumers
   can `import jhonstart, {html, div, …} from "jhonstart"` today.)
 
+## What jhonstart fronts 27–32 consume from front 26
+
+Front 26 (the router) is the first landed front of this track after the element
+surface, and fronts **27** (link), **28** (server components), **29** (client
+directive), **30** (streaming), **31** (error boundaries) and **32** (metadata)
+all read the answer it produces. This is the surface they may rely on; none of
+it changes without a note here. Everything below is reached by a consumer as
+`import { … } from "jhonstart"` and is green on **both** rows — measured with a
+`path` dependency on `modules/jhonstart/` from a package outside this tree,
+rendering a `#[@context]` component through `use pathname()` /
+`use selectedLayoutSegment()` / `use params()` and asserting the markup.
+
+| What | Where | Shape |
+|---|---|---|
+| The snapshot | `RouterState(path, params, search, pattern, selected)` | a plain record, no behavior. `params`/`search` are `Array<#(string, string)>`, `selected` the layout depth (root layout `0`) |
+| Its accessors | `r.param(n)` · `r.searchParam(n)` · `r.segments()` · `r.segment()` | every one answers a plain `string`/`Array<string>`, `""` when absent or out of range. Never `?string` |
+| The pair decoder | `pairValue(pairs, name)` | the package's ONE pair-list decoder, FIRST match of a duplicated key. Fronts 28 and 32 import it from here rather than growing a copy |
+| The querystring codec | `decodePairs(q)` · `encodePairs(pairs)` | `std/querystring.parse`/`.stringify` spelled here, because that module is dead on the erlang row (`repro/erlang-std-slice-shim/`). `encodePairs` has NO leading `?` — the caller adds it. Front 27's href arithmetic uses these two, not a third copy |
+| The segment readers | `patternSegments(pattern)` · `segmentAt(segments, i)` | typed-parameter readers. An `xs.at(i).unwrapOr("")` written at a call site reads the element back unwrapped on the erlang row |
+| The build | `snapshot()` | five cells in, the record out. No `?T` unwrap that can fail |
+| **The writer** | `fill(path, params, search, pattern, selected)` | the ONE way route state is installed, and the seam fronts 27/28/29 need. `params`/`search` go in querystring-encoded, exactly as the payload's `m` and `q` carry them. Every field at once — a half-updated snapshot is a component reading the previous route's params against the next route's pattern |
+| The six hooks | `router` · `pathname` · `params` · `searchParams` · `selectedLayoutSegment` · `selectedLayoutSegments` | each `-> @Context<Element, T>`, each one read of `snapshot()`. `selectedLayoutSegments()` is root-first |
+| The six verbs | `push` · `replace` · `back` · `forward` · `refresh` · `prefetch` | free functions over one cell, `-> i32` nobody reads. Free and not methods: records are immutable and there is no assignment to a `self` field anywhere in this tree |
+| What a verb recorded | `lastNavigation()` | `"<kind> <href>"`, `""` when nothing has. On erlang this is the 307 front 28's dispatcher writes; in the browser the last href the History API was handed |
+| The host halves | `src/router_runtime.mjs` · `src/sidecars/jhonstart_router.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, the snapshot dies with it, two concurrent renders cannot see each other's route |
+
+**One call-site rule, and it only shows on the erlang row** — the same one
+rakun's front 23 records: a function-valued record field must be read into a
+local before it is called (`val tagOf = v.tagOf; tagOf(e)`, never `v.tagOf(e)`,
+which lowers to a method call and dies `function tagOf/2 undefined` while
+staying silent on commonJS).
+
+**One rule that shows on both** — a hook called WITHOUT `use` keeps its
+`@Context<Element, T>` type. The type is transparent to a property or a method
+(`ps.length`, `segs.join("/")`, `r.param("slug")`) and **not** to a typed
+parameter: `pairValue(params(), "slug")` is `type mismatch: expected array, got
+Context`, and binding through a `val` does not change it. Only `use` strips the
+capability. So an array-valued hook is usable as a value only under `use`, and
+the two `string` hooks compare directly either way.
+
+**Three things front 26 does NOT provide, so nobody looks for them here.**
+
+1. **A matcher and a route table parser.** `matchPath`, `parseTable` and
+   `writeTable` are rakun front 22's, written once and compiled twice. A router
+   with its own matcher is a router that disagrees with the server about
+   precedence on the routes nobody tested. `matchPath`'s result already carries
+   the **root-first layout chain** — do not rebuild it — and a route parameter
+   is read with **`paramOf(m, name)`**, never `m.params.at(name).unwrapOr("")`:
+   through the optional binder the match's type is lost.
+2. **The `ElementView<Element>` adapter.** rakun front 23's handoff says "front
+   26 writes it". It cannot be written here, and the reason is structural, not
+   a preference: `ElementView<El>` is rakun's type, so the adapter needs
+   `import { ElementView } from "rakun"`; jhonstart declares no dependency on
+   rakun; and rakun's member is `targets: ["commonJS"]`, so adding one would
+   red jhonstart's erlang row — the row front 26 is assigned to. The adapter
+   belongs to **front 28**, the front where jhonstart meets rakun's SSR
+   pipeline, together with the `dependencies` entry that makes it possible and
+   the targets decision that entry forces. Front 28 should also expect rakun's
+   own rule above to bite it: every field of the adapter is a **lambda**
+   (`{ t -> isVoidTag(t) }`), never a bare function name.
+3. **A `Link`.** It did not come along from `router.d.bp`. It is front 27's
+   `src/link.bp`, and this front adds nothing to it and reads nothing from it.
+
+### The `query` hole front 23 left, and what front 26 says about it
+
+rakun front 23's README claims the dynamic marking "is done by the accessor,
+not by a developer remembering to declare it", and front 23 **measured that
+this cannot be true as written**: `searchParams(route)` marks, but `route.query`
+is a public field of front 22's `PageContext` and a direct field read cannot be
+intercepted. Front 23 declined to close it by reaching into another front's
+file, which was right.
+
+**Front 26 needs the guarantee, and states so.** A render that reads the query
+and is cached as static serves one reader's `?sort=desc` to every other reader:
+the failure is silent, it is a correctness failure rather than a performance
+one, and it is invisible in every test that renders one request. A convention
+("always use the accessor") cannot close it, because the whole point of the
+sentence is that it holds for people who do not know the convention.
+
+**What would close it**, in order of preference, all of them front 22's file
+and none of them front 26's to make:
+
+1. **Make `query` private on `PageContext` and leave `searchParams(route)` /
+   `searchParam(route, name)` as the only readers.** One edit, no new concept,
+   and the accessor's marking becomes the only way to reach the value — which
+   is exactly what front 23's sentence asserts.
+2. **Drop `query` from `PageContext` entirely** and have the dispatcher pass it
+   to the accessor's store instead. Stronger, because there is then no field to
+   find, but it moves a value fronts other than 23 may already read.
+3. Failing both: **delete the sentence**, and say instead that the marking is
+   the accessor's and a direct `route.query` read is undefined behaviour for
+   caching. This is the honest fallback, not a fix — it converts a guarantee
+   into a documented hazard, and front 26 would rather have the guarantee.
+
+Front 26 does **not** work around it: this library's `searchParams()` reads its
+own snapshot and never touches `PageContext`, so nothing here papers over the
+hole. It is recorded because fronts 28 and 30 — the two that decide what may be
+cached — inherit it.
+
 ## CI
 
 `.github/workflows/test.yml` runs `zig build test-libs -- --lib jhonstart
@@ -199,14 +298,21 @@ Since the umbrella is a workspace, the `repository/` root contributes its
 **members** by manifest name: `--lib jhonstart` selects `modules/jhonstart/`,
 the umbrella has no row, and `jhonstart-counter` / `jhonstart-html` /
 `jhonstart-todo` are rows of their own. Over the workspace the runner prints
-(measured 2026-09-21, compiler `botopink-lang` feat `361d255d`):
+(measured 2026-09-21 against the `zig-out` binary of the workspace's
+`botopink-lang` checkout; the core member's rows are `botopink test` inside
+`modules/jhonstart/`, counted in `test {}` blocks):
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 9/9 | ✓ 9/9 |
+| `jhonstart` | ✓ 51/51 | ✓ 51/51 |
 | `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
 | `jhonstart-html` | ✓ 7/7 | ✓ 7/7 |
 | `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
+
+The core member was 27/27 on both rows before front 26; the router adds 24,
+all of which RUN on the erlang row — none is type-checked-only and none is a
+commonJS-only claim. The earlier reading of this row, `9/9`, was stale: it
+predates `elements.bp`.
 
 `jhonstart-counter` and `jhonstart-todo` **restrict** `targets` to
 `["commonJS"]` (a member may only restrict the workspace's targets, never widen

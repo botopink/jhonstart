@@ -42,8 +42,8 @@ The loader walks up from `cwd` and, at each ancestor, considers these roots
 manifest** — so `repository/` contributes `jhonstart` (the member
 `repository/jhonstart/modules/jhonstart/`), `jhonstart-counter`,
 `jhonstart-html` and `jhonstart-todo`, and never the umbrella. The member's
-`files` — `root.bp`, `element.bp`, `hooks.bp`, `html.bp`, `elements.bp`,
-`client_runtime.bp`, `router.d.bp`, `server.d.bp` — are the only modules a
+`files` — `root.bp`, `element.bp`, `hooks.bp`, `html.bp`, `router.bp`,
+`elements.bp`, `client_runtime.bp`, `server.d.bp` — are the only modules a
 consumer sees. A
 `{ "workspace": true }` dependency consults no root at all. Nothing about
 jhonstart is embedded; the compiler core never names it.
@@ -378,6 +378,12 @@ project module lowers correctly to an emitted `string_slice/3` — the loss is
 specific to a `libs/std` module compiled as a dependency.
 `repro/erlang-std-slice-shim/` is the jhonstart-free package.
 
+`encodePairs(pairs) -> string` is the inverse, here for the same reason:
+`querystring.stringify` has no `slice` of its own, but it lives in the module
+`stripPrefix` kills, and a module `erlc` refuses takes its whole surface down
+with it. No leading `?` — the caller adds it when composing a URL. Front 27's
+href arithmetic uses these two rather than a third copy.
+
 `decodePairs` is querystring's documented behaviour spelled here: a leading `?`
 is stripped, `""` decodes to `[]` (never `[#("", "")]`), empty chunks are
 dropped, duplicate keys are preserved in order, and a chunk with no `=` decodes
@@ -552,16 +558,19 @@ state, and the suite asserts that a `push` leaves the current `path` and
   `test {}`-checked): the `Element` type, builders (`Children` args, list-form
   render), the element surface (`el`/`voidEl`, `isVoidTag`/`isRawTextTag` and
   thirty-eight further tag constructors), a synchronous `renderToString`, the
-  `state`/`effect`/`memo`/`ref`/`reducer` hook family (real SSR bodies), and the `html """…"""` markup DSL
+  `state`/`effect`/`memo`/`ref`/`reducer` hook family (real SSR bodies), the
+  route snapshot and its six hooks and six navigation verbs (`router.bp`, with
+  both host halves), and the `html """…"""` markup DSL
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - `router`/`server` host hooks (`router`/`request`, `#[@External.Node]`) —
-    `Router` and `Request` expose their fields as zero-argument methods
-    (`router.pathname()`, `req.params()`). `Link` and the form controls are no
-    longer gated on an attribute slot: `Element` carries `attrs`, and
-    `elements.bp` ships `form`/`input`/`button`/`label`/`select`/`textarea`;
-    what `Link` still needs is the host navigation runtime;
+  - the `server` host hook (`request()`, `#[@External.Node]`) — `Request`
+    exposes its fields as zero-argument methods (`req.params()`). The router is
+    no longer here: `router.bp` is compiled, with both host halves shipped (see
+    *The router*). `Link` and the form controls are no longer gated on an
+    attribute slot either: `Element` carries `attrs`, and `elements.bp` ships
+    `form`/`input`/`button`/`label`/`select`/`textarea`; `Link` is front 27's
+    `src/link.bp` and it reads the router rather than replacing it;
   - the `#[@future]` + `await` data-loading path (`use-await-prefix`,
     `async-generators`);
   - the trailing-lambda children sugar (`div { … }`) and lone-child / `string`
