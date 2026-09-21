@@ -231,6 +231,13 @@ renderer and writes a closing tag unconditionally, so
 void set is *exported* rather than applied here: the renderer that ships reads
 `isVoidTag`.
 
+**A void element cannot be authored inside `html """…"""`.** The DSL lowers a
+self-closing tag to a one-positional-argument call and flushes it after the
+token loop rather than at its position, so `<div><img/></div>` would be both
+an arity error (a declared default is not applied) and misplaced. Build void
+elements with the constructor and interpolate the result. `<html>` in markup
+is doubly unavailable: the tag would resolve to the DSL's own `html`.
+
 ## The `html` DSL — shipped (`html.bp`)
 
 `html` captures markup **unevaluated** (`@Expr<string>` — the `"""…"""`
@@ -269,6 +276,22 @@ The expansion is:
 - each `${expr}` → the caller's already-typed expression, spliced as a
   `text(<expr>)` child (`html """<li>item ${n.toString()}</li>"""` →
   `li([text("item "), text(n.toString())])`).
+
+**A tag from `elements.bp` is resolved the same way** — there is no wildcard
+import and no implicit prelude, so the consumer names every tag the markup
+uses:
+
+```bp
+import { html, bracketPair } from "jhonstart";                // the DSL
+import { nav, span, text, renderToString } from "jhonstart";  // the tags
+
+val bar = html """<nav><span>home</span></nav>""";
+```
+
+(`bracketPair` is named because a `[attr]={expr}` hole lowers to a call to it.)
+A tag that is not imported is an unbound-name diagnostic at the call site,
+which names the tag — the one case where the surface being a plain set of
+functions is an advantage.
 
 A single root tag is returned bare; multiple top-level siblings wrap in
 `fragment([...])` (which then must be imported too). Attributes (`<div

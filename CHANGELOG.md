@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **The element surface, step 4 — `modules/jhonstart/test/elements_test.bp`.**
+  The `html """…"""` DSL resolves a lowercase tag to a bare `tag(...)` call in
+  the **caller's** scope, so the only honest resolution test is one written
+  from a consumer's position: the flat suite, next to `test/html_test.bp`,
+  whose bare import is exactly that scope. Three blocks: a single-root
+  template over an `elements.bp` tag renders identically to the equivalent
+  constructor call; a template mixing an `element.bp` tag with an
+  `elements.bp` tag resolves both; a `[class]={c}` bracket-prop reaches
+  `attrs` on an `elements.bp` tag. 27/27 on commonJS and on erlang.
+- **Known wart — `link/2` draws an erlc warning.** The erlang backend emits
+  `-compile({no_auto_import,[...]})` only for a user function whose name AND
+  arity are in the compiler's BIF catalog, and that catalog
+  (`libs/std/src/erlang.bp`) lists `link/1` only. OTP 26 added
+  `erlang:link/2`, so `elements:link/2` compiles with *ambiguous call of
+  overridden auto-imported BIF link/2* on OTP 26+. It is a warning, not an
+  error — the local definition wins and the erlang row is green — and the
+  durable fix is one `link/2` entry in the compiler's catalog, which is not
+  this repository.
 - **The element surface, step 3 — the six void constructors**: `input`, `img`,
   `meta`, `link`, `br`, `hr`. They keep the uniform two-parameter shape and
   drop the children they are handed, through `voidEl`; the one-parameter

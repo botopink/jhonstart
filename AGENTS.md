@@ -57,7 +57,8 @@ repository/jhonstart/
 │       │   ├── router.d.bp    ← Router/router/Link (host-bound navigation; GATED)
 │       │   └── server.d.bp    ← Http ContextBase: request() + loaders (host-bound/async; GATED)
 │       └── test/
-│           └── html_test.bp   ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
+│           ├── html_test.bp     ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
+│           └── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
 └── examples/
     ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node (targets [commonJS])
     ├── jhonstart-html/     ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang])
