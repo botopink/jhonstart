@@ -1,0 +1,121 @@
+// jhonstart/elements — the element surface.
+//
+// `element.bp` declares eight constructors (`text`, `fragment`, `div`, `span`,
+// `p`, `h1`, `ul`, `li`) and is frozen. This module holds the rest of the tag
+// set the framework needs, in the SAME shape, so that a reader cannot tell from
+// a call site which of the two files a tag came from:
+//
+//     pub fn <tag>(children: Children, attrs: Array<#(string, string)> = []) -> Element
+//
+// Children positional, `attrs:` labeled. The shape is not a free choice: the
+// `html """…"""` DSL writes exactly `tag([kids], attrs: [pairs])`
+// (`html.bp`, the close-tag arm), so a constructor with any other arity is
+// unreachable from the markup front-end. The declared default is never applied
+// by the compiler today, so EVERY call spells `attrs:`, inner ones included —
+// it stays in the declaration only because the eight have it.
+//
+// Every constructor funnels through `el` (or `voidEl`), so there is exactly one
+// place in this file where an `Element` is built. `el` is also the public escape
+// hatch for a tag this surface does not name: `el("figure", kids, attrs: [])`.
+//
+// Attribute values are stored VERBATIM. Escaping happens once, at render, in the
+// renderer that ships (front 23's `renderNode` via `escape.attribute`); escaping
+// here as well would double-escape the moment both layers are present, and a
+// constructor cannot know whether its output is bound for HTML, for a payload
+// envelope, or for a test.
+
+import {Element, text, renderToString} from "element";
+
+// ── the two builders every constructor in this file goes through ──
+
+pub fn el(
+    tag: string,
+    children: Children,
+    attrs: Array<#(string, string)>,
+) -> Element {
+    return Element(tag: tag, value: "", children: children, attrs: attrs);
+}
+
+// A void element cannot have children at all, so `voidEl` stores none whatever
+// the constructor was handed. The uniform two-parameter shape is kept on the
+// constructors themselves — a one-parameter `input(attrs:)` would be a second
+// convention and would break the DSL's call shape.
+pub fn voidEl(
+    tag: string,
+    attrs: Array<#(string, string)>,
+) -> Element {
+    return Element(tag: tag, value: "", children: [], attrs: attrs);
+}
+
+// ── the two predicates a void-aware renderer consults ──
+
+// The HTML spec's void-element list, written once so the renderer that is
+// void-aware does not restate it:
+// <https://html.spec.whatwg.org/multipage/syntax.html#void-elements>
+pub fn isVoidTag(tag: string) -> bool {
+    val voids = [
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    ];
+    return voids.contains(tag);
+}
+
+// Raw text: content that must NOT be HTML-escaped. `title` and `textarea` are
+// *escapable* raw text, where escaping is the correct treatment, so they are
+// deliberately absent.
+pub fn isRawTextTag(tag: string) -> bool {
+    val raws = ["script", "style"];
+    return raws.contains(tag);
+}
+
+test "el builds a tag the named surface does not carry" {
+    assert renderToString(el("figure", [text("x", attrs: [])], attrs: [])) == "<figure>x</figure>";
+}
+
+test "voidEl stores no children" {
+    val w = voidEl("wbr", []);
+    assert w.tag == "wbr";
+    assert w.children.length == 0;
+    assert renderToString(w) == "<wbr></wbr>";
+}
+
+test "isVoidTag answers the HTML spec's list and nothing else" {
+    assert isVoidTag("area");
+    assert isVoidTag("base");
+    assert isVoidTag("br");
+    assert isVoidTag("col");
+    assert isVoidTag("embed");
+    assert isVoidTag("hr");
+    assert isVoidTag("img");
+    assert isVoidTag("input");
+    assert isVoidTag("link");
+    assert isVoidTag("meta");
+    assert isVoidTag("param");
+    assert isVoidTag("source");
+    assert isVoidTag("track");
+    assert isVoidTag("wbr");
+    assert isVoidTag("div") == false;
+    assert isVoidTag("span") == false;
+    assert isVoidTag("form") == false;
+    assert isVoidTag("") == false;
+}
+
+test "isRawTextTag is script and style — escapable raw text is not raw text" {
+    assert isRawTextTag("script");
+    assert isRawTextTag("style");
+    assert isRawTextTag("title") == false;
+    assert isRawTextTag("textarea") == false;
+    assert isRawTextTag("div") == false;
+}

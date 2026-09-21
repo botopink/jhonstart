@@ -44,13 +44,14 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   └── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, client_runtime.bp, router.d.bp, server.d.bp]
+│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, elements.bp, client_runtime.bp, router.d.bp, server.d.bp]
 │       ├── src/
 │       │   ├── AGENTS.md
-│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; mod client_runtime;`
+│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod elements; mod client_runtime;`
 │       │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │       │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
 │       │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
+│       │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │       │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
 │       │   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
 │       │   ├── router.d.bp    ← Router/router/Link (host-bound navigation; GATED)
@@ -78,9 +79,12 @@ neither a runner row nor a gate row. Do not give it a manifest until it builds.
 ## Module tree (`root.bp`)
 
 `modules/jhonstart/src/root.bp` is the explicit module-tree root — the package builds from it, not
-a deprecated blind `src/` scan. It declares the three compiled modules
-`pub mod element; pub mod hooks; pub mod html;` (all public surface; `hooks`
-imports `Element` from `element`, so the resolver compiles `element` first).
+a deprecated blind `src/` scan. It declares the four compiled public modules
+`pub mod element; pub mod hooks; pub mod html; pub mod elements;` (all public
+surface; `hooks` and `elements` import `Element` from `element`, so the resolver
+compiles `element` first). Each track-C front **appends** its own `pub mod` line
+in front-number order and never reorders or edits another front's line;
+`botopink.json`'s `files` list takes the same entries in the same order.
 
 **A sibling-module import always names its module** — `import { Element } from
 "element";`, never the bare `import { Element };`. Both type-check, but
@@ -158,8 +162,9 @@ jhonstart is a *consumer*. What it relies on:
   - `use-await-prefix` / `async-generators` (`tasks/v0.beta.1/`) for the server
     data layer (the `#[@future]` annotation surface itself landed in
     v0.beta.12; the prefix/generator wiring on top is the remaining gap);
-  - the `Element` model has no **attribute** slot, so `Link`/form controls can't
-    render `href`/`onClick` in pure `.bp` yet.
+  - (closed) the `Element` model **does** carry an `attrs: Array<#(string,
+    string)>` slot, so `href`/`value`/`class` render in pure `.bp`; what `Link`
+    still lacks is the host navigation runtime, not an attribute slot.
 
   (The "bare imported template-fn binding" gap that originally lived here
   closed in v0.beta.8 via the generic-loader-binding keystone, with the

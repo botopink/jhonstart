@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **The element surface — `modules/jhonstart/src/elements.bp`** (1.0.10-beta
+  front 94), step 1: the two builders every constructor in the file goes
+  through, `el(tag, children, attrs)` and `voidEl(tag, attrs)` (which stores no
+  children), plus the two predicates a void-aware renderer consults —
+  `isVoidTag` (the HTML spec's fourteen: `area`, `base`, `br`, `col`, `embed`,
+  `hr`, `img`, `input`, `link`, `meta`, `param`, `source`, `track`, `wbr`) and
+  `isRawTextTag` (`script`, `style` — `title` and `textarea` are *escapable*
+  raw text and are not in the set). `el` doubles as the public escape hatch for
+  a tag the named surface does not carry. Attribute values are stored verbatim;
+  escaping belongs to the renderer. `pub mod elements;` joins `src/root.bp` and
+  `"elements.bp"` the member manifest's `files`. Nothing in `element.bp`,
+  `hooks.bp` or `html.bp` was touched — all three are frozen for the milestone.
+  4 inline `test {}` blocks, green on commonJS and on erlang (13/13 each, from
+  a 9/9 baseline).
 - **The umbrella is a workspace; the core lives in `modules/jhonstart/`**
   (1.0.10-beta front `02-packaging` step 2, decisions 75 + 76). The root
   `botopink.json` keeps only `name`, `version`, `description`,

@@ -41,8 +41,9 @@ The loader walks up from `cwd` and, at each ancestor, considers these roots
 manifest** — so `repository/` contributes `jhonstart` (the member
 `repository/jhonstart/modules/jhonstart/`), `jhonstart-counter`,
 `jhonstart-html` and `jhonstart-todo`, and never the umbrella. The member's
-`files` — `root.bp`, `element.bp`, `hooks.bp`, `html.bp`, `client_runtime.bp`,
-`router.d.bp`, `server.d.bp` — are the only modules a consumer sees. A
+`files` — `root.bp`, `element.bp`, `hooks.bp`, `html.bp`, `elements.bp`,
+`client_runtime.bp`, `router.d.bp`, `server.d.bp` — are the only modules a
+consumer sees. A
 `{ "workspace": true }` dependency consults no root at all. Nothing about
 jhonstart is embedded; the compiler core never names it.
 
@@ -151,8 +152,49 @@ type-checks but its render is a recorded follow-up.
 `renderToString(e)` serializes a tree to HTML, purely and synchronously:
 
 ```bp
-renderToString(div([p([text("hi")]), text("!")]))   // "<div><p>hi</p>!</div>"
+renderToString(div([p([text("hi", attrs: [])], attrs: []), text("!", attrs: [])], attrs: []))
+// "<div><p>hi</p>!</div>"
 ```
+
+**Every call spells `attrs:`, inner ones included.** The declared default
+(`attrs: Array<#(string, string)> = []`) is part of every builder's signature,
+but the compiler does not apply a declared parameter default at the call site
+today, so omitting the argument is an arity error rather than an empty list.
+
+## The element surface (`elements.bp`)
+
+`element.bp` is frozen at eight constructors. `elements.bp` carries the rest of
+the tag set in exactly the same shape, so a reader cannot tell from a call site
+which of the two a tag came from:
+
+```bp
+pub fn <tag>(children: Children, attrs: Array<#(string, string)> = []) -> Element
+```
+
+Children positional, `attrs:` labeled. The shape is not a free choice: the
+`html """…"""` DSL writes `tag([kids], attrs: [pairs])`, so a constructor of any
+other arity is unreachable from the markup front-end.
+
+Two builders and two predicates:
+
+| Function | What it is |
+|---|---|
+| `el(tag: string, children: Children, attrs: Array<#(string, string)>) -> Element` | The single place an ordinary element is built — and the **escape hatch** for a tag the surface does not name: `el("figure", kids, attrs: [])` |
+| `voidEl(tag: string, attrs: Array<#(string, string)>) -> Element` | The same, for an element that cannot have children: it stores none |
+| `isVoidTag(tag: string) -> bool` | The HTML spec's void-element list — `area`, `base`, `br`, `col`, `embed`, `hr`, `img`, `input`, `link`, `meta`, `param`, `source`, `track`, `wbr`. Written once here so a void-aware renderer consults it instead of restating it |
+| `isRawTextTag(tag: string) -> bool` | `script` and `style` — the two elements whose text content is raw text and must **not** be HTML-escaped. `title` and `textarea` are *escapable* raw text, where escaping is correct, and are deliberately absent |
+
+**Attribute values are stored verbatim.** A constructor never escapes: an `href`
+of `/a&b` is kept as `/a&b`. Escaping happens once, at render, in the renderer
+that emits HTML; doing it in the constructor as well would double-escape the
+moment both layers are present, and a constructor cannot know whether its output
+is bound for HTML, for a payload envelope, or for a test.
+
+**`renderToString` is not void-aware.** It is `element.bp`'s in-repo test
+renderer and writes a closing tag unconditionally, so
+`renderToString(el("br", [], attrs: []))` answers `<br></br>`. That is why the
+void set is *exported* rather than applied here: the renderer that ships reads
+`isVoidTag`.
 
 ## The `html` DSL — shipped (`html.bp`)
 
