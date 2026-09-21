@@ -1,2 +1,5 @@
 .botopinkbuild/
 out/
+
+# the task plan of a worktree — never committed
+todo.md
