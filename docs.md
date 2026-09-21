@@ -9,6 +9,43 @@
 > **V1 limits**). Specs: `tasks/v0.beta.7/specs/jhonstart.md`,
 > `tasks/v0.beta.8/specs/jhonstart-html.md`.
 
+## Loading
+
+`repository/jhonstart/` is a **workspace** (`"workspaces": ["modules/*", "examples/*"]`,
+decision 75 of 1.0.10-beta); the library is its member `modules/jhonstart/`, and
+`from "jhonstart"` resolves to that member, never to the umbrella. Declare it as
+a dependency — `dependencies` is the object form, exactly one source per entry
+(decision 76) — and import what you need:
+
+```jsonc
+// botopink.json
+{ "name": "myapp", "target": "commonJS", "src": "src/", "entry": "main.bp",
+  "dependencies": { "jhonstart": { "git": "https://github.com/botopink/jhonstart.git", "branch": "feat" } } }
+```
+
+```jsonc
+// …or, from a sibling member of jhonstart's own workspace — which is what
+// examples/jhonstart-{counter,html,todo}/ use:
+{ "dependencies": { "jhonstart": { "workspace": true } } }
+```
+
+```bp
+import { html, div, p, text, state, effect, renderToString } from "jhonstart";
+```
+
+The loader walks up from `cwd` and, at each ancestor, considers these roots
+(nearest-first): the ancestor itself when its `botopink.json` is a workspace,
+`repository/botopink-lang/libs`, `repository/`, a legacy flat `libs/`, then
+`.botopinkbuild/deps/`. A root contributes every immediate child holding a
+`botopink.json` **and every member of a workspace found there, named by its own
+manifest** — so `repository/` contributes `jhonstart` (the member
+`repository/jhonstart/modules/jhonstart/`), `jhonstart-counter`,
+`jhonstart-html` and `jhonstart-todo`, and never the umbrella. The member's
+`files` — `root.bp`, `element.bp`, `hooks.bp`, `html.bp`, `client_runtime.bp`,
+`router.d.bp`, `server.d.bp` — are the only modules a consumer sees. A
+`{ "workspace": true }` dependency consults no root at all. Nothing about
+jhonstart is embedded; the compiler core never names it.
+
 ## Component model
 
 A **component** is a `#[@context] fn(...) -> Element`. A **hook** is a function
@@ -84,8 +121,8 @@ fn Widget() -> Element {
 ## Client runtime
 
 The client build resolves `jhonstart/hooks` to `jhonstart/client_runtime.mjs`
-(`src/client_runtime.mjs`, shipped next to the emitted modules by `botopink
-build`): the same five nouns, the same signatures and shapes, over jhonstart's
+(`modules/jhonstart/src/client_runtime.mjs`, shipped next to the emitted modules
+by `botopink build`): the same five nouns, the same signatures and shapes, over jhonstart's
 own minimal render loop — cursor-indexed cells (the static-prefix rule is what
 keeps the order stable), `set`/`dispatch` schedule one re-render per microtask,
 effects run after commit when their `deps` change; `render(component, commit)`
@@ -94,9 +131,11 @@ every cell yields its first-render value, so the module is a drop-in for the
 pure bodies. The substitution itself is the client bundler's step (front 68,
 1.0.10-beta); under node it is a `require.cache` seed — `examples/jhonstart-
 counter/client.mjs` runs the built `Counter` that way and prints the re-renders
-after `set(3)` and `set(-2)`. `src/client_runtime.bp` carries the one bp-typed
-cell, `clientRender`, whose `#[@External.Node("./client_runtime.mjs", "render")]`
-is what makes the CLI ship the sidecar; the five nouns are not re-declared in
+after `set(3)` and `set(-2)`. `modules/jhonstart/src/client_runtime.bp` carries
+the one bp-typed cell, `clientRender`, whose
+`#[@External.Node("./client_runtime.mjs", "render")]`
+is what makes the CLI ship the sidecar (a miss is silent — see `AGENTS.md`
+§ Known defect); the five nouns are not re-declared in
 bp, because a package's import surface is flat and a second `state` would
 shadow `hooks.state` for every consumer.
 

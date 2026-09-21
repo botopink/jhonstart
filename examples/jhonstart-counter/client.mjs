@@ -14,20 +14,26 @@
 //   <div><p>count: -2</p><span>negative</span></div>      ← after set(-2)
 //
 // `out/jhonstart/client_runtime.mjs` is shipped by `botopink build` (the G2
-// sidecar step) from the jhonstart checkout it finds by NAME across the library
-// roots (`shipMjsSidecars`, botopink-lang `modules/compiler-cli/src/cli/libs.zig`),
-// NOT through the `path` dependency. From a checkout whose directory is not
-// named `jhonstart` — a worktree under `.tasks/` — the build still succeeds and
-// the sidecar is silently NOT shipped, and `node client.mjs` then fails to
-// resolve it. Point `BOTOPINK_LIB_ROOTS` at a root holding a REAL directory
-// named `jhonstart` (`scanRoots` names an entry by its directory basename and
-// keeps `kind == .directory` only, so a symlinked entry is skipped; `src/`
-// inside it may be a symlink):
+// sidecar step) from whatever `libDirByName` answers for the name `jhonstart`
+// across the library ROOTS (`shipMjsSidecars`, botopink-lang
+// `modules/compiler-cli/src/cli/libs.zig`) — NOT through this project's
+// resolved `{ "jhonstart": { "workspace": true } }` dependency. That is a known
+// defect owned by front `00 · 10-cli-residuals`, and a miss is SILENT: the
+// build still exits 0, the sidecar is simply absent, and only `node client.mjs`
+// fails to resolve it.
 //
-//   mkdir -p /tmp/roots/jhonstart
-//   cp botopink.json /tmp/roots/jhonstart/
-//   ln -s "$PWD/../../src" /tmp/roots/jhonstart/src
-//   BOTOPINK_LIB_ROOTS=/tmp/roots botopink build && node client.mjs
+// In this workspace the lookup is by MANIFEST NAME (not by directory basename,
+// since front 02-packaging step 1), so the member `modules/jhonstart/` is found
+// and the sidecar ships — which it did NOT before the core moved out of the
+// root `src/`, a flat package never being a root of its own. It does not ship
+// while two directories on the roots
+// both declare the name `jhonstart` — a `.tasks/` worktree beside the main
+// `repository/jhonstart` checkout: `resolveDuplicateNames` marks both entries
+// and `libDirByName` returns null. From such a worktree, copy it by hand:
+//
+//   botopink build \
+//     && cp ../../modules/jhonstart/src/client_runtime.mjs out/jhonstart/ \
+//     && node client.mjs
 
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";

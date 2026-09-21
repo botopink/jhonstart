@@ -18,8 +18,9 @@ to the builder pipeline at comptime. The compiler is **unaware** of jhonstart (h
 "rakun|jhonstart" modules/compiler-core/src` gate); the framework is a pure
 client, reached with `from "jhonstart"`, never embedded.
 
-The UI **core + hooks + the `html` markup DSL are real botopink** (`src/element.bp`,
-`src/hooks.bp`, `src/html.bp` — all in `botopink.json`'s compiled set): an
+The UI **core + hooks + the `html` markup DSL are real botopink**
+(`modules/jhonstart/src/{element,hooks,html}.bp` — all in the core member's
+`botopink.json` compiled set): an
 `Element` tree, builders, a synchronous SSR renderer, the hook family, and the
 `html """…"""` comptime expander — no host intrinsics, no async. Only the
 host-bound surface (client navigation, the Http server context) stays as `.d.bp`
@@ -28,28 +29,55 @@ the prelude.
 
 ## Tree
 
+`repository/jhonstart/botopink.json` is a **workspace**, not a package (decision
+75 of 1.0.10-beta): it carries `name`, `version`, `description`, `targets` and
+`"workspaces": ["modules/*", "examples/*"]`, and `src` / `entry` / `files` /
+`dependencies` are located errors there. It compiles nothing, ships nothing and
+answers no import — `botopink build/check/run/test` at the root is the refusal
+that names the members. The library is the member `modules/jhonstart/`, which
+is what `from "jhonstart"` resolves to.
+
 ```text
 repository/jhonstart/
 ├── AGENTS.md          ← you are here
-├── botopink.json      ← manifest (files: element.bp, hooks.bp, html.bp, client_runtime.bp, router.d.bp, server.d.bp)
+├── botopink.json      ← WORKSPACE: name, version, description, targets [commonJS, erlang], workspaces [modules/*, examples/*]
 ├── docs.md            ← user-facing reference
-├── src/
-│   ├── AGENTS.md
-│   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; mod client_runtime;`
-│   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
-│   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
-│   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
-│   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
-│   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
-│   ├── router.d.bp    ← Router/router/Link (host-bound navigation; GATED)
-│   └── server.d.bp    ← Http ContextBase: request() + loaders (host-bound/async; GATED)
-└── test/
-    └── html_test.bp   ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
+├── modules/
+│   └── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
+│       ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, html.bp, client_runtime.bp, router.d.bp, server.d.bp]
+│       ├── src/
+│       │   ├── AGENTS.md
+│       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; mod client_runtime;`
+│       │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
+│       │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Context<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
+│       │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
+│       │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
+│       │   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
+│       │   ├── router.d.bp    ← Router/router/Link (host-bound navigation; GATED)
+│       │   └── server.d.bp    ← Http ContextBase: request() + loaders (host-bound/async; GATED)
+│       └── test/
+│           └── html_test.bp   ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body)
+└── examples/
+    ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node (targets [commonJS])
+    ├── jhonstart-html/     ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang])
+    ├── jhonstart-todo/     ← MEMBER: builders + hooks + SSR (targets [commonJS])
+    └── jhonstart-app/      ← NOT a member: no botopink.json, so the `examples/*` glob skips it (by design)
 ```
+
+There is **no `modules/jhonstart-test/` yet.** The front's `<lib>-test` member
+(`specs/1.0.10-beta/02-packaging/README.md` § 5) stands on `std/asserts` and
+`std/snapshots`, which `01-std` steps 2–3 deliver; it is created then (step 4),
+not here.
+
+`examples/jhonstart-app/` has no manifest on purpose: the `examples/*` glob
+takes only a child holding a `botopink.json`, silently — a directory that wants
+to be a member declares itself. `jhonstart-app` is the aspirational app-layer
+sketch (file routing, `[id]` segments) and does not parse today, so it is
+neither a runner row nor a gate row. Do not give it a manifest until it builds.
 
 ## Module tree (`root.bp`)
 
-`src/root.bp` is the explicit module-tree root — the package builds from it, not
+`modules/jhonstart/src/root.bp` is the explicit module-tree root — the package builds from it, not
 a deprecated blind `src/` scan. It declares the three compiled modules
 `pub mod element; pub mod hooks; pub mod html;` (all public surface; `hooks`
 imports `Element` from `element`, so the resolver compiles `element` first).
@@ -65,7 +93,7 @@ module); naming the module is the workaround and reads better anyway.
 
 The
 host-bound declaration modules `router.d.bp` / `server.d.bp` are **not** in the
-tree: they are wired through `botopink.json` `files` (consumer surface, loaded
+tree: they are wired through the core member's `botopink.json` `files` (consumer surface, loaded
 with `.declaration = true` for a `from "jhonstart"` consumer). `.d.bp` modules
 are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
 `<name>/mod.bp`), mirroring how `libs/std` keeps its ambient `.d.bp` out of
@@ -96,7 +124,8 @@ are not resolved by `mod` paths (the resolver follows only `<name>.bp` /
   yields its initial value, `memo` computes eagerly, `effect` is a no-op. `use
   f(x)` lowers to `f(x)` on every backend, so hook bodies are unit-tested by
   **direct call** (no `use`) in `test {}`, and a `#[@context]` component called
-  plainly renders the server pass. Client reactivity is `src/client_runtime.mjs`
+  plainly renders the server pass. Client reactivity is
+  `modules/jhonstart/src/client_runtime.mjs`
   (the same nouns over jhonstart's own loop), which the client build resolves
   `jhonstart/hooks` to — the bundler's substitution (front 68); under node,
   `examples/jhonstart-counter/client.mjs` seeds `require.cache` the same way.
@@ -145,9 +174,31 @@ jhonstart is a *consumer*. What it relies on:
 `windows-2022` (`escript` ships cleanly only on linux + macos). Both target
 rows are hard cells — no `allow_fail`. Nothing about jhonstart is
 commonJS-only: `renderToString` turns an `Element` tree into a string, which is
-pure string work on either backend, and the suite is 8/8 on erlang. The
+pure string work on either backend, and the core suite is 9/9 on erlang. The
 examples stage reads each example's own manifest target, so it is pinned to the
 commonJS row and runs once.
+
+Since the umbrella is a workspace, the `repository/` root contributes its
+**members** by manifest name: `--lib jhonstart` selects `modules/jhonstart/`,
+the umbrella has no row, and `jhonstart-counter` / `jhonstart-html` /
+`jhonstart-todo` are rows of their own. Over the workspace the runner prints
+(measured 2026-09-21, compiler `botopink-lang` feat `361d255d`):
+
+| lib | commonJS | erlang |
+|---|---|---|
+| `jhonstart` | ✓ 9/9 | ✓ 9/9 |
+| `jhonstart-counter` | ✓ 4/4 | ~ (outside its `targets`) |
+| `jhonstart-html` | ✓ 7/7 | ✓ 7/7 |
+| `jhonstart-todo` | ✓ 3/3 | ~ (outside its `targets`) |
+
+`jhonstart-counter` and `jhonstart-todo` **restrict** `targets` to
+`["commonJS"]` (a member may only restrict the workspace's targets, never widen
+them). Their erlang cell is a pre-existing codegen red, not a packaging one: an
+imported function called unqualified is emitted unqualified into the test
+escript — `main.erl:59: function print/1 undefined`, `main.erl:68: function
+set/2 undefined`. Owner: `00 · 13-module-identity` (`codegen/crossModule.zig`,
+the module-atom sites). `jhonstart-html` declares no `targets` and inherits
+both, because it is green on both.
 
 Bootstrap path mirrors the other lib repos: check out this lib + a
 fresh `botopink-lang` clone, place this lib under
@@ -182,8 +233,10 @@ git config core.hooksPath scripts/git-hooks
 ```
 
 `core.hooksPath` is per clone and applies to every worktree of it. The
-gate checks staged files for conflict markers, then runs `botopink test`
-over `src/` + `test/`. The compiler binary is located via (in order)
+gate checks staged files for conflict markers, then — the root manifest being a
+workspace — runs `botopink test` **inside every `modules/*/` member** that holds
+a `botopink.json`, each on its own manifest target (`botopink test` at the root
+is the refusal, so the runner never calls it there). The compiler binary is located via (in order)
 `$BOTOPINK_BIN`, the nearest ancestor
 `repository/botopink-lang/zig-out/bin/botopink`, then `$PATH`. If none
 resolve, the gate prints a yellow warning and exits 0 — CI runs the full
@@ -193,11 +246,13 @@ fix the red instead.
 After `botopink test`, the gate builds every `examples/*/` that has a
 `botopink.json` (`runExamplesGate`, each with its own manifest target,
 into a throwaway `--out`); CI runs the same function once per workflow.
-Each example depends on jhonstart by `{ "path": "../.." }` (decision 76 of
-1.0.10-beta): the checkout it lives in. A `git` dependency resolves by **name
-across the library roots** — in a worktree under `.tasks/` that is
-`repository/jhonstart`, the main checkout, so the gate would test a checkout
-other than the one being committed.
+Each example depends on the core with `{ "jhonstart": { "workspace": true } }`
+(decisions 75 + 76 of 1.0.10-beta): the sibling member of the enclosing
+workspace, resolved without consulting a library root at all — so the gate
+always tests the checkout being committed, worktree included. A `path` to
+`../..` is now the *points at the workspace itself* refusal, and a `git`
+dependency on a library of this ecosystem would resolve by name across the
+roots to some other checkout.
 `scripts/known-broken-examples.txt` lists the examples allowed to fail —
 `examples/<name>  <reason>` per line — and cannot rot: a listed example
 that builds, or a listed path that no longer exists, fails the gate too.
@@ -223,14 +278,43 @@ client runtime on node (`botopink build && node client.mjs`): it seeds
 `require.cache` so `main.js`'s `jhonstart/hooks` resolves to
 `out/jhonstart/client_runtime.mjs`, renders `Counter`, then re-renders after
 `set(3)` and `set(-2)` — four lines, the first being the program's own `main()`
-at load. The sidecar is shipped by `botopink build` from the jhonstart checkout
-it finds **by name** across the library roots (`shipMjsSidecars`,
-botopink-lang `modules/compiler-cli/src/cli/libs.zig`), not through the `path`
-dependency — and a miss is **silent**: the build still succeeds, the sidecar is
-absent, and only `node client.mjs` fails. From a checkout whose directory is not
-named `jhonstart` (a worktree under `.tasks/`), point `BOTOPINK_LIB_ROOTS` at a
-root holding a REAL directory named `jhonstart` — `manifest.scanRoots`
-(botopink-lang `modules/manifest/src/root.zig`) names an entry by its directory
-basename and keeps `kind == .directory` only, so a symlinked entry is skipped;
-`botopink.json` and a symlinked `src/` inside it are enough. Reported to
-botopink-lang; the fix is the resolved dependency dir as owner.
+at load.
+
+### Known defect — the `.mjs` sidecar is resolved by name, not by the dependency
+
+The sidecar is shipped by `botopink build` (`shipMjsSidecars`, botopink-lang
+`modules/compiler-cli/src/cli/libs.zig`) from whatever `libDirByName` answers for
+the owning lib name across the **library roots** — never through the resolved
+`{ "jhonstart": { "workspace": true } }` dependency the build already has in
+hand. A miss is **silent**: the build still exits 0, `out/jhonstart/client_runtime.mjs`
+is simply absent, and only `node client.mjs` fails. Owner: front
+`00 · 10-cli-residuals`; the fix is to ship from the resolved dependency
+directory. Never bypass a gate over it.
+
+Measured on 2026-09-21 with the `zig-out` binary of `botopink-lang` feat, by
+appending a distinct marker line to each candidate `client_runtime.mjs`,
+building `examples/jhonstart-counter` and grepping the built `out/`. Every row
+exits 0 — the sidecar's presence is the only observable:
+
+| Layout, and where `botopink build` runs | Sidecar | Why |
+|---|---|---|
+| **before** — the flat package (`src/` at the root), no other checkout on the roots | **NOT shipped** | the root's manifest is a *package*, so `rootsFrom` never adds the directory itself; nothing on the roots is named `jhonstart` and `libDirByName` returns `null` |
+| **after** — this layout, no other checkout on the roots | **shipped**, from `modules/jhonstart/src/` | the root's manifest is a *workspace*, so `rootsFrom` adds it and `scanRoots` contributes its members: one entry named `jhonstart` |
+| **after** — `repository/jhonstart/examples/jhonstart-counter/`, the shape this lands as on `feat` | **shipped**, from `repository/jhonstart/modules/jhonstart/src/` | the enclosing workspace is a root and `repository/` reaches the same directory; `addUnique` de-dups by directory, so still one entry |
+| **after** — a `.tasks/` worktree beside a `repository/jhonstart` that also declares the name `jhonstart` (migrated or not) | **NOT shipped** | two entries named `jhonstart` from two directories → `resolveDuplicateNames` marks both *declared by two libraries* → `libDirByName` skips an entry with a `problem` → silent miss |
+
+So the move to `modules/jhonstart/` **fixed** the sidecar for a standalone
+checkout and for the shape that lands on `feat`, and the old
+`BOTOPINK_LIB_ROOTS` workaround (a real directory literally named `jhonstart`
+with a symlinked `src/`) is obsolete: front 02-packaging step 1 replaced the
+directory-basename lookup with a lookup by manifest name. What remains is a
+worktree-only collision — while a `.tasks/` worktree and the main checkout both
+declare the name `jhonstart`, `botopink-lib-test` reports
+`"jhonstart" is declared by two libraries: …`, the sidecar is skipped in the
+worktree, and `node client.mjs` there needs it copied by hand:
+
+```sh
+( cd examples/jhonstart-counter && botopink build \
+  && cp ../../modules/jhonstart/src/client_runtime.mjs out/jhonstart/ \
+  && node client.mjs )
+```

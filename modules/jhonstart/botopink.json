@@ -1,0 +1,17 @@
+{
+  "name": "jhonstart",
+  "version": "0.0.1",
+  "description": "jhonstart core — the Element tree + builders + SSR renderer, the state/effect/memo/ref/reducer hooks, the `html \"\"\"…\"\"\"` markup DSL, the client runtime cell and the host-bound router/server declarations — commonJS and erlang",
+  "src": "src/",
+  "entry": "root.bp",
+  "target": "commonJS",
+  "files": [
+    "root.bp",
+    "element.bp",
+    "hooks.bp",
+    "html.bp",
+    "client_runtime.bp",
+    "router.d.bp",
+    "server.d.bp"
+  ]
+}

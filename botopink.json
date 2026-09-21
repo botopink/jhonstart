@@ -1,18 +1,7 @@
 {
   "name": "jhonstart",
   "version": "0.0.1",
-  "description": "Botopink React/Next-style UI framework \u2014 an Element tree + builders + SSR renderer + hooks in real botopink, plus the html markup DSL (compiled) and the host-bound router/server surface",
-  "src": "src/",
-  "targets": [
-    "commonJS",
-    "erlang"
-  ],
-  "files": [
-    "element.bp",
-    "hooks.bp",
-    "html.bp",
-    "client_runtime.bp",
-    "router.d.bp",
-    "server.d.bp"
-  ]
+  "description": "The jhonstart libraries — a React/Next-style UI framework for botopink; a workspace of modules/* and examples/*",
+  "targets": ["commonJS", "erlang"],
+  "workspaces": ["modules/*", "examples/*"]
 }

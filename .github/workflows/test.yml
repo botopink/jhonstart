@@ -4,6 +4,12 @@
 # Bootstrap: check out this lib + botopink-lang, place this lib under
 # `botopink-lang/repository/jhonstart/`, run `zig build test-libs -- --lib
 # jhonstart --target <matrix.target>`.
+#
+# `repository/jhonstart/` is a workspace (decision 75): the `repository/` root
+# contributes its members by manifest name, so `--lib jhonstart` selects the
+# member `modules/jhonstart/` and the umbrella has no row. The example members
+# (`jhonstart-counter`, `jhonstart-html`, `jhonstart-todo`) are rows of their
+# own; the Examples build step below still builds each one from its manifest.
 name: test
 
 on:
@@ -27,7 +33,8 @@ jobs:
       fail-fast: false
       matrix:
         # The `erlang` axis is a hard cell: `botopink test --target erlang`
-        # passes the whole suite (8/8, measured 2026-09-18). windows-2022
+        # passes the core member's whole suite (9/9, measured 2026-09-21 in
+        # modules/jhonstart/). windows-2022
         # commonJS now runs the source step under `shell: bash` (ci-tail W1),
         # so the PowerShell `${LIB_NAME}` expansion gap is closed and the row
         # carries `allow_fail: false`.

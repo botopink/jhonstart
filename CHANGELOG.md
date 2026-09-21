@@ -2,6 +2,67 @@
 
 ## Unreleased
 
+- **The umbrella is a workspace; the core lives in `modules/jhonstart/`**
+  (1.0.10-beta front `02-packaging` step 2, decisions 75 + 76). The root
+  `botopink.json` keeps only `name`, `version`, `description`,
+  `targets ["commonJS", "erlang"]` and `"workspaces": ["modules/*", "examples/*"]` —
+  `src`, `entry`, `files` and `dependencies` are located errors there — so it
+  compiles nothing, ships nothing and answers no import; `botopink build/check/run/test`
+  at the root refuses with the member list (`jhonstart, jhonstart-counter,
+  jhonstart-html, jhonstart-todo`). `src/**` and `test/**` moved with `git mv`
+  to `modules/jhonstart/`, whose manifest carries `name jhonstart`, `entry root.bp`
+  and a `files` list that now begins with `root.bp`; `from "jhonstart"` resolves
+  to that member. No source file was edited and nothing was reformatted.
+  Measured either side of the move, against compiler `botopink-lang` feat
+  `361d255d`: the core 9/9 on commonJS and 9/9 on erlang (3 element + 4 hooks +
+  2 html), `jhonstart-counter` 4/4, `jhonstart-html` 7/7, `jhonstart-todo` 3/3,
+  each building; `botopink test --target beam` is still "only the commonJS and
+  erlang targets" (a runner skip).
+- The three examples are **members**, depending on the core with
+  `{ "jhonstart": { "workspace": true } }` in place of `{ "path": "../.." }`
+  (which is now the *points at the workspace itself* refusal), each with `src`,
+  `entry main.bp` and a one-line `description`. `jhonstart-counter` and
+  `jhonstart-todo` restrict `targets` to `["commonJS"]`; their erlang cell is a
+  pre-existing codegen red — an imported function called unqualified is emitted
+  unqualified into the test escript (`main.erl:59: function print/1 undefined`,
+  `main.erl:68: function set/2 undefined`), owned by `00 · 13-module-identity`
+  (`codegen/crossModule.zig`). `jhonstart-html` declares no `targets` and
+  inherits both, being 7/7 on each. `examples/jhonstart-app/` keeps **no**
+  manifest and stays out: the `examples/*` glob skips a child without one,
+  silently by design, and that sketch does not parse yet.
+- `scripts/git-hooks/lib/runner-standalone.sh` is rakun's workspace-aware
+  runner: when the root manifest carries `"workspaces"`, stage 2 runs
+  `botopink test` inside **every** `modules/*/` member instead of over a root
+  `src/` + `test/` that no longer exists. Stage 3 (the examples gate) is
+  unchanged.
+- **Known defect — the `.mjs` sidecar is resolved by name, not by the resolved
+  dependency.** `shipMjsSidecars` (botopink-lang `modules/compiler-cli/src/cli/libs.zig`)
+  asks `libDirByName` for the owning lib across the library roots rather than
+  using the `{ "workspace": true }` dependency it already resolved, and a miss is
+  **silent** — the build still exits 0 and only `node client.mjs` fails. Owner:
+  front `00 · 10-cli-residuals`. Measured either side of the move by appending a
+  marker line to the candidate `client_runtime.mjs` and grepping the built
+  `out/` (every case exits 0): **before**, from a standalone checkout with no
+  other `jhonstart` on the roots, `out/jhonstart/client_runtime.mjs` was **not**
+  shipped — the root manifest was a package, so `rootsFrom` never added the
+  directory itself and nothing on the roots was named `jhonstart`. **After**, it
+  **is** shipped from `modules/jhonstart/src/` — the root manifest is a
+  workspace, so the directory becomes a root and contributes its members — both
+  standalone and at `repository/jhonstart/` (the shape this lands as on `feat`,
+  where `addUnique` de-dups the same directory reached through two roots). The
+  one case that still misses is a `.tasks/` worktree beside a main checkout that
+  also declares the name `jhonstart`: two directories, one name →
+  `resolveDuplicateNames` marks both *declared by two libraries* and
+  `libDirByName` skips an entry carrying a problem. So the move **fixed** the
+  sidecar, and the old `BOTOPINK_LIB_ROOTS` workaround — a real directory
+  literally named `jhonstart` with a symlinked `src/` — is obsolete: the lookup
+  is by manifest name since the front's step 1.
+- `botopink format --check` is unchanged by the move and still red on the same
+  files at their new paths: 6 would be reformatted
+  (`modules/jhonstart/src/html.bp`, `modules/jhonstart/test/html_test.bp`,
+  `examples/*/src/main.bp`, `examples/jhonstart-app/main.bp`) and 3 do not parse
+  (`examples/jhonstart-app/app/{layout,page}.bp`, `app/posts/[id]/page.bp`). A
+  packaging commit reformats nothing.
 - **`use` activation after decision 88 (botopink-lang 1.0.10-beta front 19):**
   `use f(x)` lowers to `f(x)` on every backend and a body that activates a hook
   carries `#[@context]`. Every component and custom hook is annotated
@@ -20,6 +81,8 @@
 - The three examples depend on jhonstart by `{ "path": "../.." }` (decision
   76), the checkout they live in — a `git` dependency resolved by name to
   `repository/jhonstart`, the main checkout, from inside a worktree.
+  *(Superseded above: `../..` is the umbrella, so the form is now
+  `{ "workspace": true }`.)*
 
 - **1.0.3 surface** (botopink-lang front 12): `Element` and `State<T>` are
   `type Name(fields)`; `Router` / `Request` are `behavior`s whose bodiless members
