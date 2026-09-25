@@ -33,7 +33,7 @@
 //
 //      #[client] on a `type`
 //        error: #[client] must annotate a function
-//      #[client] on `#[@future] fn Srv() -> @Future<Element>`
+//      #[client] on `fn Srv() -> @Task<Element>`
 //        error: #[client] must annotate a component returning Element
 //      #[clientProps] on an enum-shaped `type`
 //        error: #[clientProps] must annotate a record, not an enum
@@ -89,12 +89,14 @@ import {
 import {Element, div, h1, p, ul, li, text, renderToString} from "element";
 import {button, h2, section} from "elements";
 import {state} from "hooks";
+import {ElementBase} from "element";
 
 // ── step 1: `#[client]` — the marker, and the proof `@emit` fired ───────────
 //
-// A real client component: `#[client]` for the boundary, `#[@use]` for the
-// effect (decision 88 — the annotation is the activation, and `#[client]` is a
-// decorator rather than a second effect, so the two coexist). `use state` means
+// A real client component: `#[client]` for the boundary, the
+// `@Component<ElementBase, Element>` return for the effect (decisions 118/128 — the
+// return is the activation, and `#[client]` is a decorator rather than an effect,
+// so the two coexist). `use state` means
 // nothing on the server; the body renders its first-render value, which is all
 // a placeholder ever needs.
 
@@ -105,7 +107,6 @@ pub type LikeProps(
 )
 
 #[client]
-#[@use]
 pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
     return button([
@@ -123,7 +124,6 @@ pub type ThemeProps(theme: string)
 // is not serialized. That separation is the whole Context-Provider pattern, and
 // it is why `Element` is off the serializable whitelist.
 #[client]
-#[@use]
 pub fn ThemeProvider(props: ThemeProps, children: Children) -> @Component<ElementBase, Element> {
     val current = use state(props.theme);
     return div(children, attrs: [#("class", "theme-" + current.value)]);

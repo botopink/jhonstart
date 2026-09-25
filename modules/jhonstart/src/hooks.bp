@@ -1,11 +1,12 @@
 // jhonstart/hooks — the hook surface, as *real* botopink (F1).
 //
-// Every hook is `#[@use] pub fn <noun>(…) -> @Component<ElementBase, R>`: a NOUN, never
+// Every hook is `pub fn <noun>(…) -> @Component<ElementBase, R>`: a NOUN, never
 // a `use` prefix in the name — the keyword is the activation
-// (`val c = use state(0)`), and it is legal only in a `#[@use]` body: a
-// component (`-> @Component<ElementBase, Element>`) or a custom hook (`-> @Component<ElementBase,
-// _>`). Enforced by the language (decisions 88, 102 and 104 of botopink
-// 1.0.10-beta), not by jhonstart. On commonJS every `#[@use]` body is an
+// (`val c = use state(0)`), and it is legal only in a body whose return is
+// `@Component<ElementBase, _>` (the return is the effect): a component
+// (`-> @Component<ElementBase, Element>`) or a custom hook (`-> @Component<ElementBase,
+// _>`). Enforced by the language (decisions 88, 104, 118 and 128 of botopink
+// 1.0.10-beta), not by jhonstart. On commonJS every `@Component` body is an
 // `async function`, so a caller that is not a `use` awaits it; `use f(x)` is
 // `await f(x)` there and `f(x)` on erlang. Nothing is
 // renamed to React's `useState`, no dependency array is inferred — a hook that
@@ -36,7 +37,6 @@ pub type State<T>(
 
 // `state` — a stateful cell. On the server (SSR / first render) it yields the
 // initial value; `set` is the updater the client runtime rebinds on mount.
-#[@use]
 pub fn state<T>(initial: T) -> @Component<ElementBase, State<T>> {
     return State(value: initial, set: { next -> });
 }
@@ -44,28 +44,24 @@ pub fn state<T>(initial: T) -> @Component<ElementBase, State<T>> {
 // `effect` — a side effect run after render. Pure during SSR (a no-op); the
 // client runtime schedules `run` against `deps` on mount. Yields the empty
 // capability (`#()` — nothing to bind).
-#[@use]
 pub fn effect(run: fn(), deps: any[]) -> @Component<ElementBase, #()> {
     return #();
 }
 
 // `memo` — a value memoized across renders. Computed eagerly here (the first
 // render has no previous `deps` to compare against), yielding the computed `T`.
-#[@use]
 pub fn memo<T>(compute: fn() -> T, deps: any[]) -> @Component<ElementBase, T> {
     return compute();
 }
 
 // `ref` — a mutable box that persists across renders. Yields `#(current)` seeded
 // with `initial` (G2: a labeled tuple type).
-#[@use]
 pub fn ref<T>(initial: T) -> @Component<ElementBase, #(current: T)> {
     return #(initial);
 }
 
 // `reducer` — state threaded through a reducer. Yields `#(state, dispatch)`;
 // `state` is the initial state, `dispatch` the action sink the client rebinds.
-#[@use]
 pub fn reducer<S, A>(
     reduce: fn(s: S, a: A) -> S,
     initial: S,
@@ -76,9 +72,9 @@ pub fn reducer<S, A>(
 // ── tests ──────────────────────────────────────────────────────────────────
 //
 // The hook BODIES are pure `.bp`, so they are exercised by calling them directly
-// — without `use` a hook is an ordinary call (awaited: a `test` body runs in a
-// future context), the first-render value. `Counter`
-// below is the activating form (`#[@use]` + `use`), which lowers to the same
+// — without `use` a hook is an ordinary call (awaited: a `test` body has an
+// await channel), the first-render value. `Counter`
+// below is the activating form (a `@Component` return + `use`), which lowers to the same
 // calls; it type-checks the capability and is rendered as the server pass.
 
 test "state yields its initial value and a callable setter" {
@@ -115,18 +111,16 @@ test "a component activating hooks renders the server pass when called plainly" 
 }
 
 // A custom hook by the rule: a noun (`counter`, not `useCounter`), a return that
-// is another hook's `@Component<ElementBase, _>`, and `#[@use]` so its body may
+// is another hook's `@Component<ElementBase, _>`, which is what lets its body
 // activate `state`. Here it just re-exposes `state`'s `State<i32>`.
-#[@use]
 fn counter(start: i32) -> @Component<ElementBase, State<i32>> {
     val s = use state(start);
     return s;
 }
 
-// A component: `#[@use]` on the fn, `-> @Component<ElementBase, Element>` (the owner), and
+// A component: `-> @Component<ElementBase, Element>` (the owner — the return is the effect), and
 // every `use` in the static prefix. Called without `use` from the test it
 // runs as the server pass — `use state(0)` is `state(0)`, the initial cell.
-#[@use]
 fn Counter() -> @Component<ElementBase, Element> {
     val c = use state(0);
     val doubled = use memo({ ->

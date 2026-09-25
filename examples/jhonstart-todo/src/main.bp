@@ -3,9 +3,9 @@
 // List rendering is ordinary data: `items.map({ it -> li([text(it)]) })`
 // produces an `Element[]` the `ul` builder accepts (the `Children` coercion).
 // `todoView` is pure and directly testable; `toggle` is a custom hook — a noun,
-// no `use` prefix (the keyword is the activation), `#[@use]` on the fn, a
-// return that implements `@Component<ElementBase, _>` — used by the idiomatic
-// `#[@use]` `TodoApp` component (decision 88 of 1.0.10-beta).
+// no `use` prefix (the keyword is the activation), a `@Component<ElementBase, _>`
+// return (the return is the effect) — used by the idiomatic `TodoApp` component
+// (decisions 88, 118 and 128 of 1.0.10-beta).
 
 import { Element, ElementBase, div, ul, li, span, text, state, renderToString } from "jhonstart";
 
@@ -19,7 +19,6 @@ fn todoView(items: string[]) -> Element {
 }
 
 // A custom hook composing the primitive `state` hook.
-#[@use]
 fn toggle(initial: bool) -> @Component<ElementBase, State<bool>> {
     val s = use state(initial);
     return s;
@@ -27,7 +26,6 @@ fn toggle(initial: bool) -> @Component<ElementBase, State<bool>> {
 
 // Idiomatic stateful component: every `use` in the static prefix, before the
 // `if`. Called plainly it is the server pass (the initial cells).
-#[@use]
 pub fn TodoApp() -> @Component<ElementBase, Element> {
     val items = use state(["buy milk", "write docs"]);
     val open = use toggle(true);
@@ -50,7 +48,7 @@ test "an empty list renders an empty ul" {
     assert renderToString(todoView([])) == "<div><span>todos: 0</span><ul></ul></div>";
 }
 
-test "the #[@use] component and its custom hook render the server pass" {
+test "the @Component component and its custom hook render the server pass" {
     assert renderToString(await TodoApp()) ==
         "<div><span>todos: 2</span><ul><li>buy milk</li><li>write docs</li></ul></div>";
 }

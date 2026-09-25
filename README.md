@@ -5,10 +5,12 @@
 > React/Next-style UI framework written in botopink — on the language's own
 > primitives. No compiler-core support; reached via `from "jhonstart"`.
 
-Components are `#[@use]` functions returning `@Component<ElementBase, Element>`; hooks are nouns
+Components are functions returning `@Component<ElementBase, Element>`; hooks are nouns
 (`state`, `memo`, `router` — no `use` prefix) returning the `@Component<ElementBase, _>`
-capability, activated by the `use` keyword; server components
-are `#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12);
+capability, activated by the `use` keyword; a server component that only loads data
+is `fn … -> @Task<Element>` — the return type is the effect, there is no annotation
+(botopink decisions 118–128). A component returns `Element`, not a `@Result`, so it
+handles a failed load in its own body (`try await load() catch …`, `case`);
 the JSX-like `html """…"""` DSL reuses `expr-templates` (`@Expr<Element>`),
 expanding markup to the builder pipeline at comptime.
 
@@ -38,9 +40,8 @@ fronts fill it) and the runnable examples [`examples/jhonstart-counter/`](exampl
 ## Quick example
 
 ```bp
-import {div, p, text, state, renderToString} from "jhonstart";
+import {ElementBase, div, p, text, state, renderToString} from "jhonstart";
 
-#[@use]
 fn Counter() -> @Component<ElementBase, Element> {
     val c = use state(0);
     return div([
@@ -48,8 +49,7 @@ fn Counter() -> @Component<ElementBase, Element> {
     ], []);
 }
 
-#[@future]
-fn main() -> @Future<void> {
+fn main() -> @Task<void> {
     @print(renderToString(await Counter()));
 }
 ```

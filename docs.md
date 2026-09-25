@@ -56,25 +56,27 @@ jhonstart is embedded; the compiler core never names it.
 
 ## Component model
 
-A **component** that activates hooks is a `#[@use] fn(...) -> @Component<ElementBase, Element>`
+A **component** that activates hooks is a `fn(...) -> @Component<ElementBase, Element>`
 (one that activates none is an ordinary `fn … -> Element`). A **hook** is a
-`#[@use]` function named by its **noun** — `state`, `effect`, `memo`, `ref`,
+function named by its **noun** — `state`, `effect`, `memo`, `ref`,
 `reducer`, `router`; never a `use` prefix in the name — returning
-`@Component<ElementBase, _>`. `Element` carries the tree: `implement
-@Context<ElementBase>`. The keyword `use` is the activation: `val c = use
-state(0)` is legal only in a `#[@use]` body — a component or a custom hook
-(decisions 102/104 of botopink 1.0.10-beta) — and every
+`@Component<ElementBase, _>`. There is no annotation: **the return type is the
+effect** (decisions 118 and 128 of botopink 1.0.10-beta). `Element` carries the
+tree: `implement @Context<ElementBase>`. The keyword `use` is the activation:
+`val c = use state(0)` is legal only in a body whose return is
+`@Component<ElementBase, _>` — a component or a custom hook — and every
 `use` sits in the body's **static prefix** — before any `if`, `case`, `loop` or
-`return`, at any nesting. A body without `#[@use]` that activates a hook is
-`use-without-context-effect`; `#[@Context]` with a capital is an unknown
-annotation silently ignored. All of this is the language's context-inference
-(decisions 88, 102, 104 of 1.0.10-beta), not jhonstart. On commonJS every
-`#[@use]` body is an `async function`: a component's caller `await`s it.
+`return`, at any nesting. A body with any other return that activates a hook is
+`use-without-context-effect`. All of this is the language's context-inference
+(decisions 88, 104, 118, 128 of 1.0.10-beta), not jhonstart. `@Component`
+extends `@Task`, so a component or hook may also `await`; it may `throw` / `try`
+only when its `T` is a `@Result` — a component returns `Element`, so it handles
+errors in its own body (`try … catch`, `case`; decision 121). On commonJS every
+`@Component` body is an `async function`: a component's caller `await`s it.
 
 ```bp
-import { div, p, text, state, renderToString } from "jhonstart";
+import { ElementBase, div, p, text, state, renderToString } from "jhonstart";
 
-#[@use]
 fn Counter() -> @Component<ElementBase, Element> {
     val c = use state(0);
     return div([
@@ -82,8 +84,7 @@ fn Counter() -> @Component<ElementBase, Element> {
     ], []);
 }
 
-#[@future]
-fn main() -> @Future<void> {
+fn main() -> @Task<void> {
     @print(renderToString(await Counter()));   // SSR — a pure string
 }
 ```
@@ -113,17 +114,15 @@ deps)`). Client re-render reactivity is the **client runtime**'s job: see
 | `ref<T>(initial)` | `#(current: T)` | mutable handle |
 | `reducer<S,A>(reduce, init)` | `#(state: S, dispatch: fn(action: A))` | reducer state |
 
-Custom hooks compose the primitives — a noun for a name, `#[@use]` on the
-fn, a return that implements `@Component<ElementBase, _>`:
+Custom hooks compose the primitives — a noun for a name and a
+`@Component<ElementBase, _>` return:
 
 ```bp
-#[@use]
 fn counter(start: i32) -> @Component<ElementBase, State<i32>> {
     val s = use state(start);
     return s;
 }
 
-#[@use]
 fn Widget() -> @Component<ElementBase, Element> {
     val c = use counter(5);   // `use` + the noun; never `use useCounter()`
     …
@@ -466,22 +465,15 @@ Next.js splits route state into five hooks over one internal record
 and never a doubled `use usePathname()`.
 
 ```bp
-#[@use]
 pub fn router() -> @Component<ElementBase, RouterState>
-#[@use]
 pub fn pathname() -> @Component<ElementBase, string>
-#[@use]
 pub fn params() -> @Component<ElementBase, Array<#(string, string)>>
-#[@use]
 pub fn searchParams() -> @Component<ElementBase, Array<#(string, string)>>
-#[@use]
 pub fn selectedLayoutSegment() -> @Component<ElementBase, string>
-#[@use]
 pub fn selectedLayoutSegments() -> @Component<ElementBase, Array<string>>
 ```
 
 ```bp
-#[@use]
 fn ActiveNav() -> @Component<ElementBase, Element> {
     val here = use pathname();
     val seg = use selectedLayoutSegment();
@@ -503,8 +495,8 @@ root-first and `segments` is derived from it by dropping the empty parts —
 nothing on the path reorders.
 
 **`use` is not decoration.** A hook called *without* `use` answers its
-`@Component<ElementBase, T>` — a future on commonJS, where every `#[@use]` body is an
-`async function` — so an ordinary caller `await`s it (a `#[@future]` body or a
+`@Component<ElementBase, T>` — a Promise on commonJS, where every `@Component` body is an
+`async function` — so an ordinary caller `await`s it (a `@Task` body or a
 test):
 
 ```bp
@@ -512,7 +504,7 @@ val ps = await params();
 pairValue(ps, "slug")
 ```
 
-Inside a `#[@use]` body `pairValue(use params(), …)` is exactly the array.
+Inside a `@Component` body `pairValue(use params(), …)` is exactly the array.
 
 ### The navigation verbs
 
@@ -555,7 +547,7 @@ state, and the suite asserts that a `push` leaves the current `path` and
 
 Promoted from `server.d.bp` (front 28). The declaration file listed three
 blockers; all three are answered rather than carried. The async data layer is
-**not** gated any more — `#[@future] fn … -> @Future<T>` with a statement-level
+**not** gated any more — `fn … -> @Task<T>` with a statement-level
 `await` compiles and RUNS on both rows, `test` blocks included — `request()`
 keeps a host half and now ships it, and the `Http` phantom `@Context` base and
 the `Request` behavior are **gone** (see `AGENTS.md` § *The `Http` base, and why
@@ -607,7 +599,7 @@ there is nothing to look up by name in a single string.
 
 ```bp
 pub fn fillRequest(method, path, params, query, headers, cookies) -> i32
-pub fn request() -> RequestData
+pub fn request() -> @Component<ElementBase, RequestData>
 pub fn cookies() -> Array<#(string, string)>
 pub fn headers() -> Array<#(string, string)>
 ```
@@ -639,39 +631,54 @@ once and is constant for the whole render.
 62's and are called from there directly. `cookies()` and `headers()` are the
 only two shortcuts re-exported here.
 
-`request()` is a hook, `#[@use] pub fn request() -> @Component<ElementBase,
-RequestData>`, activated `val r = use request()` inside a `#[@use]` server
-component (decisions 102/104 of botopink 1.0.10-beta). Called without `use` it
-answers the same `@Use` — a future on commonJS — so a `#[@future]` body or a
-test `await`s it.
+`request()` is a hook, `pub fn request() -> @Component<ElementBase,
+RequestData>`, activated `val r = use request()` inside a server component whose
+return is `@Component<ElementBase, Element>` (decisions 104/128 of botopink
+1.0.10-beta). Called without `use` it answers the same `@Component` — a Promise on
+commonJS — so a `@Task` body or a test `await`s it.
 
 ### The server-component convention
 
-A server component is a `#[@future] pub fn` taking its route params and
-returning `@Future<Element>`. There is no decorator for it and there will not be
-one — the marker is `#[@future]`, and the language enforces it in **both**
-directions:
+A server component that only loads data is a `pub fn` taking its route params
+and returning `@Task<Element>`. There is no decorator for it and there will not
+be one — the marker is the return type itself (decision 118 of botopink
+1.0.10-beta: the return is the annotation), and the language enforces it:
 
 | Written | Compiler says |
 |---|---|
-| `pub fn f() -> @Future<i32>` | `a function returning @Future/@ResultGenerator/@FutureGenerator/@Use/@Component needs an effect annotation` |
-| `#[@future] pub fn f() -> i32` | `effect-wrapper-mismatch: `#[@future]` requires a `-> @Future<…>` return type` |
-| `#[@future] #[@use] fn Page() -> @Future<Element>` | `effect-duplicate-annotation: at most one #[@<effect>] annotation per fn.` |
-| `fn Widget() -> Element { val c = use state(0); }` | `use-without-context-effect: `use` needs `#[@use]` on the enclosing fn` |
+| `pub fn f() -> i32 { val p = await loadPost("x"); … }` | `effect-await-without-task` — `await` needs a `@Task` return or above |
+| `fn Page() -> @Task<Element> { val c = use state(0); … }` | `use-without-context-effect` — `use` needs a `@Component` return |
+| `fn Page() -> @Component<ElementBase, Element> { val p = try await load(); … }` | `effect-try-without-fallible-channel` — `Element` is not a `@Result` |
+| any of the six removed effect annotations on a fn | `effect-annotation-removed` (decision 127) |
 
-Row three is why the chain matters: a server component that activates a hook
-is `#[@use] fn … -> @Component<ElementBase, Element>` — `@Component` extends `@Future`, so
-the one annotation grants `use` and `await` (decision 104 of botopink
-1.0.10-beta; a `#[@future]` body activates nothing). `renderComponent` renders
-its thunk. Both are asserted in `test/server_test.bp`.
+Row two is why the chain matters: a server component that activates a hook
+is `fn … -> @Component<ElementBase, Element>` — `@Component` extends `@Task`, so
+the one return grants `use` and `await` (decision 128 of botopink 1.0.10-beta;
+a `@Task` body activates nothing). `renderComponent` renders its thunk. Both are
+asserted in `test/server_test.bp`.
+
+Row three is the rule a page has to design for: **a component does not
+propagate errors** (decision 121). Only `@Result` fails, and a component returns
+`Element`, so a failed load is handled in the component's own body — `try … catch`
+with a fallback, a `case` over the `@Result`, or an error screen:
 
 ```bp
-#[@future]
-pub fn renderServerComponent(component: fn() -> @Future<Element>) -> @Future<string>
+fn loadPost(slug: string) -> @Task<@Result<Post, string>> { … }   // may fail
+
+pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
+    val post = try await loadPost(pairValue(params, "slug"))
+        catch Post(id: "", title: "not found");
+    return h1([text(post.title, attrs: [])], attrs: []);
+}
+```
+
+```bp
+pub fn renderServerComponent(component: fn() -> @Task<Element>) -> @Task<string>
+pub fn renderComponent(component: fn() -> @Component<ElementBase, Element>) -> @Task<string>
 ```
 
 Awaits exactly once and renders synchronously afterwards. The parameter is an
-**unstarted thunk**, not an already-running `@Future<Element>`, so a page that
+**unstarted thunk**, not an already-running `@Task<Element>`, so a page that
 grows a second loader moves to front 02 without changing what it hands anybody.
 
 > **Call it with a lambda, never with a bare function name.**
@@ -682,12 +689,14 @@ grows a second loader moves to front 02 without changing what it hands anybody.
 > around. It is the same rule rakun's front 23 records for the fields of its
 > `ElementView`.
 
-### The loader convention, and why `@Future` being eager changes it
+### The loader convention, and why `@Task` being eager changes it
 
-A loader is an ordinary `#[@future] fn name(args) -> @Future<T>`. `server.bp`
-ships **no** loader machinery: `libs/std/src/http.bp:55` already has
-`fetch(url) -> @Future<Response>`, a database loader is front 08's, and
-parallel awaiting (`all`, `race`, `allSettled`) is **front 02's**.
+A loader is an ordinary `fn name(args) -> @Task<T>` — or `@Task<@Result<T, E>>`
+when it can fail, in which case its body may `throw` / `try` and its caller
+writes `try await` (to propagate, from a `@Result`-returning caller) or
+`try await … catch …` (from a component). `server.bp` ships **no** loader
+machinery: `libs/std/src/http.bp` already has `fetch(url)`, a database loader is
+front 08's, and parallel awaiting (`all`, `race`, `allSettled`) is **front 02's**.
 
 **Every `await` is at statement level**, in the component or loader body. Never
 as the last statement of a lambda: `§2.38` makes a lambda's last statement an
@@ -696,11 +705,9 @@ component that needs N rows awaits **one** loader returning `Array<T>` and maps
 synchronously afterwards — not N awaits inside a `map`.
 
 ```bp
-#[@future]
-fn loadPost(slug: string) -> @Future<Post> { … }
+fn loadPost(slug: string) -> @Task<Post> { … }
 
-#[@future]
-pub fn PostPage(params: Array<#(string, string)>) -> @Future<Element> {
+pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
     val post = await loadPost(pairValue(params, "slug"));
     val comments = await loadComments(post.id);
     return article([
@@ -710,10 +717,10 @@ pub fn PostPage(params: Array<#(string, string)>) -> @Future<Element> {
 }
 ```
 
-**`@Future` is EAGER on the erlang row.** `libs/std/src/http.bp:16-18` states
-it: *"Erlang is eager: `@Future<T>` resolves to `T` … so the caller's
-`await fetch(url)` is identity on that backend."* Two `#[@future]` loaders do
-**not** load in parallel because they are futures — they run in the order the
+**`@Task` is EAGER on the erlang row** (decision 120 of botopink 1.0.10-beta):
+a `@Task<T>` resolves to `T` and the caller's `await` is identity on that
+backend. Two `@Task` loaders do
+**not** load in parallel because they are Tasks — they run in the order the
 body reaches them and the page costs the **sum** of its loaders. Porting the
 Next.js pattern shape-for-shape and stopping there produces a page slower than
 the synchronous version.
@@ -721,7 +728,7 @@ the synchronous version.
 The two above are **dependent** (`loadComments` needs `post.id`), so sequence is
 what they actually are. When loaders are **independent** the answer is front
 02's spawn-and-gather over **unstarted tasks** —
-`[{ -> loadPost(slug) }, { -> loadSidebar() }]` — never a `map` over futures,
+`[{ -> loadPost(slug) }, { -> loadSidebar() }]` — never a `map` over Tasks,
 which would simply run them in order. jhonstart provides no second answer and
 exports no `awaitAll`-style helper.
 
@@ -897,7 +904,6 @@ component** (here), and **front 68 walks the module graph** (not here).
 
 ```bp
 #[client]
-#[@use]
 pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
     return button([text(c.value.toString() + " likes", attrs: [])], attrs: [
@@ -917,10 +923,11 @@ fail to link during the erlang server render — the exact case the boundary
 exists to support. A pure marker links everywhere and carries the same
 information; front 68 reads the set of `__jhClient_*` names off the graph.
 
-`#[client]` is a decorator and `#[@use]` is the effect (decision 88), so the
-two coexist on one component. A **server** component is `#[@future] fn … ->
-@Future<Element>` and cannot be marked client: its reflected `returnType` is
-`"Future"`, which the second check below rejects.
+`#[client]` is a decorator and the `@Component<ElementBase, Element>` return is
+the effect (decisions 118/128), so the two coexist on one component. A **server**
+component that only loads data is `fn … -> @Task<Element>` and cannot be marked
+client: its reflected `returnType` is `"Task"`, which the second check below
+rejects.
 
 Applying it requires importing it — `import { client, clientProps } from
 "jhonstart";` — and **`botopink check` cannot see the emitted name**: `check`
@@ -1044,7 +1051,7 @@ located at the annotation; measured against compiler `2e6bb4ac`:
 | Refusal | Message |
 |---|---|
 | `#[client]` on anything but a `fn` | `#[client] must annotate a function` |
-| `#[client]` on a fn not returning `Element` (a server component is `"Future"`) | `#[client] must annotate a component returning Element` |
+| `#[client]` on a fn not returning `Element` (a data-loading server component is `"Task"`) | `#[client] must annotate a component returning Element` |
 | `#[clientProps]` on an enum-shaped `type` | `#[clientProps] must annotate a record, not an enum` |
 | a field outside the four-scalar whitelist | ``a client prop must be serializable; 'e' is Element`` |
 
@@ -1122,9 +1129,9 @@ Neither cell is declared and neither is stubbed, for the two measurements
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - (closed) `use request()`: `request()` is `#[@use] … -> @Component<ElementBase,
-    RequestData>` (botopink decisions 102/104), activated inside a `#[@use]`
-    server component.
+  - (closed) `use request()`: `request()` is `fn … -> @Component<ElementBase,
+    RequestData>` (botopink decisions 104/128), activated inside a
+    `@Component<ElementBase, Element>` server component.
     The server surface itself is no longer gated: `server.bp` is compiled with
     both host halves shipped (see *Server components*). `Link` and the form
     controls are no longer gated on an attribute slot either: `Element` carries
@@ -1146,7 +1153,7 @@ Neither cell is declared and neither is stubbed, for the two measurements
     and are not stubbed. **Today the boundary is a vocabulary with four
     comptime refusals, not a guarantee**: a secret read on the server still
     reaches the browser if it is written into an island's props;
-  - parallel loading. `@Future` is eager on the erlang row, so independent
+  - parallel loading. `@Task` is eager on the erlang row, so independent
     loaders awaited in sequence cost the sum of their round trips; the
     spawn-and-gather over unstarted tasks is front 02's and jhonstart ships no
     second answer;

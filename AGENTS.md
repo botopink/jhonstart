@@ -7,12 +7,13 @@
 
 botopink's **React/Next-style** UI framework, written *in* botopink on the
 language's own primitives — **no jhonstart-specific compiler features**.
-Components are `#[@use]` functions returning `@Component<ElementBase, Element>`; hooks are nouns
+Components are functions returning `@Component<ElementBase, Element>`; hooks are nouns
 (`state`, `router` — never `useState`) returning the `@Component<ElementBase, _>`
 capability, activated by the `use` keyword (decision 88 of 1.0.10-beta:
-`use f(x)` lowers to `f(x)` on every backend); server components are
-`#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12;
-`*fn` was the legacy carrier and the parser now rejects it); the JSX-like
+`use f(x)` lowers to `f(x)` on every backend); a server component that only
+loads data is `fn … -> @Task<Element>` (the return type is the effect — botopink
+decisions 118–128, front 24; the `#[@<effect>]` annotations and `@Future` left, and
+`*fn` before them); the JSX-like
 `html """…"""` DSL reuses `expr-templates` (`@Expr<Element>`), expanding markup
 to the builder pipeline at comptime. The compiler is **unaware** of jhonstart (hard rule + `grep -riE
 "rakun|jhonstart" modules/compiler-core/src` gate); the framework is a pure
@@ -75,7 +76,7 @@ repository/jhonstart/
 │   │   │   └── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-onze-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
 │   │   └── test/
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
-│   │       ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `#[@future]` component and loader conventions (front 28) — both rows
+│   │       ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `@Task` component and loader conventions (front 28) — both rows
 │   │       ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table and the layout key (front 27) — both rows
 │   │       ├── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, the whole remount decision without a DOM (front 27) — both rows
 │   │       └── client_test.bp   ← `botopink test` flat suite: the `#[client]` emit, a whitelisted props record, the island, the hole and the poison pill (front 29) — both rows
@@ -171,16 +172,17 @@ were promoted rather than filled in. A host-bound module here is now an ordinary
 - Builders take a `Children` arg (`div([a, b])` / single / `string` — the G4
   coercion); the **list form** is what V1 renders and what `html` emits. The
   trailing-lambda sugar (`div { [a, b] }`) is a recorded follow-up.
-- A hook is `#[@use] pub fn <noun>(…) -> @Component<ElementBase, R>` — the noun, never a
+- A hook is `pub fn <noun>(…) -> @Component<ElementBase, R>` — the noun, never a
   `use` prefix (`counter`, `router`, `toggle`; not `useCounter`). Activation is
-  `val x = use <noun>(…)` in the static prefix of a `#[@use]` body — a
+  `val x = use <noun>(…)` in the static prefix of a body whose return is
+  `@Component<ElementBase, _>` (the return is the effect) — a
   component (`-> @Component<ElementBase, Element>`) or a custom hook (`-> @Component<ElementBase, _>`);
   the binding never reuses the hook's name (`val r = use router()`).
 - Hook bodies are pure/synchronous (the server pass / first render): `state`
   yields its initial value, `memo` computes eagerly, `effect` is a no-op. Hook
   bodies are unit-tested by **direct call** (no `use`) in `test {}`, awaited —
-  on commonJS every `#[@use]` body is an `async function` (botopink decision
-  104) — and a `#[@use]` component called and awaited renders the server pass. Client reactivity is
+  on commonJS every `@Component` body is an `async function` (botopink decisions
+  104/128) — and a component called and awaited renders the server pass. Client reactivity is
   `modules/jhonstart/src/client_runtime.mjs`
   (the same nouns over jhonstart's own loop), which the client build resolves
   `jhonstart/hooks` to — the bundler's substitution (front 68); under node,
@@ -211,9 +213,10 @@ jhonstart is a *consumer*. What it relies on:
   walk uses a stack + `indexOf` span recovery rather than a recursive descent —
   see `html.bp`'s header.
 - **Still gated** (router / server, all generic core work):
-  - (closed) the server data layer. `#[@future] fn … -> @Future<T>` with a
-    statement-level `await` compiles and RUNS on both rows, `test` blocks
-    included — measured for front 28 against compiler `2e6bb4ac`. What remains
+  - (closed) the server data layer. `fn … -> @Task<T>` (then spelled with the
+    pre-front-24 annotation) with a statement-level `await` compiles and RUNS on
+    both rows, `test` blocks included — measured for front 28 against compiler
+    `2e6bb4ac`. What remains
     of `use-await-prefix` / `async-generators` is not on this path;
   - (closed) `use request()` — `request()` is a hook since botopink front 21;
   - (closed) the `Element` model **does** carry an `attrs: Array<#(string,
@@ -252,7 +255,7 @@ all read the answer it produces. This is the surface they may rely on; none of
 it changes without a note here. Everything below is reached by a consumer as
 `import { … } from "jhonstart"` and is green on **both** rows — measured with a
 `path` dependency on `modules/jhonstart/` from a package outside this tree,
-rendering a `#[@use]` component through `use pathname()` /
+rendering a `@Component<ElementBase, Element>` component through `use pathname()` /
 `use selectedLayoutSegment()` / `use params()` and asserting the markup.
 
 | What | Where | Shape |
@@ -351,8 +354,8 @@ cached — inherit it.
 phantom `@Context` base called `Http` — "no members … supplied by the host, the
 server-side mirror of `Element`". Front 28 drops both, and the reason is
 the base rather than taste: every hook anchors at `ElementBase`, the base
-`Element` names in `implement @Context<ElementBase>` (botopink decisions 96/102),
-and a server component is `#[@use] fn Page() -> @Component<ElementBase, Element>`. One base
+`Element` names in `implement @Context<ElementBase>` (botopink decisions 96/128),
+and a server component is `fn Page() -> @Component<ElementBase, Element>`. One base
 serves the whole render tree, a client hook
 is type-legal inside a server component, and the client boundary is front 29's
 `#[client]` rule rather than a type. A second, memberless base would be a base
@@ -417,12 +420,12 @@ for the whole render. Folding them would make "the request" mutate mid-page.
    replacement: a stand-in would be a second answer to "what is an escaped `&`"
    the day the real one lands. `test/server_test.bp` PINS the unescaped answer,
    so the change shows as a red cell rather than a silent difference.
-2. **Parallel awaiting.** No `awaitAll`, no `race`, no `allSettled`. `@Future`
-   is eager on the erlang row (`libs/std/src/http.bp:16-18`), so two loaders
+2. **Parallel awaiting.** No `awaitAll`, no `race`, no `allSettled`. `@Task`
+   is eager on the erlang row (botopink decision 120), so two loaders
    awaited in sequence cost the **sum** of their round trips even when their
    results are independent. The fix is front 02's spawn-and-gather over
    **unstarted tasks** (`[{ -> loadPost(s) }, { -> loadSidebar() }]`), not a
-   `map` over futures, which would simply run them in order. jhonstart names
+   `map` over Tasks, which would simply run them in order. jhonstart names
    front 02 and ships no second answer.
 
 ### The `ElementView<Element>` adapter is still unassignable here
@@ -447,7 +450,7 @@ question, not a code one.
 | The build | `request()` | six cells in, the record out. A plain function, not a hook, until front 19 step 2 |
 | **The writer** | `fillRequest(method, path, params, query, headers, cookies)` | the ONE way request state is installed. The four pair-shaped values go in querystring-encoded (`k=v&k=v`), exactly as front 23's payload carries them. Six at once — a half-updated request is a component reading the previous reader's cookie |
 | The shortcuts | `cookies()` · `headers()` | the only two re-exported. `after`, `connection`, `draftMode` and memoization are front 62's, called from there |
-| The render entry | `renderServerComponent(component) -> @Future<string>` | takes an **unstarted thunk** `fn() -> @Future<Element>`, awaits exactly once, renders synchronously afterwards |
+| The render entry | `renderServerComponent(component) -> @Task<string>` | takes an **unstarted thunk** `fn() -> @Task<Element>`, awaits exactly once, renders synchronously afterwards; `renderComponent` takes a `fn() -> @Component<ElementBase, Element>` thunk |
 | The host halves | `src/server_runtime.mjs` · `src/sidecars/jhonstart_server.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, it dies with it, two concurrent renders cannot see each other's cookies |
 
 **Two call-site rules.** The first only shows on the erlang row and is a compiler
@@ -456,11 +459,13 @@ unbound erlang variable**, so `renderServerComponent({ -> Page(ps) })` is green
 on both rows while `renderServerComponent(Page)` compiles on commonJS and fails
 `variable 'Page' is unbound` on erlang. It is the same shape rakun's front 23
 records for the fields of its `ElementView` and it is **reported, not worked
-around**. The second shows on both: one effect annotation per fn (R5), so a
-server component that loads data is `#[@future]` alone, and one that also
-activates a hook is `#[@use] fn … -> @Component<ElementBase, Element>` (botopink decision
-104: `@Component` extends `@Future`); `#[@future] #[@use]` is
-`effect-duplicate-annotation`.
+around**. The second shows on both: a function has one return and so one effect
+(botopink decision 118), so a server component that loads data is
+`fn … -> @Task<Element>`, and one that also activates a hook is
+`fn … -> @Component<ElementBase, Element>` (decision 128: `@Component` extends
+`@Task`). Neither is a `@Result`, so neither can propagate a failed load with
+`try` — a component handles the error in its body (`try await load() catch …`,
+`case`, an error screen; decision 121).
 
 ## Front 27 — client navigation, and the half that is not written
 
@@ -548,7 +553,7 @@ server pass exactly as it renders in the browser.
 **What is enforced today** — four comptime refusals, no flag that turns them off
 (decision 67), each located at the annotation: `#[client]` on a non-`fn`;
 `#[client]` on a fn whose reflected `returnType` is not `Element` (a
-`#[@future]` server component reflects as `"Future"`); `#[clientProps]` on an
+`-> @Task<Element>` server component reflects as `"Task"`); `#[clientProps]` on an
 enum; a field outside the four-scalar whitelist.
 
 **What is NOT enforced by anything in this tree**, and it is the front's whole
@@ -607,7 +612,7 @@ nobody writes.
 
 **No local may be named after an imported builder.** A local `val` leaks into
 the module scope the checker sees for every top-level declaration that appears
-AFTER its body — so `val p = LikeProps(…)` in a `test {}` reds a `#[@use]`
+AFTER its body — so `val p = LikeProps(…)` in a `test {}` reds a `@Component`
 component declared further down with `error: type mismatch: expected Element,
 got LikeProps`, at a call site that is correct, with no line or column. Measured
 on both rows against `2e6bb4ac`; twelve jhonstart-free lines in

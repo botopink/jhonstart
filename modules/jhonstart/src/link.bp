@@ -190,9 +190,10 @@ pub fn withClass(p: LinkProps, className: string) -> LinkProps {
 // `data-onze-` is the milestone's marker family (`contracts.md § 2`); this
 // front owns the link markers inside it and adds no other vocabulary.
 //
-// No annotation: `Link` activates no hook, so it is an ordinary function
-// (decision 104 of botopink 1.0.10-beta — only a body that writes `use` carries
-// `#[@use]`), and a component that renders it calls it synchronously.
+// A plain `-> Element`: `Link` activates no hook, so it is an ordinary function
+// (decisions 104 and 118 of botopink 1.0.10-beta — only a body that writes `use`
+// returns `@Component<ElementBase, _>`), and a component that renders it calls it
+// synchronously.
 pub fn Link(props: LinkProps, children: Children) -> Element {
     var pairs: Array<#(string, string)> = [
         #("href", props.href),

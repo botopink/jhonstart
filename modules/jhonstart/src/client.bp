@@ -21,8 +21,8 @@
 //
 //   1. `#[client]` on anything but a `fn` — refused, located at the annotation.
 //   2. `#[client]` on a fn whose return type is not `Element` — refused. A
-//      server component is `#[@future] fn … -> @Future<Element>`, whose
-//      reflected `returnType` is `"Future"`, so it cannot be marked client.
+//      server component that only loads data is `fn … -> @Task<Element>`,
+//      whose reflected `returnType` is `"Task"`, so it cannot be marked client.
 //   3. `#[clientProps]` on anything but a record — refused (an enum-shaped
 //      `type` has `variants`, a `fn` is not `DeclKind.Type`).
 //   4. A field of a `#[clientProps]` record whose type is not one of the four
@@ -116,7 +116,8 @@ import {encodePairs, decodePairs} from "router";
 //
 // `decl.returnType` is the NAME of the return type, not its spelling: measured
 // against `2e6bb4ac`, a `fn … -> Element` reflects as `"Element"` and a
-// `#[@future] fn … -> @Future<Element>` reflects as `"Future"`. That is what
+// data-loading server component reflects as its wrapper's name — `"Future"`
+// then, `"Task"` for `fn … -> @Task<Element>` since front 24. That is what
 // makes check 2 reject a server component — and it is also why the message
 // says "returning Element" rather than quoting what was found.
 //

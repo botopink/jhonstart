@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- **Front 24 — effects by return type** (botopink decisions 118–128). The
+  return type is the effect and the `#[@use]` / `#[@future]` annotations leave:
+  every hook and component keeps its `-> @Component<ElementBase, T>` return and
+  loses the annotation line; every data-loading server component, loader and
+  render entry that returned `@Future<T>` returns `@Task<T>` —
+  `renderServerComponent(component: fn() -> @Task<Element>) -> @Task<string>`,
+  `renderComponent(component: fn() -> @Component<ElementBase, Element>) -> @Task<string>`.
+  No `@Future` here carried an error and no body throws, so every Task is a plain
+  `@Task<T>` and every `await` stays a bare `await` — no `try await` was needed
+  in the compiled members. The aspirational `examples/jhonstart-app` sketch (not
+  a member, not built) shows the new failure rule instead: its loader is
+  `@Task<@Result<…, string>>` over `try await fetch(…)`, and its page, a
+  component returning `Element`, handles the failure with `try await … catch …`
+  rather than propagating it (decision 121). `docs.md` § *Server components*
+  gains the same rule and example; the recorded compile errors in
+  `test/server_test.bp` and `docs.md` are the front-24 codes
+  (`effect-await-without-task`, `use-without-context-effect`,
+  `effect-try-without-fallible-channel`, `effect-annotation-removed`). Four test
+  names spell `@Task` / `@Component` instead of the annotation. The `#[client]`
+  refusal now names the data-loading component's reflected `"Task"`.
+  `client_test.bp`, `server_test.bp` and `examples/jhonstart-counter` import
+  `ElementBase`, which they named without importing since the decision-128
+  re-spelling — the reason both core rows and the counter's commonJS row did not
+  compile at `feat` (120/120 and 4/4 once they do).
+
 - **Front 95 — the package cut: `jhonstart-html` and `jhonstart-test` members.**
   The `html """…"""` DSL leaves the core for its own member
   `modules/jhonstart-html/` (`from "jhonstart-html"`), with the two suites that

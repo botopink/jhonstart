@@ -1,33 +1,31 @@
 // ⛔ GATED / ASPIRATIONAL EXAMPLE — does not build yet.
 // The app/server layer needs language work not yet landed: async server
-// components (`#[@future] fn … -> @Future`, `await`) gated on use-await-prefix /
-// async-generators (tasks/v0.beta.1), the host-bound `request()`/router, and
-// an Element attribute model. Kept as the intended app-layer surface; the
-// functional examples are jhonstart-counter / jhonstart-todo / jhonstart-html.
-// Under decision 88 (1.0.10-beta) `use request()` needs `#[@use]` on the
-// fn, which cannot sit beside `#[@future]` yet — question 90; unchanged here.
+// components (`fn … -> @Component<ElementBase, Element>` with `use` and `await`),
+// the host-bound `request()`/router, and an Element attribute model. Kept as the
+// intended app-layer surface; the functional examples are jhonstart-counter /
+// jhonstart-todo / jhonstart-markup.
 //
 // jhonstart-app — a dynamic, server-rendered route (`app/posts/[id]/page.bp`).
 //
 // `[id]` is a dynamic segment, exposed via the Http-context `request()` hook.
-// The page is a SERVER component: a `#[@future]` fn that `await`s a loader before
-// returning its `Element`. `#[@future]` marks the return as `@Future<_>`; `await`
-// unwraps it (both from the async-generators language work).
+// The page is a SERVER component: `-> @Component<ElementBase, Element>` (the return
+// is the effect, botopink decisions 118/128), so it may `use` a hook and `await` a
+// loader. The loader can fail (`@Task<@Result<…, string>>`); a component returns
+// `Element`, not a `@Result`, so it cannot propagate the error with `try` and
+// handles it on the spot with `try … catch` (decision 121).
 
 import { div, h1, p } from "jhonstart";
 import { request } from "jhonstart/server";
 
-#[@future]
-fn loadPost(id: string) -> @Future<#(title: string, body: string)> {
-    val resp = await fetch("/api/posts/" + id);
+fn loadPost(id: string) -> @Task<@Result<#(title: string, body: string), string>> {
+    val resp = try await fetch("/api/posts/" + id);
     return resp.json();
 }
 
-#[@use]
 fn Page() -> @Component<ElementBase, Element> {
     val req = use request();                         // @Component<ElementBase, RequestData>
     val id = req.params().get("id").unwrapOr("0");
-    val post = await loadPost(id);
+    val post = try await loadPost(id) catch #("post not found", "");
 
     div {
         [
