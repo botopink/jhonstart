@@ -5,8 +5,8 @@
 > React/Next-style UI framework written in botopink — on the language's own
 > primitives. No compiler-core support; reached via `from "jhonstart"`.
 
-Components are `#[@use]` functions returning `@Component<Element>`; hooks are nouns
-(`state`, `memo`, `router` — no `use` prefix) returning the `@Use<ElementBase, _>`
+Components are `#[@use]` functions returning `@Component<ElementBase, Element>`; hooks are nouns
+(`state`, `memo`, `router` — no `use` prefix) returning the `@Component<ElementBase, _>`
 capability, activated by the `use` keyword; server components
 are `#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12);
 the JSX-like `html """…"""` DSL reuses `expr-templates` (`@Expr<Element>`),
@@ -38,7 +38,7 @@ examples [`examples/jhonstart-counter/`](examples/jhonstart-counter/),
 import {div, p, text, state, renderToString} from "jhonstart";
 
 #[@use]
-fn Counter() -> @Component<Element> {
+fn Counter() -> @Component<ElementBase, Element> {
     val c = use state(0);
     return div([
         p([text("count: " + c.value.toString(), [])], []),

@@ -106,7 +106,7 @@ pub type LikeProps(
 
 #[client]
 #[@use]
-pub fn LikeButton(props: LikeProps) -> @Component<Element> {
+pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
     return button([
             text(c.value.toString() + " likes", attrs: []),
@@ -124,7 +124,7 @@ pub type ThemeProps(theme: string)
 // it is why `Element` is off the serializable whitelist.
 #[client]
 #[@use]
-pub fn ThemeProvider(props: ThemeProps, children: Children) -> @Component<Element> {
+pub fn ThemeProvider(props: ThemeProps, children: Children) -> @Component<ElementBase, Element> {
     val current = use state(props.theme);
     return div(children, attrs: [#("class", "theme-" + current.value)]);
 }

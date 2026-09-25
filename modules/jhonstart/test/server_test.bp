@@ -27,7 +27,7 @@
 //            return type
 //
 //   `#[@future] #[@use] fn Page() -> @Future<Element> { … }` — R5; the chain
-//   spells the case instead (`#[@use] fn Page() -> @Component<Element>`)
+//   spells the case instead (`#[@use] fn Page() -> @Component<ElementBase, Element>`)
 //     error: effect-duplicate-annotation: at most one #[@<effect>] annotation
 //            per fn.
 //
@@ -378,12 +378,12 @@ test "server: the same page renders from an explicit request, with no host" {
 
 // ── decision 104: a server component that uses and awaits ───────────────────
 //
-// `#[@use] fn … -> @Component<Element>`: `@Component` extends `@Future`, so the
+// `#[@use] fn … -> @Component<ElementBase, Element>`: `@Component` extends `@Future`, so the
 // one annotation grants `use` and `await` (decisions 102/104 of 1.0.10-beta,
 // which revoked 89 and 90 — a `#[@future]` body no longer activates a hook).
 // `renderComponent` renders its thunk. Measured green on both rows.
 #[@use]
-fn RoutedPage() -> @Component<Element> {
+fn RoutedPage() -> @Component<ElementBase, Element> {
     val here = use pathname();
     val post = await loadPost("hi");
     return div([

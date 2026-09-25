@@ -2,7 +2,7 @@
 //
 // `counterView` is a PURE view: given a count it builds the markup, so it renders
 // synchronously with `renderToString` and is directly testable. `Counter` is the
-// stateful, idiomatic form — a `#[@use] fn … -> @Component<Element>` component whose
+// stateful, idiomatic form — a `#[@use] fn … -> @Component<ElementBase, Element>` component whose
 // body activates `state` with `use` (decision 88 of 1.0.10-beta). `use state(0)`
 // lowers to `state(0)` on every backend: called here it is the server pass (the
 // initial cell); in the browser the client build resolves `jhonstart/hooks` to
@@ -24,7 +24,7 @@ fn counterView(count: i32) -> Element {
 // Stateful component (idiomatic hooks): `#[@use]` lets the body activate a
 // hook; every `use` sits in the static prefix. Rendered below as the server pass.
 #[@use]
-pub fn Counter() -> @Component<Element> {
+pub fn Counter() -> @Component<ElementBase, Element> {
     val c = use state(0);
     return counterView(c.value);
 }

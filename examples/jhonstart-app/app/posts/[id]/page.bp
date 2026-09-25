@@ -24,8 +24,8 @@ fn loadPost(id: string) -> @Future<#(title: string, body: string)> {
 }
 
 #[@use]
-fn Page() -> @Component<Element> {
-    val req = use request();                         // @Use<ElementBase, RequestData>
+fn Page() -> @Component<ElementBase, Element> {
+    val req = use request();                         // @Component<ElementBase, RequestData>
     val id = req.params().get("id").unwrapOr("0");
     val post = await loadPost(id);
 

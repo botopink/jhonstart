@@ -7,8 +7,8 @@
 
 botopink's **React/Next-style** UI framework, written *in* botopink on the
 language's own primitives — **no jhonstart-specific compiler features**.
-Components are `#[@use]` functions returning `@Component<Element>`; hooks are nouns
-(`state`, `router` — never `useState`) returning the `@Use<ElementBase, _>`
+Components are `#[@use]` functions returning `@Component<ElementBase, Element>`; hooks are nouns
+(`state`, `router` — never `useState`) returning the `@Component<ElementBase, _>`
 capability, activated by the `use` keyword (decision 88 of 1.0.10-beta:
 `use f(x)` lowers to `f(x)` on every backend); server components are
 `#[@future] fn … -> @Future<Element>` (effect annotation, post-v0.beta.12;
@@ -58,7 +58,7 @@ repository/jhonstart/
 │       │   ├── AGENTS.md
 │       │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod html; pub mod router; pub mod elements; pub mod server; pub mod link; pub mod reconcile; pub mod client; mod client_runtime;`
 │       │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
-│       │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Use<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
+│       │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<Element,_>, pure server-pass bodies) + test {} (imports `Element`)
 │       │   ├── html.bp        ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`)
 │       │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │       │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
@@ -156,10 +156,10 @@ were promoted rather than filled in. A host-bound module here is now an ordinary
 - Builders take a `Children` arg (`div([a, b])` / single / `string` — the G4
   coercion); the **list form** is what V1 renders and what `html` emits. The
   trailing-lambda sugar (`div { [a, b] }`) is a recorded follow-up.
-- A hook is `#[@use] pub fn <noun>(…) -> @Use<ElementBase, R>` — the noun, never a
+- A hook is `#[@use] pub fn <noun>(…) -> @Component<ElementBase, R>` — the noun, never a
   `use` prefix (`counter`, `router`, `toggle`; not `useCounter`). Activation is
   `val x = use <noun>(…)` in the static prefix of a `#[@use]` body — a
-  component (`-> @Component<Element>`) or a custom hook (`-> @Use<ElementBase, _>`);
+  component (`-> @Component<ElementBase, Element>`) or a custom hook (`-> @Component<ElementBase, _>`);
   the binding never reuses the hook's name (`val r = use router()`).
 - Hook bodies are pure/synchronous (the server pass / first render): `state`
   yields its initial value, `memo` computes eagerly, `effect` is a no-op. Hook
@@ -248,7 +248,7 @@ rendering a `#[@use]` component through `use pathname()` /
 | The segment readers | `patternSegments(pattern)` · `segmentAt(segments, i)` | typed-parameter readers. An `xs.at(i).unwrapOr("")` written at a call site reads the element back unwrapped on the erlang row |
 | The build | `snapshot()` | five cells in, the record out. No `?T` unwrap that can fail |
 | **The writer** | `fill(path, params, search, pattern, selected)` | the ONE way route state is installed, and the seam fronts 27/28/29 need. `params`/`search` go in querystring-encoded, exactly as the payload's `m` and `q` carry them. Every field at once — a half-updated snapshot is a component reading the previous route's params against the next route's pattern |
-| The six hooks | `router` · `pathname` · `params` · `searchParams` · `selectedLayoutSegment` · `selectedLayoutSegments` | each `-> @Use<ElementBase, T>`, each one read of `snapshot()`. `selectedLayoutSegments()` is root-first |
+| The six hooks | `router` · `pathname` · `params` · `searchParams` · `selectedLayoutSegment` · `selectedLayoutSegments` | each `-> @Component<ElementBase, T>`, each one read of `snapshot()`. `selectedLayoutSegments()` is root-first |
 | The six verbs | `push` · `replace` · `back` · `forward` · `refresh` · `prefetch` | free functions over one cell, `-> i32` nobody reads. Free and not methods: records are immutable and there is no assignment to a `self` field anywhere in this tree |
 | What a verb recorded | `lastNavigation()` | `"<kind> <href>"`, `""` when nothing has. On erlang this is the 307 front 28's dispatcher writes; in the browser the last href the History API was handed |
 | The host halves | `src/router_runtime.mjs` · `src/sidecars/jhonstart_router.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, the snapshot dies with it, two concurrent renders cannot see each other's route |
@@ -260,7 +260,7 @@ which lowers to a method call and dies `function tagOf/2 undefined` while
 staying silent on commonJS).
 
 **One rule that shows on both** — a hook called WITHOUT `use` keeps its
-`@Use<ElementBase, T>` type. The type is transparent to a property or a method
+`@Component<ElementBase, T>` type. The type is transparent to a property or a method
 (`ps.length`, `segs.join("/")`, `r.param("slug")`) and **not** to a typed
 parameter: `pairValue(params(), "slug")` is `type mismatch: expected array, got
 Context`, and binding through a `val` does not change it. Only `use` strips the
@@ -336,7 +336,7 @@ phantom `@Context` base called `Http` — "no members … supplied by the host, 
 server-side mirror of `Element`". Front 28 drops both, and the reason is
 the base rather than taste: every hook anchors at `ElementBase`, the base
 `Element` names in `implement @Context<ElementBase>` (botopink decisions 96/102),
-and a server component is `#[@use] fn Page() -> @Component<Element>`. One base
+and a server component is `#[@use] fn Page() -> @Component<ElementBase, Element>`. One base
 serves the whole render tree, a client hook
 is type-legal inside a server component, and the client boundary is front 29's
 `#[client]` rule rather than a type. A second, memberless base would be a base
@@ -442,7 +442,7 @@ on both rows while `renderServerComponent(Page)` compiles on commonJS and fails
 records for the fields of its `ElementView` and it is **reported, not worked
 around**. The second shows on both: one effect annotation per fn (R5), so a
 server component that loads data is `#[@future]` alone, and one that also
-activates a hook is `#[@use] fn … -> @Component<Element>` (botopink decision
+activates a hook is `#[@use] fn … -> @Component<ElementBase, Element>` (botopink decision
 104: `@Component` extends `@Future`); `#[@future] #[@use]` is
 `effect-duplicate-annotation`.
 
@@ -475,7 +475,7 @@ is what the browser half queries on.
 |---|---|---|
 | `__onzeLinkMount()` | 68 | delegated click interception + an intersection observer over `[data-onze-l]`. The generated entry calls it ONCE, after hydrating the islands, alongside front 67's `__jhFormMount()`. Front 29 owns the per-island hydrate point, not the entry, and does not call this |
 | `__onzeLinkPrefetch(href, mode)` | 68 | warms the client route cache; `mode` is `prefetchMode`'s answer |
-| `__onzeLinkStatus()` and `linkStatus() -> @Use<ElementBase, LinkStatus>` | 68 | the hook is then `return linkStatusOf(__onzeLinkStatus());` and nothing else in `link.bp` moves |
+| `__onzeLinkStatus()` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | 68 | the hook is then `return linkStatusOf(__onzeLinkStatus());` and nothing else in `link.bp` moves |
 | `__onzeLinkRouteKind(href)` | 60 | reads the route-kind table front 60 emits into the bundle |
 | `reconcile(current, target)` | 68 (+ 60) | the transition driver: front 68's DOM primitives for the two ranges, front 60's flag for whether the payload had to be fetched, front 29's `data-onze-s` adoption and front 31's `data-onze-e` re-anchoring |
 

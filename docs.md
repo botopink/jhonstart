@@ -54,11 +54,11 @@ jhonstart is embedded; the compiler core never names it.
 
 ## Component model
 
-A **component** that activates hooks is a `#[@use] fn(...) -> @Component<Element>`
+A **component** that activates hooks is a `#[@use] fn(...) -> @Component<ElementBase, Element>`
 (one that activates none is an ordinary `fn … -> Element`). A **hook** is a
 `#[@use]` function named by its **noun** — `state`, `effect`, `memo`, `ref`,
 `reducer`, `router`; never a `use` prefix in the name — returning
-`@Use<ElementBase, _>`. `Element` carries the tree: `implement
+`@Component<ElementBase, _>`. `Element` carries the tree: `implement
 @Context<ElementBase>`. The keyword `use` is the activation: `val c = use
 state(0)` is legal only in a `#[@use]` body — a component or a custom hook
 (decisions 102/104 of botopink 1.0.10-beta) — and every
@@ -73,7 +73,7 @@ annotation silently ignored. All of this is the language's context-inference
 import { div, p, text, state, renderToString } from "jhonstart";
 
 #[@use]
-fn Counter() -> @Component<Element> {
+fn Counter() -> @Component<ElementBase, Element> {
     val c = use state(0);
     return div([
         p([text("count: " + c.value.toString(), [])], []),
@@ -112,17 +112,17 @@ deps)`). Client re-render reactivity is the **client runtime**'s job: see
 | `reducer<S,A>(reduce, init)` | `#(state: S, dispatch: fn(action: A))` | reducer state |
 
 Custom hooks compose the primitives — a noun for a name, `#[@use]` on the
-fn, a return that implements `@Use<ElementBase, _>`:
+fn, a return that implements `@Component<ElementBase, _>`:
 
 ```bp
 #[@use]
-fn counter(start: i32) -> @Use<ElementBase, State<i32>> {
+fn counter(start: i32) -> @Component<ElementBase, State<i32>> {
     val s = use state(start);
     return s;
 }
 
 #[@use]
-fn Widget() -> @Component<Element> {
+fn Widget() -> @Component<ElementBase, Element> {
     val c = use counter(5);   // `use` + the noun; never `use useCounter()`
     …
 }
@@ -463,22 +463,22 @@ and never a doubled `use usePathname()`.
 
 ```bp
 #[@use]
-pub fn router() -> @Use<ElementBase, RouterState>
+pub fn router() -> @Component<ElementBase, RouterState>
 #[@use]
-pub fn pathname() -> @Use<ElementBase, string>
+pub fn pathname() -> @Component<ElementBase, string>
 #[@use]
-pub fn params() -> @Use<ElementBase, Array<#(string, string)>>
+pub fn params() -> @Component<ElementBase, Array<#(string, string)>>
 #[@use]
-pub fn searchParams() -> @Use<ElementBase, Array<#(string, string)>>
+pub fn searchParams() -> @Component<ElementBase, Array<#(string, string)>>
 #[@use]
-pub fn selectedLayoutSegment() -> @Use<ElementBase, string>
+pub fn selectedLayoutSegment() -> @Component<ElementBase, string>
 #[@use]
-pub fn selectedLayoutSegments() -> @Use<ElementBase, Array<string>>
+pub fn selectedLayoutSegments() -> @Component<ElementBase, Array<string>>
 ```
 
 ```bp
 #[@use]
-fn ActiveNav() -> @Component<Element> {
+fn ActiveNav() -> @Component<ElementBase, Element> {
     val here = use pathname();
     val seg = use selectedLayoutSegment();
     val ps = use params();
@@ -499,7 +499,7 @@ root-first and `segments` is derived from it by dropping the empty parts —
 nothing on the path reorders.
 
 **`use` is not decoration.** A hook called *without* `use` answers its
-`@Use<ElementBase, T>` — a future on commonJS, where every `#[@use]` body is an
+`@Component<ElementBase, T>` — a future on commonJS, where every `#[@use]` body is an
 `async function` — so an ordinary caller `await`s it (a `#[@future]` body or a
 test):
 
@@ -635,7 +635,7 @@ once and is constant for the whole render.
 62's and are called from there directly. `cookies()` and `headers()` are the
 only two shortcuts re-exported here.
 
-`request()` is a hook, `#[@use] pub fn request() -> @Use<ElementBase,
+`request()` is a hook, `#[@use] pub fn request() -> @Component<ElementBase,
 RequestData>`, activated `val r = use request()` inside a `#[@use]` server
 component (decisions 102/104 of botopink 1.0.10-beta). Called without `use` it
 answers the same `@Use` — a future on commonJS — so a `#[@future]` body or a
@@ -656,7 +656,7 @@ directions:
 | `fn Widget() -> Element { val c = use state(0); }` | `use-without-context-effect: `use` needs `#[@use]` on the enclosing fn` |
 
 Row three is why the chain matters: a server component that activates a hook
-is `#[@use] fn … -> @Component<Element>` — `@Component` extends `@Future`, so
+is `#[@use] fn … -> @Component<ElementBase, Element>` — `@Component` extends `@Future`, so
 the one annotation grants `use` and `await` (decision 104 of botopink
 1.0.10-beta; a `#[@future]` body activates nothing). `renderComponent` renders
 its thunk. Both are asserted in `test/server_test.bp`.
@@ -855,7 +855,7 @@ and one hook are missing, all of them blocked on fronts that have not started:
 |---|---|
 | `__onzeLinkMount()` — delegated click interception + an intersection observer over `[data-onze-l]` | front 68's generated client bundle (the module the cell binds to), which calls it once after hydrating the islands |
 | `__onzeLinkPrefetch(href, mode)` — warms the client route cache | the same bundle |
-| `__onzeLinkStatus() -> string` and `linkStatus() -> @Use<ElementBase, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__onzeLinkStatus());` |
+| `__onzeLinkStatus() -> string` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__onzeLinkStatus());` |
 | `__onzeLinkRouteKind(href) -> string` | **front 60**'s route-kind table, emitted into that bundle |
 | `reconcile(current, target)` — the transition driver | front 68's DOM primitives (mount/unmount), plus front 60's flag for whether the target payload had to be fetched |
 
@@ -894,7 +894,7 @@ component** (here), and **front 68 walks the module graph** (not here).
 ```bp
 #[client]
 #[@use]
-pub fn LikeButton(props: LikeProps) -> @Component<Element> {
+pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
     return button([text(c.value.toString() + " likes", attrs: [])], attrs: [
         #("data-onze-on-click", "LikeButton:like"),
@@ -1118,7 +1118,7 @@ Neither cell is declared and neither is stubbed, for the two measurements
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - (closed) `use request()`: `request()` is `#[@use] … -> @Use<ElementBase,
+  - (closed) `use request()`: `request()` is `#[@use] … -> @Component<ElementBase,
     RequestData>` (botopink decisions 102/104), activated inside a `#[@use]`
     server component.
     The server surface itself is no longer gated: `server.bp` is compiled with

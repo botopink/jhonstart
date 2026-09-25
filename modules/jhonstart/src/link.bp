@@ -20,7 +20,7 @@
 // The front's § Step 4 asks for four `#[@External.Node]` cells —
 // `__onzeLinkMount()`, `__onzeLinkPrefetch(href, mode)`, `__onzeLinkStatus()`
 // and `__onzeLinkRouteKind(href)` — bound to the module
-// `"jhonstart/client-runtime"`, plus `linkStatus() -> @Use<Element,
+// `"jhonstart/client-runtime"`, plus `linkStatus() -> @Component<Element,
 // LinkStatus>` reading the third. **None of them is declared here**, and the
 // reason is a dependency that has not started rather than a preference:
 //
@@ -266,7 +266,7 @@ pub fn layoutKey(segments: Array<string>, depth: i32) -> string {
 // is in flight. The browser half answers the in-flight href — `""` when idle —
 // and this is the whole derivation from it.
 //
-// `linkStatus() -> @Use<ElementBase, LinkStatus>` is the hook the front asks
+// `linkStatus() -> @Component<ElementBase, LinkStatus>` is the hook the front asks
 // for and it is NOT here: it would call `__onzeLinkStatus()`, a node-only cell
 // whose module front 68 generates, and a called node-only cell reds the erlang
 // build of this member (see this file's header). When that module lands the

@@ -3,8 +3,8 @@
 // The base every jhonstart hook anchors at (decisions 96 and 102 of botopink
 // 1.0.10-beta): `Element` carries the tree and names it in
 // `implement @Context<ElementBase>`, so a component is
-// `#[@use] fn … -> @Component<Element>` and a hook
-// `#[@use] fn … -> @Use<ElementBase, T>`. A phantom — never constructed.
+// `#[@use] fn … -> @Component<ElementBase, Element>` and a hook
+// `#[@use] fn … -> @Component<ElementBase, T>`. A phantom — never constructed.
 pub type ElementBase(root: bool)
 
 pub type Element(
