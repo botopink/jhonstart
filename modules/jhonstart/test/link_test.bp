@@ -161,7 +161,6 @@ test "link: children are an arbitrary tree, not only text" {
 // A nav bar is what the front is for, and it is the shape a consumer writes.
 // `Link` reaches no host cell, so this component renders in a test with no
 // host present — which is also why it renders during the server pass.
-#[@context]
 fn NavBar() -> Element {
     return span([
             Link(linkProps("/"), [text("Home", attrs: [])]),

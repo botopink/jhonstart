@@ -20,7 +20,7 @@
 // The front's § Step 4 asks for four `#[@External.Node]` cells —
 // `__onzeLinkMount()`, `__onzeLinkPrefetch(href, mode)`, `__onzeLinkStatus()`
 // and `__onzeLinkRouteKind(href)` — bound to the module
-// `"jhonstart/client-runtime"`, plus `linkStatus() -> @Context<Element,
+// `"jhonstart/client-runtime"`, plus `linkStatus() -> @Component<Element,
 // LinkStatus>` reading the third. **None of them is declared here**, and the
 // reason is a dependency that has not started rather than a preference:
 //
@@ -76,7 +76,7 @@
 //
 // Both gaps are the front's § Language gaps rows.
 
-import {Element} from "element";
+import {Element, ElementBase} from "element";
 
 // ── step 1: the props, and the constructor that fills Next's defaults ───────
 //
@@ -190,10 +190,9 @@ pub fn withClass(p: LinkProps, className: string) -> LinkProps {
 // `data-onze-` is the milestone's marker family (`contracts.md § 2`); this
 // front owns the link markers inside it and adds no other vocabulary.
 //
-// `#[@context]` per decision 88 — a component is `#[@context] fn … -> Element`
-// whether or not it activates a hook. Measured: the annotation on a body with
-// no `use` compiles and runs on both rows.
-#[@context]
+// No annotation: `Link` activates no hook, so it is an ordinary function
+// (decision 104 of botopink 1.0.10-beta — only a body that writes `use` carries
+// `#[@use]`), and a component that renders it calls it synchronously.
 pub fn Link(props: LinkProps, children: Children) -> Element {
     var pairs: Array<#(string, string)> = [
         #("href", props.href),
@@ -267,7 +266,7 @@ pub fn layoutKey(segments: Array<string>, depth: i32) -> string {
 // is in flight. The browser half answers the in-flight href — `""` when idle —
 // and this is the whole derivation from it.
 //
-// `linkStatus() -> @Context<Element, LinkStatus>` is the hook the front asks
+// `linkStatus() -> @Component<ElementBase, LinkStatus>` is the hook the front asks
 // for and it is NOT here: it would call `__onzeLinkStatus()`, a node-only cell
 // whose module front 68 generates, and a called node-only cell reds the erlang
 // build of this member (see this file's header). When that module lands the

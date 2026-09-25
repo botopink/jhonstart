@@ -92,7 +92,7 @@ import {state} from "hooks";
 
 // ── step 1: `#[client]` — the marker, and the proof `@emit` fired ───────────
 //
-// A real client component: `#[client]` for the boundary, `#[@context]` for the
+// A real client component: `#[client]` for the boundary, `#[@use]` for the
 // effect (decision 88 — the annotation is the activation, and `#[client]` is a
 // decorator rather than a second effect, so the two coexist). `use state` means
 // nothing on the server; the body renders its first-render value, which is all
@@ -105,8 +105,8 @@ pub type LikeProps(
 )
 
 #[client]
-#[@context]
-pub fn LikeButton(props: LikeProps) -> Element {
+#[@use]
+pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
     return button([
             text(c.value.toString() + " likes", attrs: []),
@@ -123,8 +123,8 @@ pub type ThemeProps(theme: string)
 // is not serialized. That separation is the whole Context-Provider pattern, and
 // it is why `Element` is off the serializable whitelist.
 #[client]
-#[@context]
-pub fn ThemeProvider(props: ThemeProps, children: Children) -> Element {
+#[@use]
+pub fn ThemeProvider(props: ThemeProps, children: Children) -> @Component<ElementBase, Element> {
     val current = use state(props.theme);
     return div(children, attrs: [#("class", "theme-" + current.value)]);
 }
@@ -144,7 +144,7 @@ test "client: the emitted marker is a VALUE, not a call into a host registry" {
 }
 
 test "client: the decorated component is unchanged and still renders" {
-    assert renderToString(LikeButton(LikeProps(postId: "7", likes: 3)))
+    assert renderToString(await LikeButton(LikeProps(postId: "7", likes: 3)))
         == "<button data-onze-on-click=\"LikeButton:like\" data-onze-post=\"7\">3 likes</button>";
 }
 
@@ -247,7 +247,6 @@ test "client: the server subtree is carried through the slot untouched" {
 
 // The Context-Provider shape: a client provider wrapping a server-rendered
 // tree. The island is the provider; the hole is the server's.
-#[@context]
 fn Dashboard(userName: string, openTickets: i32) -> Element {
     return section([
             h1([text("Hello, " + userName, attrs: [])], attrs: []),
@@ -255,7 +254,6 @@ fn Dashboard(userName: string, openTickets: i32) -> Element {
         ], attrs: [#("class", "dashboard")]);
 }
 
-#[@context]
 fn RootLayout(theme: string, page: Element) -> Element {
     return clientMount(
         Island(id: islandId(0), component: "ThemeProvider", props: [#("theme", theme)]),
@@ -291,7 +289,6 @@ fn postRow(ordinal: i32, title: string, postId: string, likes: i32) -> Element {
         ], attrs: [#("class", "post-row")]);
 }
 
-#[@context]
 fn PostList() -> Element {
     return div([
             h1([text("Posts", attrs: [])], attrs: []),

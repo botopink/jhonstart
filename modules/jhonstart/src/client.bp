@@ -126,7 +126,7 @@ import {encodePairs, decodePairs} from "router";
 pub fn client(comptime decl: @Decl) {
     @emit("pub fn __jhClient_" + decl.name + "() -> string { return \"" + decl.name + "\"; }");
     if (decl.kind != DeclKind.Fn) decl.fail("#[client] must annotate a function");
-    if (decl.returnType != "Element") decl.fail("#[client] must annotate a component returning Element");
+    if (decl.returnType != "Element" && decl.returnType != "Component") decl.fail("#[client] must annotate a component returning Element or @Component<ElementBase, Element>");
 }
 
 // ── step 2: `#[clientProps]` — the serializable whitelist ───────────────────

@@ -18,7 +18,7 @@
 // source. A transported segment list could disagree with the pattern it came
 // from, and the disagreement would only show on the routes nobody tested.
 
-import {Element} from "element";
+import {Element, ElementBase} from "element";
 
 pub type RouterState(
     path: string,
@@ -270,8 +270,8 @@ pub fn snapshot() -> RouterState {
 // `selectedLayoutSegment` and `selectedLayoutSegments`. Never `useRouter`, and
 // never the doubled `use usePathname()`.
 //
-// Each returns `@Context<Element, T>`, which is what makes `use` legal on it
-// inside a `#[@context]` body whose owner is `Element` — the same capability
+// Each returns `@Component<ElementBase, T>`, which is what makes `use` legal on it
+// inside a `#[@use]` body whose owner is `Element` — the same capability
 // `hooks.bp` uses for `state`/`memo`. `use f(x)` lowers to `f(x)` on every
 // backend, so each is ALSO an ordinary call: the server render calls them
 // directly, and `test/router_test.bp` exercises the bodies that way, exactly as
@@ -281,15 +281,18 @@ pub fn snapshot() -> RouterState {
 // a hook that did work of its own would be a second place for the route to be
 // interpreted.
 
-pub fn router() -> @Context<Element, RouterState> {
+#[@use]
+pub fn router() -> @Component<ElementBase, RouterState> {
     return snapshot();
 }
 
-pub fn pathname() -> @Context<Element, string> {
+#[@use]
+pub fn pathname() -> @Component<ElementBase, string> {
     return snapshot().path;
 }
 
-pub fn params() -> @Context<Element, Array<#(string, string)>> {
+#[@use]
+pub fn params() -> @Component<ElementBase, Array<#(string, string)>> {
     return snapshot().params;
 }
 
@@ -298,17 +301,20 @@ pub fn params() -> @Context<Element, Array<#(string, string)>> {
 // does the marking in its own `searchParams(route)` accessor; see
 // `AGENTS.md` § *The `query` hole* for why that guarantee does not hold for
 // everyone today, and what would close it.
-pub fn searchParams() -> @Context<Element, Array<#(string, string)>> {
+#[@use]
+pub fn searchParams() -> @Component<ElementBase, Array<#(string, string)>> {
     return snapshot().search;
 }
 
-pub fn selectedLayoutSegment() -> @Context<Element, string> {
+#[@use]
+pub fn selectedLayoutSegment() -> @Component<ElementBase, string> {
     return snapshot().segment();
 }
 
 // Root-first, because `pattern` is root-first and `segments` is derived from it
 // by dropping the empty parts — there is no reordering anywhere on the path.
-pub fn selectedLayoutSegments() -> @Context<Element, Array<string>> {
+#[@use]
+pub fn selectedLayoutSegments() -> @Component<ElementBase, Array<string>> {
     return snapshot().segments();
 }
 

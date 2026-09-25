@@ -56,31 +56,35 @@ jhonstart is embedded; the compiler core never names it.
 
 ## Component model
 
-A **component** is a `#[@context] fn(...) -> Element`. A **hook** is a function
-named by its **noun** — `state`, `effect`, `memo`, `ref`, `reducer`, `router`;
-never a `use` prefix in the name — whose return implements
-`@Context<Element, _>`. The keyword `use` is the activation: `val c = use
-state(0)` is legal only in a `#[@context]` body whose return type is `Element`
-(a component) or is itself `@Context<Element, _>` (a custom hook), and every
+A **component** that activates hooks is a `#[@use] fn(...) -> @Component<ElementBase, Element>`
+(one that activates none is an ordinary `fn … -> Element`). A **hook** is a
+`#[@use]` function named by its **noun** — `state`, `effect`, `memo`, `ref`,
+`reducer`, `router`; never a `use` prefix in the name — returning
+`@Component<ElementBase, _>`. `Element` carries the tree: `implement
+@Context<ElementBase>`. The keyword `use` is the activation: `val c = use
+state(0)` is legal only in a `#[@use]` body — a component or a custom hook
+(decisions 102/104 of botopink 1.0.10-beta) — and every
 `use` sits in the body's **static prefix** — before any `if`, `case`, `loop` or
-`return`, at any nesting. A body without `#[@context]` that activates a hook is
+`return`, at any nesting. A body without `#[@use]` that activates a hook is
 `use-without-context-effect`; `#[@Context]` with a capital is an unknown
 annotation silently ignored. All of this is the language's context-inference
-(decision 88 of 1.0.10-beta), not jhonstart.
+(decisions 88, 102, 104 of 1.0.10-beta), not jhonstart. On commonJS every
+`#[@use]` body is an `async function`: a component's caller `await`s it.
 
 ```bp
 import { div, p, text, state, renderToString } from "jhonstart";
 
-#[@context]
-fn Counter() -> Element {
+#[@use]
+fn Counter() -> @Component<ElementBase, Element> {
     val c = use state(0);
     return div([
         p([text("count: " + c.value.toString(), [])], []),
     ], []);
 }
 
-fn main() {
-    @print(renderToString(Counter()));   // synchronous SSR — a pure string
+#[@future]
+fn main() -> @Future<void> {
+    @print(renderToString(await Counter()));   // SSR — a pure string
 }
 ```
 
@@ -109,18 +113,18 @@ deps)`). Client re-render reactivity is the **client runtime**'s job: see
 | `ref<T>(initial)` | `#(current: T)` | mutable handle |
 | `reducer<S,A>(reduce, init)` | `#(state: S, dispatch: fn(action: A))` | reducer state |
 
-Custom hooks compose the primitives — a noun for a name, `#[@context]` on the
-fn, a return that implements `@Context<Element, _>`:
+Custom hooks compose the primitives — a noun for a name, `#[@use]` on the
+fn, a return that implements `@Component<ElementBase, _>`:
 
 ```bp
-#[@context]
-fn counter(start: i32) -> @Context<Element, State<i32>> {
+#[@use]
+fn counter(start: i32) -> @Component<ElementBase, State<i32>> {
     val s = use state(start);
     return s;
 }
 
-#[@context]
-fn Widget() -> Element {
+#[@use]
+fn Widget() -> @Component<ElementBase, Element> {
     val c = use counter(5);   // `use` + the noun; never `use useCounter()`
     …
 }
@@ -462,17 +466,23 @@ Next.js splits route state into five hooks over one internal record
 and never a doubled `use usePathname()`.
 
 ```bp
-pub fn router() -> @Context<Element, RouterState>
-pub fn pathname() -> @Context<Element, string>
-pub fn params() -> @Context<Element, Array<#(string, string)>>
-pub fn searchParams() -> @Context<Element, Array<#(string, string)>>
-pub fn selectedLayoutSegment() -> @Context<Element, string>
-pub fn selectedLayoutSegments() -> @Context<Element, Array<string>>
+#[@use]
+pub fn router() -> @Component<ElementBase, RouterState>
+#[@use]
+pub fn pathname() -> @Component<ElementBase, string>
+#[@use]
+pub fn params() -> @Component<ElementBase, Array<#(string, string)>>
+#[@use]
+pub fn searchParams() -> @Component<ElementBase, Array<#(string, string)>>
+#[@use]
+pub fn selectedLayoutSegment() -> @Component<ElementBase, string>
+#[@use]
+pub fn selectedLayoutSegments() -> @Component<ElementBase, Array<string>>
 ```
 
 ```bp
-#[@context]
-fn ActiveNav() -> Element {
+#[@use]
+fn ActiveNav() -> @Component<ElementBase, Element> {
     val here = use pathname();
     val seg = use selectedLayoutSegment();
     val ps = use params();
@@ -492,22 +502,17 @@ an importer too.
 root-first and `segments` is derived from it by dropping the empty parts —
 nothing on the path reorders.
 
-**`use` is not decoration.** `use f(x)` lowers to `f(x)` on every backend, so a
-hook is also an ordinary call and the server render uses it that way. But a
-hook called *without* `use` keeps its `@Context<Element, T>` type, and that
-type is transparent to a property or a method (`ps.length`, `segs.join("/")`,
-`r.param("slug")`) and **not** to a typed parameter:
+**`use` is not decoration.** A hook called *without* `use` answers its
+`@Component<ElementBase, T>` — a future on commonJS, where every `#[@use]` body is an
+`async function` — so an ordinary caller `await`s it (a `#[@future]` body or a
+test):
 
 ```bp
-val ps = params();
-pairValue(ps, "slug")   // type mismatch: expected array, got Context
+val ps = await params();
+pairValue(ps, "slug")
 ```
 
-Binding through a `val` does not change it — only `use` strips the capability,
-and inside a `#[@context]` body `pairValue(use params(), …)` is exactly the
-array. So a hook whose `T` is an array is usable as a value only under `use`;
-`pathname()` and `selectedLayoutSegment()`, whose `T` is a `string`, compare
-directly either way.
+Inside a `#[@use]` body `pairValue(use params(), …)` is exactly the array.
 
 ### The navigation verbs
 
@@ -634,9 +639,11 @@ once and is constant for the whole render.
 62's and are called from there directly. `cookies()` and `headers()` are the
 only two shortcuts re-exported here.
 
-`request()` is a plain function, not a hook, until front 19 step 2 lands: with
-decisions 89 and 90 it is re-declared `-> @Context<Element, Request>` and
-activated `val r = use request()` inside the `#[@future]` body itself.
+`request()` is a hook, `#[@use] pub fn request() -> @Component<ElementBase,
+RequestData>`, activated `val r = use request()` inside a `#[@use]` server
+component (decisions 102/104 of botopink 1.0.10-beta). Called without `use` it
+answers the same `@Use` — a future on commonJS — so a `#[@future]` body or a
+test `await`s it.
 
 ### The server-component convention
 
@@ -647,16 +654,16 @@ directions:
 
 | Written | Compiler says |
 |---|---|
-| `pub fn f() -> @Future<i32>` | `a function returning @Future/@Iterator/@FutureGenerator needs an effect annotation` |
+| `pub fn f() -> @Future<i32>` | `a function returning @Future/@ResultGenerator/@FutureGenerator/@Use/@Component needs an effect annotation` |
 | `#[@future] pub fn f() -> i32` | `effect-wrapper-mismatch: `#[@future]` requires a `-> @Future<…>` return type` |
-| `#[@future] #[@context] fn Page() -> @Future<Element>` | `effect-duplicate-annotation: at most one #[@<effect>] annotation per fn.` |
-| `fn Widget() -> Element { val c = use state(0); }` | `use-without-context-effect: `use` needs `#[@context]` on the enclosing fn` |
+| `#[@future] #[@use] fn Page() -> @Future<Element>` | `effect-duplicate-annotation: at most one #[@<effect>] annotation per fn.` |
+| `fn Widget() -> Element { val c = use state(0); }` | `use-without-context-effect: `use` needs `#[@use]` on the enclosing fn` |
 
-Row three is why **decision 90** exists: a `#[@future]` body activates hooks
-**without** `#[@context]`, because `@Future<Element>` unwraps to the owner
-`Element` (decision 89) and R5 forbids writing the second annotation anyway. A
-CLIENT component — a plain `fn … -> Element` that activates a hook — does carry
-`#[@context]` (decision 88). Both are asserted in `test/server_test.bp`.
+Row three is why the chain matters: a server component that activates a hook
+is `#[@use] fn … -> @Component<ElementBase, Element>` — `@Component` extends `@Future`, so
+the one annotation grants `use` and `await` (decision 104 of botopink
+1.0.10-beta; a `#[@future]` body activates nothing). `renderComponent` renders
+its thunk. Both are asserted in `test/server_test.bp`.
 
 ```bp
 #[@future]
@@ -780,7 +787,7 @@ Link(withPrefetch(linkProps("/blog/" + slug), false), [text(title, attrs: [])])
 
 ### The anchor
 
-`#[@context] Link(props: LinkProps, children: Children) -> Element`. The props
+`Link(props: LinkProps, children: Children) -> Element`. The props
 travel to the browser as `data-` attributes **on the anchor**: there is no
 second channel and no registry the server has to serialize. An attribute is
 emitted only when it **differs** from the default, so a page with two hundred
@@ -852,7 +859,7 @@ and one hook are missing, all of them blocked on fronts that have not started:
 |---|---|
 | `__onzeLinkMount()` — delegated click interception + an intersection observer over `[data-onze-l]` | front 68's generated client bundle (the module the cell binds to), which calls it once after hydrating the islands |
 | `__onzeLinkPrefetch(href, mode)` — warms the client route cache | the same bundle |
-| `__onzeLinkStatus() -> string` and `linkStatus() -> @Context<Element, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__onzeLinkStatus());` |
+| `__onzeLinkStatus() -> string` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__onzeLinkStatus());` |
 | `__onzeLinkRouteKind(href) -> string` | **front 60**'s route-kind table, emitted into that bundle |
 | `reconcile(current, target)` — the transition driver | front 68's DOM primitives (mount/unmount), plus front 60's flag for whether the target payload had to be fetched |
 
@@ -890,8 +897,8 @@ component** (here), and **front 68 walks the module graph** (not here).
 
 ```bp
 #[client]
-#[@context]
-pub fn LikeButton(props: LikeProps) -> Element {
+#[@use]
+pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
     return button([text(c.value.toString() + " likes", attrs: [])], attrs: [
         #("data-onze-on-click", "LikeButton:like"),
@@ -910,7 +917,7 @@ fail to link during the erlang server render — the exact case the boundary
 exists to support. A pure marker links everywhere and carries the same
 information; front 68 reads the set of `__jhClient_*` names off the graph.
 
-`#[client]` is a decorator and `#[@context]` is the effect (decision 88), so the
+`#[client]` is a decorator and `#[@use]` is the effect (decision 88), so the
 two coexist on one component. A **server** component is `#[@future] fn … ->
 @Future<Element>` and cannot be marked client: its reflected `returnType` is
 `"Future"`, which the second check below rejects.
@@ -1115,9 +1122,9 @@ Neither cell is declared and neither is stubbed, for the two measurements
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - `use request()` — decided and unwritten. `request()` is a plain function
-    returning `RequestData`; front 19 step 2 (decisions 89 + 90) is what makes
-    it `-> @Context<Element, Request>`, activated inside the `#[@future]` body.
+  - (closed) `use request()`: `request()` is `#[@use] … -> @Component<ElementBase,
+    RequestData>` (botopink decisions 102/104), activated inside a `#[@use]`
+    server component.
     The server surface itself is no longer gated: `server.bp` is compiled with
     both host halves shipped (see *Server components*). `Link` and the form
     controls are no longer gated on an attribute slot either: `Element` carries
