@@ -1,0 +1,18 @@
+//// The `jhonstart-test` package — module-tree root.
+////
+//// The test-helper member every library carries (front 95,
+//// `specs/1.0.10-beta/02-packaging/README.md` § 5): `assert<Subject>(loc, …)
+//// -> @Result<void, string>` helpers, fixtures and builders that know
+//// jhonstart's types, standing on std's asserts and snapshots. Created empty
+//// by front 95; each track-C front adds its `assert_<subject>.bp` and its
+//// `pub mod` line here, in front-number order
+//// (`specs/1.0.10-beta/04-jhonstart/modules.md` § 5). A consumer adds
+//// `"jhonstart-test"` to its dependencies; it never reaches into the core's
+//// own `test/`. Nothing from std is re-exported, and mocking is std's
+//// (decision 71) — this member keeps only the injection pairing.
+
+import { renderToString, div, text } from "jhonstart";
+
+test "jhonstart-test: the core member resolves from the test member" {
+    assert renderToString(div([text("ok", attrs: [])], attrs: [])) == "<div>ok</div>";
+}

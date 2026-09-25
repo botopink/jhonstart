@@ -19,16 +19,19 @@ expanding markup to the builder pipeline at comptime.
 ```
 
 ```bp
-import {html, div, p, text, state, effect, renderToString} from "jhonstart";
+import {div, p, text, state, effect, renderToString} from "jhonstart";
+import {html} from "jhonstart-html";   // the markup DSL, its own member
 ```
 
 ## Layout
 
 `repository/jhonstart/botopink.json` is a **workspace** (`"workspaces": ["modules/*", "examples/*"]`,
 decision 75 of 1.0.10-beta): it compiles nothing and ships nothing. The library is the member
-[`modules/jhonstart/`](modules/jhonstart/) — `from "jhonstart"` resolves to it — beside the runnable
-examples [`examples/jhonstart-counter/`](examples/jhonstart-counter/),
-[`examples/jhonstart-html/`](examples/jhonstart-html/) and
+[`modules/jhonstart/`](modules/jhonstart/) — `from "jhonstart"` resolves to it — beside
+[`modules/jhonstart-html/`](modules/jhonstart-html/) (`from "jhonstart-html"`: the `html """…"""` DSL),
+[`modules/jhonstart-test/`](modules/jhonstart-test/) (the test-helper member, empty until the track-C
+fronts fill it) and the runnable examples [`examples/jhonstart-counter/`](examples/jhonstart-counter/),
+[`examples/jhonstart-markup/`](examples/jhonstart-markup/) and
 [`examples/jhonstart-todo/`](examples/jhonstart-todo/), each depending on the core with
 `{ "jhonstart": { "workspace": true } }`. `botopink test` runs inside a member, never at the root.
 

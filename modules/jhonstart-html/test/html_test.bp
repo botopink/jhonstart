@@ -1,4 +1,5 @@
-import { html, div, span, p, h1, ul, li, text, fragment, renderToString, bracketPair };
+import { html };
+import { div, span, p, h1, ul, li, text, fragment, renderToString, bracketPair } from "jhonstart";
 
 test "markup lowers to the builder pipeline and renders" {
     val page = html """<div><p>hi</p></div>""";

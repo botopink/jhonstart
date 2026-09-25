@@ -1,7 +1,7 @@
 {
   "name": "jhonstart",
   "version": "0.0.1",
-  "description": "jhonstart core — the Element tree + builders + SSR renderer, the state/effect/memo/ref/reducer hooks, the `html \"\"\"…\"\"\"` markup DSL, the route snapshot, the request record and the server-component convention — commonJS and erlang",
+  "description": "jhonstart core — the Element tree + builders + SSR renderer, the state/effect/memo/ref/reducer hooks, the route snapshot, the request record and the server-component convention — commonJS and erlang",
   "src": "src/",
   "entry": "root.bp",
   "target": "commonJS",
@@ -9,7 +9,6 @@
     "root.bp",
     "element.bp",
     "hooks.bp",
-    "html.bp",
     "router.bp",
     "elements.bp",
     "client_runtime.bp",
