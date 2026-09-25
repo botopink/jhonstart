@@ -26,18 +26,17 @@
 //     error: effect-wrapper-mismatch: `#[@future]` requires a `-> @Future<…>`
 //            return type
 //
-//   `#[@future] #[@context] fn Page() -> @Future<Element> { … }` — R5, and the
-//   reason decision 90 exists at all
+//   `#[@future] #[@use] fn Page() -> @Future<Element> { … }` — R5; the chain
+//   spells the case instead (`#[@use] fn Page() -> @Component<Element>`)
 //     error: effect-duplicate-annotation: at most one #[@<effect>] annotation
 //            per fn.
 //
 // And the one that governs a CLIENT component, for contrast — a plain
 // `fn NoAnn() -> Element` whose body writes `use pathname()`:
 //
-//     error: use-without-context-effect: `use` needs `#[@context]` on the
-//            enclosing fn 'NoAnn': its return type 'Element' implements
-//            @Context, but a body with no effect annotation does not activate
-//            a hook
+//     error: use-without-context-effect: `use` needs `#[@use]` on the
+//            enclosing fn 'NoAnn' (it returns 'Element'): only a `#[@use]`
+//            body activates a hook
 //
 // ── One call-site rule, and it only shows on the erlang row ─────────────────
 //
@@ -54,6 +53,7 @@ import {
     headers,
     fillRequest,
     renderServerComponent,
+    renderComponent,
 } from "server";
 import {fill, pathname} from "router";
 import {Element, div, p, h1, ul, li, text, renderToString} from "element";
@@ -172,7 +172,7 @@ test "server: the six cells round-trip into the record of step 1" {
         "accept=text/html",
         "sid=42&theme=dark",
     );
-    val r = request();
+    val r = await request();
     assert r.method == "POST";
     assert r.path == "/blog/hi";
     assert r.param("slug") == "hi";
@@ -188,7 +188,7 @@ test "server: the six cells round-trip into the record of step 1" {
 // server pass, and `decodePairs("")` is `[]` rather than `[#("", "")]`.
 test "server: an empty encoding yields the empty list, not one empty pair" {
     fillRequest("GET", "/", "", "", "", "");
-    val r = request();
+    val r = await request();
     assert r.params.length == 0;
     assert r.query.length == 0;
     assert r.headers.length == 0;
@@ -203,7 +203,7 @@ test "server: an empty encoding yields the empty list, not one empty pair" {
 test "server: a fill replaces the whole request" {
     fillRequest("POST", "/a", "id=1", "q=1", "accept=a", "sid=1");
     fillRequest("GET", "/b", "id=2", "", "", "");
-    val r = request();
+    val r = await request();
     assert r.method == "GET";
     assert r.path == "/b";
     assert r.param("id") == "2";
@@ -219,7 +219,7 @@ test "server: cookies() and headers() answer the same lists the record carries" 
     fillRequest("GET", "/x", "", "", "accept=text/html&x=1", "sid=42");
     assert cookies().length == 1;
     assert headers().length == 2;
-    val r = request();
+    val r = await request();
     assert r.cookies.length == cookies().length;
     assert r.headers.length == headers().length;
 }
@@ -332,7 +332,7 @@ fn justTree(e: Element) -> @Future<Element> {
 // one file.
 #[@future]
 fn GreetingPage() -> @Future<Element> {
-    val r = request();
+    val r = await request();
     val post = await loadPost(r.param("slug"));
     return div([
             h1([text("Hello, " + r.cookie("name"), attrs: [])], attrs: []),
@@ -376,16 +376,14 @@ test "server: the same page renders from an explicit request, with no host" {
         "<div><h1>Hello, ana</h1><p>Post hi</p><p>via text/html</p></div>";
 }
 
-// ── decision 90: the wrapper effect activates on its own ────────────────────
+// ── decision 104: a server component that uses and awaits ───────────────────
 //
-// A `#[@future] fn … -> @Future<Element>` may write `use` with NO `#[@context]`
-// beside it: `@Future<Element>` unwraps to the owner `Element` (decision 89)
-// and the wrapper effect activates on its own (decision 90). R5 is what makes
-// that necessary rather than convenient — `#[@future] #[@context]` is
-// `effect-duplicate-annotation`, so the two could not be written together even
-// if one wanted to. Measured green on both rows.
-#[@future]
-fn RoutedPage() -> @Future<Element> {
+// `#[@use] fn … -> @Component<Element>`: `@Component` extends `@Future`, so the
+// one annotation grants `use` and `await` (decisions 102/104 of 1.0.10-beta,
+// which revoked 89 and 90 — a `#[@future]` body no longer activates a hook).
+// `renderComponent` renders its thunk. Measured green on both rows.
+#[@use]
+fn RoutedPage() -> @Component<Element> {
     val here = use pathname();
     val post = await loadPost("hi");
     return div([
@@ -394,9 +392,9 @@ fn RoutedPage() -> @Future<Element> {
         ], attrs: []);
 }
 
-test "server: a #[@future] body activates a hook with no second annotation" {
+test "server: a #[@use] component activates a hook and awaits a loader" {
     fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 0);
-    val out = await renderServerComponent({ -> RoutedPage() });
+    val out = await renderComponent({ -> RoutedPage() });
     assert out == "<div><h1>Post hi</h1><p>/blog/hi</p></div>";
 }
 

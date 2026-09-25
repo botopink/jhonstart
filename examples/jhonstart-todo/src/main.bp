@@ -3,11 +3,11 @@
 // List rendering is ordinary data: `items.map({ it -> li([text(it)]) })`
 // produces an `Element[]` the `ul` builder accepts (the `Children` coercion).
 // `todoView` is pure and directly testable; `toggle` is a custom hook — a noun,
-// no `use` prefix (the keyword is the activation), `#[@context]` on the fn, a
-// return that implements `@Context<Element, _>` — used by the idiomatic
-// `#[@context]` `TodoApp` component (decision 88 of 1.0.10-beta).
+// no `use` prefix (the keyword is the activation), `#[@use]` on the fn, a
+// return that implements `@Use<ElementBase, _>` — used by the idiomatic
+// `#[@use]` `TodoApp` component (decision 88 of 1.0.10-beta).
 
-import { Element, div, ul, li, span, text, state, renderToString } from "jhonstart";
+import { Element, ElementBase, div, ul, li, span, text, state, renderToString } from "jhonstart";
 
 // Pure view: render a todo list (and a count) from plain data.
 fn todoView(items: string[]) -> Element {
@@ -19,16 +19,16 @@ fn todoView(items: string[]) -> Element {
 }
 
 // A custom hook composing the primitive `state` hook.
-#[@context]
-fn toggle(initial: bool) -> @Context<Element, State<bool>> {
+#[@use]
+fn toggle(initial: bool) -> @Use<ElementBase, State<bool>> {
     val s = use state(initial);
     return s;
 }
 
 // Idiomatic stateful component: every `use` in the static prefix, before the
 // `if`. Called plainly it is the server pass (the initial cells).
-#[@context]
-pub fn TodoApp() -> Element {
+#[@use]
+pub fn TodoApp() -> @Component<Element> {
     val items = use state(["buy milk", "write docs"]);
     val open = use toggle(true);
     if (open.value) {
@@ -50,7 +50,7 @@ test "an empty list renders an empty ul" {
     assert renderToString(todoView([])) == "<div><span>todos: 0</span><ul></ul></div>";
 }
 
-test "the #[@context] component and its custom hook render the server pass" {
-    assert renderToString(TodoApp()) ==
+test "the #[@use] component and its custom hook render the server pass" {
+    assert renderToString(await TodoApp()) ==
         "<div><span>todos: 2</span><ul><li>buy milk</li><li>write docs</li></ul></div>";
 }

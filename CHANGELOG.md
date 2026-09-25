@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **botopink front 21 — the effect chain (decisions 102–104).** `Element`
+  implements the owner marker `@Context<ElementBase>` (a phantom
+  `type ElementBase`), every hook is `#[@use] fn … -> @Use<ElementBase, T>`,
+  every component that activates a hook is `#[@use] fn … -> @Component<Element>`
+  (one that activates none — `Link`, `NavBar` — is an ordinary `fn … -> Element`),
+  and `request()` is a hook. A `#[@future]` body no longer activates a hook
+  (decisions 89/90 revoked): the server component that uses and awaits is
+  `#[@use] … -> @Component<Element>`, rendered by the new `renderComponent`.
+  On commonJS every `#[@use]` body is an `async function`, so a test or a
+  `#[@future]` body `await`s a hook or component it calls without `use`.
+  `#[client]` accepts `@Component<Element>`. Counts unchanged on both rows.
+
 - **Front 29 — the server/client boundary: `client.bp`.** Next.js `'use client'`
   is a string literal the bundler reads; botopink has no directive syntax and
   the milestone forbids compiler changes, so the boundary is built out of

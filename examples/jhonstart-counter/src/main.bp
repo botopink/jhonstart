@@ -2,7 +2,7 @@
 //
 // `counterView` is a PURE view: given a count it builds the markup, so it renders
 // synchronously with `renderToString` and is directly testable. `Counter` is the
-// stateful, idiomatic form — a `#[@context] fn … -> Element` component whose
+// stateful, idiomatic form — a `#[@use] fn … -> @Component<Element>` component whose
 // body activates `state` with `use` (decision 88 of 1.0.10-beta). `use state(0)`
 // lowers to `state(0)` on every backend: called here it is the server pass (the
 // initial cell); in the browser the client build resolves `jhonstart/hooks` to
@@ -21,19 +21,21 @@ fn counterView(count: i32) -> Element {
     ], []);
 }
 
-// Stateful component (idiomatic hooks): `#[@context]` lets the body activate a
+// Stateful component (idiomatic hooks): `#[@use]` lets the body activate a
 // hook; every `use` sits in the static prefix. Rendered below as the server pass.
-#[@context]
-pub fn Counter() -> Element {
+#[@use]
+pub fn Counter() -> @Component<Element> {
     val c = use state(0);
     return counterView(c.value);
 }
 
-// A component reading a hook WITHOUT `use`: an ordinary call, the first-render
-// value — legal in any body, no `#[@context]` needed. It renders synchronously
-// to its SSR string, the same string `Counter()` produces when called plainly.
-fn StatefulBadge() -> Element {
-    val c = state(7);
+// A component reading a hook WITHOUT `use`: an ordinary call, which answers the
+// hook's `@Use` — a future on commonJS (decision 104 of botopink 1.0.10-beta:
+// every `#[@use]` body is async there), so the body `await`s it and is a
+// `#[@future]` fn. Its value is the first-render value.
+#[@future]
+fn StatefulBadge() -> @Future<Element> {
+    val c = await state(7);
     val doubled = c.value + c.value;
     return div([
         p([text("count: " + c.value.toString(), [])], []),
@@ -51,18 +53,18 @@ test "the counter view renders its count and sign" {
 }
 
 test "the state hook seeds the initial count and exposes a setter" {
-    val c = state(0);
+    val c = await state(0);
     assert c.value == 0;
     c.set(5);
 }
 
 test "renderToString of a component consuming a hook produces the SSR string" {
-    assert renderToString(StatefulBadge()) ==
+    assert renderToString(await StatefulBadge()) ==
         "<div><p>count: 7</p><span>x2=14</span></div>";
 }
 
-test "a #[@context] component activating `use state` renders the server pass" {
-    assert renderToString(Counter()) == "<div><p>count: 0</p><span>non-negative</span></div>";
+test "a #[@use] component activating `use state` renders the server pass" {
+    assert renderToString(await Counter()) == "<div><p>count: 0</p><span>non-negative</span></div>";
 }
 
 // LIMITATION (recorded, not a forced test): a builder called with a LONE child

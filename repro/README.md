@@ -202,7 +202,7 @@ declarations.
 
 It can only avoid it, and only by luck. `test/client_test.bp` writes
 `val like = LikeProps(…)` rather than the `val p` anyone would write, because
-`p` is one of `element.bp`'s builders and a `#[@context]` component declared
+`p` is one of `element.bp`'s builders and a `#[@use]` component declared
 further down the same file calls `p([text(…)], attrs: [])`. Nothing warns; the
 file simply reds at the component with a type mismatch naming a record the
 component never mentions. Every `.bp` file in this ecosystem that binds a local
