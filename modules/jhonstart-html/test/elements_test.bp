@@ -1,4 +1,5 @@
-import { html, nav, section, h2, span, p, text, renderToString, bracketPair };
+import { html };
+import { nav, section, h2, span, p, text, renderToString, bracketPair } from "jhonstart";
 
 test "a tag from the element surface resolves inside an html template" {
     val bar = html """<nav><span>home</span></nav>""";

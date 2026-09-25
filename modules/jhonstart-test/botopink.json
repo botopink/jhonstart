@@ -1,0 +1,16 @@
+{
+  "name": "jhonstart-test",
+  "version": "0.0.1",
+  "description": "jhonstart-test — test helpers for jhonstart: render/stream/route harness and assert<Subject>(loc, …) snapshot helpers, filled by the track-C fronts — commonJS and erlang",
+  "src": "src/",
+  "entry": "root.bp",
+  "target": "commonJS",
+  "files": [
+    "root.bp"
+  ],
+  "dependencies": {
+    "jhonstart": {
+      "workspace": true
+    }
+  }
+}

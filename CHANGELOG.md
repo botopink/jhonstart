@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Front 95 — the package cut: `jhonstart-html` and `jhonstart-test` members.**
+  The `html """…"""` DSL leaves the core for its own member
+  `modules/jhonstart-html/` (`from "jhonstart-html"`), with the two suites that
+  exercise it from a consumer's position (`html_test.bp`, `elements_test.bp`);
+  its one edit is `import {Element} from "jhonstart"`. The core no longer
+  depends on the DSL and reads 120/120 on both rows (was 125 — the five moved
+  tests are the member's 5/5). `modules/jhonstart-test/` is created empty with
+  one inline test, for the track-C fronts to fill. The example
+  `examples/jhonstart-html/` is renamed `examples/jhonstart-markup/`: a member
+  name is unique in the workspace and the DSL member takes it. A consumer of
+  the DSL now writes `import {html} from "jhonstart-html";` beside
+  `import {div, p, text} from "jhonstart";`.
+
 - **Front 29 — the server/client boundary: `client.bp`.** Next.js `'use client'`
   is a string literal the bundler reads; botopink has no directive syntax and
   the milestone forbids compiler changes, so the boundary is built out of

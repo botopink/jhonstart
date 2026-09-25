@@ -30,12 +30,13 @@ a dependency — `dependencies` is the object form, exactly one source per entry
 
 ```jsonc
 // …or, from a sibling member of jhonstart's own workspace — which is what
-// examples/jhonstart-{counter,html,todo}/ use:
+// examples/jhonstart-{counter,markup,todo}/ use:
 { "dependencies": { "jhonstart": { "workspace": true } } }
 ```
 
 ```bp
-import { html, div, p, text, state, effect, renderToString } from "jhonstart";
+import { div, p, text, state, effect, renderToString } from "jhonstart";
+import { html } from "jhonstart-html";   // the markup DSL is its own member
 ```
 
 The loader walks up from `cwd` and, at each ancestor, considers these roots
@@ -44,10 +45,11 @@ The loader walks up from `cwd` and, at each ancestor, considers these roots
 `.botopinkbuild/deps/`. A root contributes every immediate child holding a
 `botopink.json` **and every member of a workspace found there, named by its own
 manifest** — so `repository/` contributes `jhonstart` (the member
-`repository/jhonstart/modules/jhonstart/`), `jhonstart-counter`,
-`jhonstart-html` and `jhonstart-todo`, and never the umbrella. The member's
-`files` — `root.bp`, `element.bp`, `hooks.bp`, `html.bp`, `router.bp`,
-`elements.bp`, `client_runtime.bp`, `server.bp` — are the only modules a
+`repository/jhonstart/modules/jhonstart/`), `jhonstart-html` (the DSL member),
+`jhonstart-test`, `jhonstart-counter`, `jhonstart-markup` and `jhonstart-todo`,
+and never the umbrella. Each member's `files` — the core's `root.bp`,
+`element.bp`, `hooks.bp`, `router.bp`, `elements.bp`, `client_runtime.bp`,
+`server.bp`, …; `jhonstart-html`'s `root.bp`, `html.bp` — are the only modules a
 consumer sees. A
 `{ "workspace": true }` dependency consults no root at all. Nothing about
 jhonstart is embedded; the compiler core never names it.
@@ -214,7 +216,7 @@ error was rejected: it is a second convention, and it is unreachable from the
 
 | Tag | Constructor | Why |
 |---|---|---|
-| `<html>` | `htmlTag` | `html` is already a `pub fn` in this package — the `html """…"""` template fn — and two `pub fn html` reachable from `import {…} from "jhonstart"` is a collision. The DSL keeps the name |
+| `<html>` | `htmlTag` | `html` is already the `html """…"""` template fn (member `jhonstart-html`), and a file importing the DSL beside the tags would bind two `html`s — a collision. The DSL keeps the name |
 | `<time>` | `timeTag` | `time` is a std module, and a consumer doing `import {time} from "std"` in the same file would collide |
 | `<main>` | `main` | Shipped under its own name, because the consuming fronts import it that way |
 
@@ -256,7 +258,8 @@ resolves to. `val page = html """…"""` compiles straight to the builder calls;
 `html` never reaches codegen.
 
 ```bp
-import { html, Element, div, p, text, renderToString } from "jhonstart";
+import { html } from "jhonstart-html";
+import { Element, div, p, text, renderToString } from "jhonstart";
 
 val name = "world";
 val page = html """
@@ -287,8 +290,8 @@ import and no implicit prelude, so the consumer names every tag the markup
 uses:
 
 ```bp
-import { html, bracketPair } from "jhonstart";                // the DSL
-import { nav, span, text, renderToString } from "jhonstart";  // the tags
+import { html } from "jhonstart-html";                                    // the DSL
+import { bracketPair, nav, span, text, renderToString } from "jhonstart";  // the tags
 
 val bar = html """<nav><span>home</span></nav>""";
 ```
@@ -306,10 +309,11 @@ as before — do not change the built `Element` (the builders take only
 diagnostic pinned to the offending tag inside the template (e.g. `html
 """<div><p>hi</div>"""` → *mismatched closing tag `</div>`, expected `</p>`*),
 not a whole-template error. Bare `html`/`div`/… are reached unqualified after
-`import … from "jhonstart"` via the generic loader-bare binding. Capitalized
+`import … from "jhonstart-html"` / `from "jhonstart"` via the generic
+loader-bare binding. Capitalized
 `<Component/>` markup lookup is a **future layer** — today a component is an
 ordinary `fn(...) -> Element` (its body may itself author `html """…"""`) reused
-by a plain call. See `examples/jhonstart-html`.
+by a plain call. See `examples/jhonstart-markup`.
 
 ## The router (`router.bp`) — compiled
 
@@ -1092,7 +1096,7 @@ Neither cell is declared and neither is stubbed, for the two measurements
 
 ## V1 limits
 
-- **Implemented now** (`element.bp` + `elements.bp` + `hooks.bp` + `html.bp`, compiled +
+- **Implemented now** (`element.bp` + `elements.bp` + `hooks.bp`, and `html.bp` in `jhonstart-html`, compiled +
   `test {}`-checked): the `Element` type, builders (`Children` args, list-form
   render), the element surface (`el`/`voidEl`, `isVoidTag`/`isRawTextTag` and
   thirty-eight further tag constructors), a synchronous `renderToString`, the

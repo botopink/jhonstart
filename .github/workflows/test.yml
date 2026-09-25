@@ -7,9 +7,12 @@
 #
 # `repository/jhonstart/` is a workspace (decision 75): the `repository/` root
 # contributes its members by manifest name, so `--lib jhonstart` selects the
-# member `modules/jhonstart/` and the umbrella has no row. The example members
-# (`jhonstart-counter`, `jhonstart-html`, `jhonstart-todo`) are rows of their
-# own; the Examples build step below still builds each one from its manifest.
+# member `modules/jhonstart/` and the umbrella has no row. The other library
+# members (`jhonstart-html`, `jhonstart-test`) and the example members
+# (`jhonstart-counter`, `jhonstart-markup`, `jhonstart-todo`) are rows of their
+# own — `--lib` takes one name, so this job runs the core only; the pre-commit
+# hook runs `botopink test` in every `modules/*` member, and the Examples build
+# step below still builds each example from its manifest.
 name: test
 
 on:

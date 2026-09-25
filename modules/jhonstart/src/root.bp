@@ -1,10 +1,11 @@
 //// The `jhonstart` package — module-tree root.
 ////
 //// The compiled UI core: `element` (the `Element` tree + builders + SSR
-//// renderer), `hooks` (the `state`/`effect`/`memo`/`ref`/`reducer` family —
-//// `hooks` imports `Element` from `element`), and `html` (the `html """…"""`
-//// markup DSL that expands to the builder pipeline). All three are public
-//// surface, reached by a consumer via `import {…} from "jhonstart"`.
+//// renderer) and `hooks` (the `state`/`effect`/`memo`/`ref`/`reducer` family —
+//// `hooks` imports `Element` from `element`). Both are public surface, reached
+//// by a consumer via `import {…} from "jhonstart"`. The `html """…"""` markup
+//// DSL is not here: it is the `jhonstart-html` member since front 95, and the
+//// core does not depend on it.
 ////
 //// `router` (front 26) is the route snapshot a component reads and `server`
 //// (front 28) is the request a server component reads, both compiled modules
@@ -25,7 +26,6 @@
 
 pub mod element;
 pub mod hooks;
-pub mod html;
 pub mod router;       // front 26, replacing router.d.bp
 pub mod elements;     // front 94
 pub mod server;       // front 28, replacing server.d.bp

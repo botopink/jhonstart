@@ -84,12 +84,13 @@
 //   - NO comments inside the body: the emitter flattens each block to one line,
 //     so a `//` would comment out the code that follows it on that line.
 
-// The sibling module declaring `Element` — the type `html`'s `@ExprCustom<…>`
-// return annotation names, the same import `hooks` makes. The module is named
-// explicitly: the bare `import { Element };` shorthand type-checks, but
-// commonJS lowers it to `require("../module")`, which resolves inside this
-// package and not when jhonstart is consumed as a dependency.
-import {Element} from "element";
+// `Element` — the type `html`'s `@ExprCustom<…>` return annotation names —
+// comes from the jhonstart core member (`{ "workspace": true }` in this
+// member's manifest). The DSL lives in its own member, `jhonstart-html`, since
+// front 95: a builder-only consumer of the core never pays for it, and the
+// core does not depend on it — the expansion resolves tags in the CALLER's
+// scope, so the caller imports the builders it writes from "jhonstart".
+import {Element} from "jhonstart";
 
 pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
     var tokens: Array<#(kind: string, text: string, code: string, ptext: string, pbase: i32, hstart: i32, hend: i32)> = [];

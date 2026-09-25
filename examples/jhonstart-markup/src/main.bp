@@ -1,4 +1,4 @@
-// jhonstart-html — the JSX-like `html """…"""` authoring DSL.
+// jhonstart-markup — the JSX-like `html """…"""` authoring DSL.
 //
 // `html` takes the caller's markup UNEVALUATED (the `"""…"""` triple-quoted
 // literal) and expands it, at compile time, into the `Element` builder pipeline
@@ -8,10 +8,12 @@
 // markup names exactly what is in scope. `html` never reaches runtime: `val page
 // = html """…"""` compiles straight to the builder calls, rendered synchronously.
 //
-// Bare `html`/`div`/`p`/`text` are reached unqualified after `import … from
-// "jhonstart"` via the generic loader-bare binding (generic-loader-binding).
+// Bare `html`/`div`/`p`/`text` are reached unqualified via the generic
+// loader-bare binding (generic-loader-binding): the DSL from the
+// `jhonstart-html` member, the builders it lowers to from the core.
 
-import { html, Element, div, p, ul, li, text, renderToString } from "jhonstart";
+import { html } from "jhonstart-html";
+import { Element, div, p, ul, li, text, renderToString } from "jhonstart";
 
 val name = "world";
 
