@@ -55,12 +55,12 @@ pub fn li(children: Children, attrs: Array<#(string, string)> = []) -> Element {
 pub fn renderToString(e: Element) -> string {
     if (e.tag == "#text") return e.value;
     var inner = "";
-    loop (e.children) { c ->
+    for (e.children) { c ->
         inner = inner + renderToString(c);
     };
     if (e.tag == "#fragment") return inner;
     var attrStr = "";
-    loop (e.attrs) { a ->
+    for (e.attrs) { a ->
         attrStr = attrStr + " " + a._0 + "=\"" + a._1 + "\"";
     };
     return "<" + e.tag + attrStr + ">" + inner + "</" + e.tag + ">";

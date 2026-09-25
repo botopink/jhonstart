@@ -67,7 +67,7 @@ import {layoutKey} from "link";
 pub fn layoutKeys(segments: Array<string>) -> Array<string> {
     var keys: Array<string> = [layoutKey(segments, 0)];
     var depth = 1;
-    loop (segments) { part ->
+    for (segments) { part ->
         keys = keys.append([layoutKey(segments, depth)]);
         depth = depth + 1;
     };
@@ -89,7 +89,7 @@ pub fn sharedDepth(current: Array<string>, target: Array<string>) -> i32 {
     var shared = 0;
     var i = 0;
     var diverged = false;
-    loop (current) { key ->
+    for (current) { key ->
         if (diverged == false) {
             if (i < target.length) {
                 if (key == keyAt(target, i)) {
@@ -113,7 +113,7 @@ pub fn sharedDepth(current: Array<string>, target: Array<string>) -> i32 {
 fn keyAt(keys: Array<string>, index: i32) -> string {
     var found = "";
     var i = 0;
-    loop (keys) { key ->
+    for (keys) { key ->
         if (i == index) {
             found = key;
         };
