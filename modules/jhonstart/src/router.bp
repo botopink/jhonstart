@@ -57,7 +57,7 @@ pub type RouterState(
 pub fn pairValue(pairs: Array<#(string, string)>, name: string) -> string {
     var found = "";
     var seen = false;
-    loop (pairs) { p ->
+    for (pairs) { p ->
         if (seen == false) {
             if (p._0 == name) {
                 found = p._1;
@@ -85,7 +85,7 @@ pub fn patternSegments(pattern: string) -> Array<string> {
 pub fn segmentAt(segments: Array<string>, index: i32) -> string {
     var found = "";
     var i = 0;
-    loop (segments) { part ->
+    for (segments) { part ->
         if (i == index) {
             found = part;
         };
