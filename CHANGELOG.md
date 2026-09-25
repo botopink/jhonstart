@@ -26,6 +26,12 @@
   `ElementBase`, which they named without importing since the decision-128
   re-spelling — the reason both core rows and the counter's commonJS row did not
   compile at `feat` (120/120 and 4/4 once they do).
+  Measured against botopink-lang `front/24-effects-by-return` `86609a66`:
+  `jhonstart` 120/120 on commonJS and erlang, `jhonstart-html` 5/5, `jhonstart-markup`
+  7/7, `jhonstart-test` 1/1, `jhonstart-todo` 3/3 on both rows, `jhonstart-counter`
+  4/4 on commonJS (its erlang row stays the pinned `set/2` defect); every hook,
+  component and `@Task` fn still lowers to an `async function` on commonJS. The
+  four compile errors recorded in `test/server_test.bp` were reproduced by code.
 
 - **Front 95 — the package cut: `jhonstart-html` and `jhonstart-test` members.**
   The `html """…"""` DSL leaves the core for its own member
