@@ -12,6 +12,9 @@
     "jhonstart": {
       "workspace": true
     },
+    "jhonstart-html": {
+      "workspace": true
+    },
     "emilia": {
       "path": "../../../emilia/modules/emilia"
     }
