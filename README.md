@@ -33,8 +33,8 @@ decision 75 of 1.0.10-beta): it compiles nothing and ships nothing. The library 
 [`modules/jhonstart/`](modules/jhonstart/) — `from "jhonstart"` resolves to it — beside
 [`modules/jhonstart-html/`](modules/jhonstart-html/) (`from "jhonstart-html"`: the `html """…"""` DSL),
 [`modules/jhonstart-link/`](modules/jhonstart-link/) (`from "jhonstart-link"`: `Link` and the remount decision),
-[`modules/jhonstart-test/`](modules/jhonstart-test/) (the test-helper member, empty until the track-C
-fronts fill it) and the runnable examples [`examples/jhonstart-counter/`](examples/jhonstart-counter/),
+[`modules/jhonstart-test/`](modules/jhonstart-test/) (the test-helper member: `assert<Subject>` snapshot
+helpers, fixtures and the render harness) and the runnable examples [`examples/jhonstart-counter/`](examples/jhonstart-counter/),
 [`examples/jhonstart-markup/`](examples/jhonstart-markup/) and
 [`examples/jhonstart-todo/`](examples/jhonstart-todo/), each depending on the core with
 `{ "jhonstart": { "workspace": true } }`. `botopink test` runs inside a member, never at the root.

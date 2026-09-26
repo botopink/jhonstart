@@ -126,9 +126,12 @@ repository/jhonstart/
 │   │   └── test/
 │   │       ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table and the layout key (front 27) — both rows
 │   │       └── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, the whole remount decision without a DOM (front 27) — both rows
-│   └── jhonstart-test/ ← MEMBER (front 95): the test-helper member — `assert<Subject>(loc, …)` helpers, fixtures, builders; EMPTY `pub` surface until the track-C fronts fill it (`specs/1.0.10-beta/04-jhonstart/modules.md` § 5)
-│       ├── botopink.json  ← name jhonstart-test, files [root.bp], dependencies { jhonstart: { workspace: true } }
-│       └── src/root.bp    ← one inline `test` proving the core resolves from the member
+│   └── jhonstart-test/ ← MEMBER (front 95; the helpers of `specs/1.0.10-beta/04-jhonstart/modules.md` § 5): `assert<Subject>(loc, …)` over std's `snapshots.assertAs`, each with a pure `<subject>Text` twin, plus fixtures and the render harness
+│       ├── botopink.json  ← name jhonstart-test, files [root.bp, harness.bp, assert_*.bp], dependencies { jhonstart, jhonstart-link, jhonstart-forms: { workspace: true } }
+│       ├── src/root.bp    ← `pub mod` per helper file + one inline `test` proving the core resolves
+│       ├── src/harness.bp ← `assertText`, `fixtureRouter`, `fixtureRequest(method, path, lists = "")`, `fixturePageOver`, `stubEnvelope` (actions' `writeEnvelope`), `renderToStream` (declaration order), `Navigation` + `simulateNavigation(current, target)`, `recordingResponse` / `RecordedResponse` / `renderRecorded` / `renderStreamCollect` (inline recording cells: `put`/`get`, a `globalThis` entry)
+│       ├── src/assert_{html,route,link,server,island,stream,render,error_boundary,metadata,form}.bp ← `assertHtml`/`assertHtmlLines`, `assertRoute`/`assertActiveLink`, `assertLink`/`assertNavigation`, `assertRequest`, `assertClientBundleEntry`, `assertStream`, `assertDocument`/`assertResponse`/`assertPayload` (+ `jsonMembers`), `assertErrorBoundary`, `assertMetadata`/`assertViewport`, `assertForm`/`assertActionState`/`assertOptimistic` — texts per `test-snap.md` § 0.2
+│       └── test/helpers_test.bp + test/__snapshots__/ ← every twin against `test-snap.md`'s literal, and one accepted snapshot per helper family — both rows
 ├── examples/
 │   ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node (targets [commonJS])
 │   ├── jhonstart-markup/   ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang]) — was `examples/jhonstart-html/`, renamed by front 95 because a member name is unique in the workspace and the DSL member took it
@@ -142,9 +145,11 @@ repository/jhonstart/
 ```
 
 `modules/jhonstart-test/` is the `<lib>-test` member
-(`specs/1.0.10-beta/02-packaging/README.md` § 5), created empty by front 95: it
-stands on std's `asserts` and `snapshots`, and each track-C front adds its
-`assert_<subject>.bp` and `pub mod` line. It re-exports nothing from std.
+(`specs/1.0.10-beta/02-packaging/README.md` § 5): it stands on std's
+`snapshots` — a helper computes its text (the `<subject>Text` twin) and hands it
+to `snapshots.assertAs(loc, "<subject>", text)` with the CALLER's `@src()` — and
+re-exports nothing from std. A snapshot is accepted by renaming its `.snap.new`
+after comparing it with `test-snap.md`'s literal; never by a flag.
 
 `modules/jhonstart-link/` holds front 27's `link.bp` and `reconcile.bp` and
 their two suites, moved out of the core by front 95 as a relocation only: the

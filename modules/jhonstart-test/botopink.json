@@ -6,10 +6,27 @@
   "entry": "root.bp",
   "target": "commonJS",
   "files": [
-    "root.bp"
+    "root.bp",
+    "harness.bp",
+    "assert_html.bp",
+    "assert_route.bp",
+    "assert_link.bp",
+    "assert_server.bp",
+    "assert_island.bp",
+    "assert_stream.bp",
+    "assert_render.bp",
+    "assert_error_boundary.bp",
+    "assert_metadata.bp",
+    "assert_form.bp"
   ],
   "dependencies": {
     "jhonstart": {
+      "workspace": true
+    },
+    "jhonstart-link": {
+      "workspace": true
+    },
+    "jhonstart-forms": {
       "workspace": true
     }
   }

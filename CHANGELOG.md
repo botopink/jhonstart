@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`jhonstart-test` — the helpers** (`modules.md` § 5, `test-snap.md` § 0.2):
+  `harness.bp` (fixtures, `renderToStream`, `simulateNavigation`, the recording
+  `Response` with `renderRecorded` / `renderStreamCollect`) and one
+  `assert_<subject>.bp` per front, each `assert<Subject>` over std's
+  `snapshots.assertAs` with a pure `<subject>Text` twin. `helpers_test.bp`
+  asserts every twin against the spec's literal and records seven snapshots.
+  1 → 21 on both rows.
+
 - **What onze owed from jhonstart** (fronts 29 and 30): the island starter
   table is the registry's fourth global, `globals.starters` (`__bp3`), filled by
   `registerStarter(name, start)` (one per component) and
