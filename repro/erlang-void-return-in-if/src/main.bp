@@ -1,0 +1,19 @@
+#[@External.Node("""((globalThis.__seen = (globalThis.__seen || 0) + 1), 0)""")]
+#[@External.Erlang("""(fun() -> put(seen, (case get(seen) of undefined -> 0; N -> N end) + 1), 0 end)()""")]
+declare fn mark() -> i32;
+
+#[@External.Node("""(globalThis.__seen || 0)""")]
+#[@External.Erlang("""(case get(seen) of undefined -> 0; N -> N end)""")]
+declare fn seen() -> i32;
+
+fn early(stop: bool) -> @Task<void> {
+    if (stop) {
+        return;
+    };
+    mark();
+}
+
+test "a bare return inside an if block leaves a @Task<void> fn" {
+    await early(true);
+    assert seen() == 0;
+}

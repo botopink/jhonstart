@@ -1,0 +1,17 @@
+fn one() -> @Task<i32> {
+    return 1;
+}
+
+fn maybe(flag: bool) -> @Task<i32> {
+    var total = 0;
+    if (flag) {
+        val got = await one();
+        total = got;
+    };
+    return total;
+}
+
+test "an await inside an if block that does not return" {
+    val n = await maybe(true);
+    assert n == 1;
+}

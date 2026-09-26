@@ -1,0 +1,9 @@
+pub type Box(n: i32)
+
+pub fn twice(self: Box, k: i32) -> i32 {
+    return self.n * k;
+}
+
+test "a free fn whose first parameter is named self keeps it" {
+    assert twice(Box(n: 3), 2) == 6;
+}
