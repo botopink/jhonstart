@@ -133,6 +133,10 @@ repository/jhonstart/
 │   ├── jhonstart-markup/   ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang]) — was `examples/jhonstart-html/`, renamed by front 95 because a member name is unique in the workspace and the DSL member took it
 │   ├── jhonstart-todo/     ← MEMBER: builders + hooks + SSR (targets [commonJS])
 │   └── jhonstart-app/      ← NOT a member: no botopink.json, so the `examples/*` glob skips it (by design)
+├── refusals/               ← NOT members: one project per compile-time refusal of the library, each with the `expect.txt` its `botopink check` must print (stage 4 of the gate, `scripts/check-refusals.sh`)
+│   ├── layout_plain_element/   ← `#[layout]` on `-> Element` (decision 117; the guide's `OldLayout`)
+│   ├── page_plain_element/     ← `#[page]` on `-> Element`
+│   └── template_task_element/  ← `#[template]` on `-> @Task<Element>`
 └── repro/                  ← NOT members: jhonstart-free packages handed back to botopink-lang, one per open compiler defect (see repro/README.md)
 ```
 
@@ -158,6 +162,13 @@ takes only a child holding a `botopink.json`, silently — a directory that want
 to be a member declares itself. `jhonstart-app` is the aspirational app-layer
 sketch (file routing, `[id]` segments) and does not parse today, so it is
 neither a runner row nor a gate row. Do not give it a manifest until it builds.
+
+`refusals/` is outside both globs too: each subdirectory is a project that
+must NOT compile — a decorator's `decl.fail`, which no `test { }` block can
+hold — depending on the core by `{ "path": "../../modules/jhonstart" }`. Its
+`expect.txt` lists the lines `botopink check` must print, verbatim: the message
+and its ` --> src/main.bp:<line>:<col>` location. A new refusal of the library
+adds a directory here in the commit that adds the `decl.fail`.
 
 `repro/` is outside both globs, so nothing builds or runs it: each subdirectory
 is a self-contained package with **no jhonstart in it**, written to hand a
@@ -825,6 +836,12 @@ build **and run**:
 | `jhonstart-counter` | `<div><p>count: 0</p><span>non-negative</span></div>` |
 | `jhonstart-markup` | `<div><p>hello, world</p></div>` |
 | `jhonstart-todo` | `<div><span>todos: 2</span><ul><li>buy milk</li><li>write docs</li></ul></div>` |
+
+Last, the gate `botopink check`s every `refusals/*/` project
+(`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): a case passes
+when the check FAILS and its output holds every line of the case's
+`expect.txt`. A case that compiles, or that is refused with another message or
+at another location, fails the gate.
 
 The examples pass `attrs` explicitly to the element builders (`text("x", [])`,
 `div([…], [])`): the `attrs = []` default added by the bracket-prop commit is

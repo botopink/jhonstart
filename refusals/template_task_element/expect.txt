@@ -1,0 +1,2 @@
+error: #[template] on `Shell`: a template is `fn Shell(props: LayoutProps) -> @Component<ElementBase, Element>`, not `Task`
+ --> src/main.bp:5:3
