@@ -29,11 +29,12 @@ and 28 there is **no `.d.bp` module left**: the route snapshot and the request
 are compiled and each ships its own host half on both rows
 (`router_runtime.mjs` / `sidecars/jhonstart_router.erl`, `server_runtime.mjs` /
 `sidecars/jhonstart_server.erl`). Client navigation is compiled too since
-front 27 — but only its RENDER-TIME half (`link.bp`, `reconcile.bp`, both pure,
-no host cell of any target, in the `jhonstart-link` member since front 95's
-relocation): the browser half waits on front 68's generated
-bundle and front 60's route-kind table, and is not stubbed. The server/client
-BOUNDARY is compiled since front 29 (`client.bp`, also pure): `#[client]` and
+front 27 (`link.bp`, `reconcile.bp`, in the `jhonstart-link` member since front
+95's relocation): the render-time half is pure, and the browser half —
+`linkMount`, `linkPrefetch`, `linkRouteKind`, `linkStatus` — sits over four
+dual-target cells whose erlang twins answer the server's idle truth; the
+transition driver and front 60's route-kind table are still to come. The
+server/client BOUNDARY is compiled since front 29 (`client.bp`): `#[client]` and
 `#[clientProps]` are comptime markers with four refusals, and the island, the
 hole and the poison pill are ordinary `.bp`; what ENFORCES the boundary over the
 module graph is front 68's and is not stubbed either. Nothing is embedded
@@ -56,7 +57,7 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, globals.bp, plugin.bp, routes.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, globals.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, plugin.bp, routes.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
 │   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; mod client_runtime;`
@@ -73,7 +74,7 @@ repository/jhonstart/
 │   │   │   │   └── jhonstart_server.erl ← HOST (BEAM): the request's six cells + `fill/6`, same process dictionary, same non-`files` discovery
 │   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`enterRequest`/`leaveRequest`/`cookies`/`headers`, `renderServerComponent`
 │   │   │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
-│   │   │   ├── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
+│   │   │   ├── client.bp      ← COMPILED (front 29): `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`, and `hydrate()` / `propsFor(name)` over two dual-target cells (`island_runtime.mjs` / `sidecars/jhonstart_island.erl`). The graph walk is front 68's
 │   │   │   ├── suspense.bp    ← COMPILED (front 30): `Boundary(id, fallback, child: fn() -> @Component<…>)` (an UNSTARTED thunk), `Suspense` (the `data-jh-h` hole; registers the boundary with the render), `holeId`
 │   │   │   ├── render.bp      ← COMPILED (front 30): `renderNode` (the escaping, void-aware walker over std `escape`), `raw`, `shellHtml`, `mountIsland` (i0, i1 … through front 29's `islandAttr`), `compose` (layout > template > error > loading > not-found > page; layouts run first), `Payload`/`writePayload` (std `json` + `escape.scriptJson`), `RenderHooks`/`setHooks`, the document
 │   │   │   ├── streaming.bp   ← COMPILED (front 30): `Chunk`/`resolve`/`fillHtml`, the late-signal markup, `Response` + `guarded`, `PageInput`, `App`/`app` with `render` / `renderStream` (→ `@Task<@Result<void, string>>`), the signal translation and the redirect-target check

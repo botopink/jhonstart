@@ -50,46 +50,20 @@
 // § *The front-68 contract* (mirrored in `../../../docs.md`) is the input it
 // walks. Nothing here is written as if the decorator were a sandbox.
 //
-// ── What is NOT declared, and why it is not stubbed ─────────────────────────
+// ── The hydrate point and the props cell — dual-target ──────────────────────
 //
-// The front's § Step 4 asks for three host cells —
-// `#[@External.Node("jhonstart/client-runtime", "hydrate")] hydrate()`,
-// `#[@External.Node("jhonstart/client-runtime", "islandProps")]
-// __jhClientPropsRaw(name)` and the `propsFor(name)` wrapper over the second.
-// **None of them is declared here**, for the two reasons front 27's `link.bp`
-// records for its own four cells, re-measured for this file against compiler
-// `2e6bb4ac` on 2026-09-21:
-//
-//   1. `propsFor` would CALL a node-only cell, and a called node-only cell reds
-//      the ERLANG build at the call site:
-//
-//          error: `__cellStatus` has no `#[@External.<Target>(…)]` for the
-//                 erlang backend
-//           --> src/main.bp:5:12
-//
-//      `modules/jhonstart` is compiled on BOTH rows, so the wrapper would take
-//      every landed assertion in the member off erlang. It is the exact mirror
-//      of the erlang-only → commonJS measurement `router.bp` and `server.bp`
-//      both carry.
-//   2. A DECLARED and never-called node-only cell is fine — that is why
-//      `client_runtime.bp`'s `clientRender` does not red erlang, and it was
-//      re-measured. So `hydrate()` alone would be cheap. What is not cheap is
-//      the module it names: `"jhonstart/client-runtime"` is the bundle **front
-//      68** generates and it does not exist in this tree, so the declaration
-//      would emit a `require` of a file nobody writes — silently at build time,
-//      loudly at run time. A host cell answering what nobody can check is
-//      exactly what `router.d.bp`'s one-line `Link` was.
-//
-// What the browser half needs from this file when front 68's module lands is
-// here and is pure: `propsOf(raw)` is the whole decode `propsFor` performs, so
-// `propsFor` is then two lines — the cell, and
-// `return propsOf(__jhClientPropsRaw(name));` — and nothing else moves.
-// `hydrate()` is per-island: it walks every `[data-jh-i]`, decodes that
-// island's props from the payload's `i` row and starts the component. It is
-// NOT the bundle entry and it mounts no links and no forms; front 68 generates
-// the entry that calls it and then front 27's link mount and front 67's form
-// mount once each.
-//
+// `hydrate()` and `propsFor(name)` are declared at the foot of this file over
+// `./island_runtime.mjs`, with an erlang twin (`sidecars/jhonstart_island.erl`)
+// answering the server's truth — nothing hydrates, no props. Dual-target and
+// not node-only because this module is in the core, compiled on both rows,
+// and a CALLED node-only cell reds the erlang compile at its caller
+// (`decisions-pending.md` 27-a, the same choice). `hydrate()` is per-island:
+// it walks every `[data-jh-i]`, reads that island's `i` row from the payload
+// and starts the component front 68's entry registered for it; it is
+// idempotent, and it mounts no link and no form — front 68's entry calls it,
+// then front 27's `linkMount()` and front 67's `formMount()` once each.
+// `propsFor(name)` is `propsOf` over the cell's raw row.
+
 // ── The marker is a PURE function, deliberately ─────────────────────────────
 //
 // `#[client]` emits `pub fn __jhClient_<Name>() -> string`, a pure function
@@ -102,6 +76,7 @@
 
 import {Element} from "element";
 import {encoding} from "std";
+import {globals} from "globals";
 
 // ── step 1: `#[client]` — the marker ────────────────────────────────────────
 //
@@ -345,3 +320,24 @@ pub fn serverOnly() -> i32 {
 // `"jhonstart/client-runtime"`, holding `hydrate` (per-island) and
 // `islandProps(name)`. Until it exists, `hydrate()` and `propsFor(name)` are
 // absent rather than stubbed, and the boundary is a convention nobody walks.
+
+// ── step 4: the hydrate point and the props cell ────────────────────────────
+
+#[@External.Node("./island_runtime.mjs", "hydrate"),
+  @External.Erlang("jhonstart_island", "hydrate")]
+declare fn __jhHydrate(payloadName: string) -> i32;
+
+#[@External.Node("./island_runtime.mjs", "islandProps"),
+  @External.Erlang("jhonstart_island", "island_props")]
+declare fn __jhClientPropsRaw(payloadName: string, name: string) -> string;
+
+// Starts every island not yet started; answers how many have started in all.
+pub fn hydrate() -> i32 {
+    return __jhHydrate(globals().payload);
+}
+
+// The props the payload's `i` row carries for `name`, decoded; `[]` when the
+// component has none.
+pub fn propsFor(name: string) -> Array<#(string, string)> {
+    return propsOf(__jhClientPropsRaw(globals().payload, name));
+}

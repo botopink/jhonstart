@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Front 29 Step 4 — the hydrate point.** `hydrate()` (idempotent: walks
+  `[data-jh-i]`, starts each island's registered component with its payload
+  row, binds `[data-jh-reset]`) and `propsFor(name)` over two dual-target cells
+  (`island_runtime.mjs`, `sidecars/jhonstart_island.erl`). The core's `files`
+  list moves `globals.bp` before `client.bp`, which now imports it. Core
+  185 → 187 on both rows.
+
 - **Front 27 Step 4 — the link's browser half** (`jhonstart-link`):
   `linkMount()` (one delegated click listener + a viewport prefetcher,
   idempotent), `linkPrefetch`, `linkRouteKind` and the `linkStatus()` hook

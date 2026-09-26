@@ -85,6 +85,8 @@ import {
     serverSlotAttr,
     serverSlot,
     serverOnly,
+    hydrate,
+    propsFor,
 } from "client";
 import {Element, div, h1, p, ul, li, text, renderToString} from "element";
 import {button, h2, section} from "elements";
@@ -349,4 +351,16 @@ test "client: serverOnly is pub and its value is meaningless" {
     // The value is never read by anything. Its PRESENCE in a module's import
     // list is the signal, and front 68 is what reads the import list.
     assert serverOnly() == 1;
+}
+
+// ── step 4: the hydrate point and the props cell, both rows ─────────────────
+
+test "client: propsFor of a component with no row is the empty list" {
+    assert propsFor("Nothing").length == 0;
+}
+
+test "client: hydrate is idempotent — a second call starts nothing new" {
+    val first = hydrate();
+    val second = hydrate();
+    assert first == second;
 }
