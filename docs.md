@@ -220,7 +220,7 @@ error was rejected: it is a second convention, and it is unreachable from the
 | Tag | Constructor | Why |
 |---|---|---|
 | `<html>` | `htmlTag` | `html` is already the `html """…"""` template fn (member `jhonstart-html`), and a file importing the DSL beside the tags would bind two `html`s — a collision. The DSL keeps the name |
-| `<time>` | `timeTag` | `time` is a std module, and a consumer doing `import {time} from "std"` in the same file would collide |
+| `<time>` | `timeTag` | `time` was a std module when the tag was named (std's clock is `io.clock` since decision 106), and a consumer importing it in the same file would have collided |
 | `<main>` | `main` | Shipped under its own name, because the consuming fronts import it that way |
 
 **The `main` caveat.** A module that declares the program entry point `fn main()`
