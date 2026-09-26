@@ -92,7 +92,7 @@ repository/jhonstart/
 │   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same cells
 │   │   └── test/
 │   │       ├── render_test.bp ← `botopink test` flat suite: the walker, the hole, the fill, the globals, the payload (front 30) — both rows
-│   │       ├── streaming_test.bp ← `botopink test` flat suite: `render`/`renderStream` over a recording `Response`, composition, signals before and after the first chunk, the plugin order (front 30) — both rows
+│   │       ├── streaming_test.bp ← `botopink test` flat suite: `render`/`renderStream` over a recording `Response`, composition, signals before and after the first chunk, the plugin order (front 30) — both rows; the fill order and the boundaries' concurrency are told by std `async` gates (the posts boundary answers once the recorder has WRITTEN the aside's fill; two loaders cross a pair of gates), never by `delay`s under an elapsed-time budget
 │   │       ├── routes_test.bp ← `botopink test` flat suite: the four markers, `uiTable()` through `routing`, the params accessors (front 30) — both rows
 │   │       ├── metadata_test.bp ← `botopink test` flat suite: the merge rule row by row, the head's order and escaping, the viewport (front 32) — both rows
 │   │       ├── error_boundary_test.bp ← `botopink test` flat suite: the catch, the digest, signals passing through, the file conventions (front 31) — both rows
