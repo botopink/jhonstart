@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The `query` hole is closed** (`03-rakun` front 22 / `04-jhonstart`):
+  `PageContext` loses its `query` field; `searchParams()` and `request()` mark
+  the render dynamic through a flag in the router's host store, and the
+  payload's `d` reads it instead of a constant `true` — a boundary's mark rides
+  back from its own erlang process on `Resolved.dynamic`. `jhonstart` 199 →
+  204 on both rows.
+
 - **`jhonstart-dom-test` — front 30's browser half, asserted** (commonJS only):
   the fill and signal functions `render.mjs` registers and `readPayload`, run
   against a minimal document installed from the render's own markup. 9/9.

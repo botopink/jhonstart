@@ -22,6 +22,7 @@
 
 -export([path/0, params/0, search/0, pattern/0, selected/0]).
 -export([fill/5, navigate/2, last_navigation/0]).
+-export([mark_dynamic/0, dynamic/0, reset_dynamic/0]).
 
 -define(PATH, jhonstart_route_path).
 -define(PARAMS, jhonstart_route_params).
@@ -29,6 +30,7 @@
 -define(PATTERN, jhonstart_route_pattern).
 -define(SELECTED, jhonstart_route_selected).
 -define(NAV, jhonstart_route_nav).
+-define(DYNAMIC, jhonstart_route_dynamic).
 
 %% An unfilled snapshot answers the empty document rather than raising: a
 %% component rendered outside a request is a legitimate thing to do (it is how
@@ -81,3 +83,21 @@ navigate(Kind, Href) ->
     0.
 
 last_navigation() -> get_bin(?NAV).
+
+%% The render's DYNAMIC mark (`../router_runtime.mjs` has the same three). The
+%% store is the process dictionary, so a boundary resolved in its own process
+%% marks that process: front 30's `Resolved` carries the mark back and the
+%% render's process ORs it into its own before the payload is written.
+mark_dynamic() ->
+    put(?DYNAMIC, true),
+    0.
+
+dynamic() ->
+    case get(?DYNAMIC) of
+        true -> true;
+        _ -> false
+    end.
+
+reset_dynamic() ->
+    erase(?DYNAMIC),
+    0.

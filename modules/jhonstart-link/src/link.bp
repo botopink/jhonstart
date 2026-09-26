@@ -29,24 +29,16 @@
 
 // ── Why the props are a record ──────────────────────────────────────────────
 //
-// `Link(href, children, prefetch = true, replace = false, scroll = true)` is
-// the signature anyone would write, and it does not work for a CONSUMER.
-// A trailing declared default IS filled at the call site since C-04 — for a
-// declaration in the calling module. It is still not filled for an IMPORTED
-// one, and `Link` is imported by construction:
-//
-//     import { greet } from "helper";  greet("w")
-//     error: 'greet' expects 2 argument(s), got 1
-//
-// It is a checker answer, so every target fails the same way. So the props are
-// a record, `linkProps(href)` fills Next's documented defaults, and overriding
-// one is `withPrefetch(props, false)` — a helper returning a NEW record, since
-// there is no assignment to a `self` field anywhere in this tree and a record
-// has no copy-with-update expression. The call site is
-// `Link(withPrefetch(linkProps(href), false), children)`, which is the honest
-// cost of the gap and still shorter than spelling six arguments at every link.
-//
-// Both gaps are the front's § Language gaps rows.
+// The props are a record, `linkProps(href)` fills Next's documented defaults,
+// and overriding one is `withPrefetch(props, false)` — a helper returning a NEW
+// record, since there is no assignment to a `self` field anywhere in this tree
+// and a record has no copy-with-update expression. The call site is
+// `Link(withPrefetch(linkProps(href), false), children)`, still shorter than
+// spelling six arguments at every link. The copy-update gap is the front's
+// § Language gaps row. (Declared defaults on `Link` itself would now work — an
+// imported declaration's trailing default is filled since C-04 crossed the
+// module boundary — but `LinkProps` is the landed surface, and the record is
+// what `with*` composes over.)
 
 import {Element, ElementBase} from "jhonstart";
 
@@ -82,7 +74,7 @@ pub fn linkProps(href: string) -> LinkProps {
 
 // The five copy-with-one-field helpers. Each respells all six fields because
 // the language has no `Record(base, field: value)` expression — the front's
-// second § Language gaps row. None of them assigns to a field of its argument.
+// § Language gaps row. None of them assigns to a field of its argument.
 pub fn withPrefetch(p: LinkProps, prefetch: bool) -> LinkProps {
     return LinkProps(
         href: p.href,

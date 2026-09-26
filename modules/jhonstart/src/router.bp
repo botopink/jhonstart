@@ -180,6 +180,34 @@ pub declare fn __jhRouteFill(
     selected: i32,
 ) -> i32;
 
+// The render's DYNAMIC mark. `searchParams()` below and front 28's `request()`
+// are the only two readers of per-request input a component has, and each sets
+// it; front 30's payload writer reads it as `d`; the render clears it when it
+// starts. A render that read neither is static, and a cache may keep it.
+#[@External.Node("./router_runtime.mjs", "markDynamic"),
+  @External.Erlang("jhonstart_router", "mark_dynamic")]
+declare fn __jhRouteMarkDynamic() -> i32;
+
+#[@External.Node("./router_runtime.mjs", "dynamic"),
+  @External.Erlang("jhonstart_router", "dynamic")]
+declare fn __jhRouteDynamic() -> bool;
+
+#[@External.Node("./router_runtime.mjs", "resetDynamic"),
+  @External.Erlang("jhonstart_router", "reset_dynamic")]
+declare fn __jhRouteResetDynamic() -> i32;
+
+pub fn markDynamic() -> i32 {
+    return __jhRouteMarkDynamic();
+}
+
+pub fn renderIsDynamic() -> bool {
+    return __jhRouteDynamic();
+}
+
+pub fn resetDynamic() -> i32 {
+    return __jhRouteResetDynamic();
+}
+
 // Install a route snapshot for the render that follows. `params` and `search`
 // are querystring-encoded exactly as the payload's `m` and `q` carry them.
 // The `-> i32` is the ecosystem's shape for a host cell whose value is not
@@ -241,11 +269,12 @@ pub fn params() -> @Component<ElementBase, Array<#(string, string)>> {
 }
 
 // Reading the search params marks a render DYNAMIC on the server — a route
-// whose output depends on the query cannot be cached as static. rakun front 23
-// does the marking in its own `searchParams(route)` accessor; see
-// `AGENTS.md` § *The `query` hole* for why that guarantee does not hold for
-// everyone today, and what would close it.
+// whose output depends on the query cannot be cached as static. This hook is
+// the ONLY way a page reaches the query: `PageContext` carries no `query`
+// field, so there is no read the mark can miss (`AGENTS.md` § *The `query`
+// hole, closed*).
 pub fn searchParams() -> @Component<ElementBase, Array<#(string, string)>> {
+    markDynamic();
     return snapshot().search;
 }
 

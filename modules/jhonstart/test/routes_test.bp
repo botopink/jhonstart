@@ -84,7 +84,7 @@ fn BlogLoading() -> Element {
 val __loading = jhLoading("blog", { -> BlogLoading() });
 
 fn ctx(pattern: string, params: Array<#(string, string)>, rest: string[]) -> PageContext {
-    return PageContext(pathname: "/x", pattern: pattern, params: params, query: [], rest: rest);
+    return PageContext(pathname: "/x", pattern: pattern, params: params, rest: rest);
 }
 
 test "routes: each marker puts its contract-1 line in uiTable, in registration order" {

@@ -453,6 +453,11 @@ pub fn selectedLayoutSegment() -> @Component<ElementBase, string>
 pub fn selectedLayoutSegments() -> @Component<ElementBase, Array<string>>
 ```
 
+`searchParams()` is the only way a page reads the query — `PageContext` has no
+`query` field — and it marks the render **dynamic**, as `request()` does: the
+payload's `d` is `true` only for a render that read either, so a cache may keep
+every other render as static.
+
 ```bp
 fn ActiveNav() -> @Component<ElementBase, Element> {
     val here = use pathname();

@@ -373,41 +373,38 @@ the two `string` hooks compare directly either way.
    `link.bp` (landed; the `jhonstart-link` member since front 95), and front 26 adds nothing to it and reads nothing
    from it.
 
-### The `query` hole front 23 left, and what front 26 says about it
+### The `query` hole, closed
 
 rakun front 23's README claims the dynamic marking "is done by the accessor,
-not by a developer remembering to declare it", and front 23 **measured that
-this cannot be true as written**: `searchParams(route)` marks, but `route.query`
-is a public field of front 22's `PageContext` and a direct field read cannot be
-intercepted. Front 23 declined to close it by reaching into another front's
-file, which was right.
+not by a developer remembering to declare it", and front 23 measured that this
+could not be true as written: `searchParams(route)` marked, but `route.query`
+was a public field of `PageContext` and a direct field read cannot be
+intercepted. A render that reads the query and is cached as static serves one
+reader's `?sort=desc` to every other reader, silently.
 
-**Front 26 needs the guarantee, and states so.** A render that reads the query
-and is cached as static serves one reader's `?sort=desc` to every other reader:
-the failure is silent, it is a correctness failure rather than a performance
-one, and it is invisible in every test that renders one request. A convention
-("always use the accessor") cannot close it, because the whole point of the
-sentence is that it holds for people who do not know the convention.
+`PageContext` is jhonstart's since decisions 113/114, so jhonstart closes its
+half by the strongest of the three fixes front 26 listed — **the field is
+gone**:
 
-**What would close it**, in order of preference, all of them front 22's file
-and none of them front 26's to make:
+- `PageContext(pathname, pattern, params, rest)` carries **no `query`**. The
+  render fills the query into the route snapshot; `render.bp`'s `enterDepth`
+  re-reads it from there per layout, and `streaming.bp` hands the raw
+  `PageInput.query` to each boundary's process.
+- The two readers of per-request input a component has — `searchParams()`
+  (router) and `request()` (server, and through it `cookies()` / `headers()`)
+  — call `markDynamic()`, a flag in the router's host store
+  (`router_runtime.mjs` / `sidecars/jhonstart_router.erl`).
+- `renderWith` clears the flag when it starts; the payload's `d` is
+  `renderIsDynamic()`, no longer a constant `true`. On erlang a boundary
+  renders in its own process, so `Resolved.dynamic` carries that process's
+  flag back and `carryDynamic` ORs it into the render's before the payload is
+  written.
 
-1. **Make `query` private on `PageContext` and leave `searchParams(route)` /
-   `searchParam(route, name)` as the only readers.** One edit, no new concept,
-   and the accessor's marking becomes the only way to reach the value — which
-   is exactly what front 23's sentence asserts.
-2. **Drop `query` from `PageContext` entirely** and have the dispatcher pass it
-   to the accessor's store instead. Stronger, because there is then no field to
-   find, but it moves a value fronts other than 23 may already read.
-3. Failing both: **delete the sentence**, and say instead that the marking is
-   the accessor's and a direct `route.query` read is undefined behaviour for
-   caching. This is the honest fallback, not a fix — it converts a guarantee
-   into a documented hazard, and front 26 would rather have the guarantee.
-
-Front 26 does **not** work around it: this library's `searchParams()` reads its
-own snapshot and never touches `PageContext`, so nothing here papers over the
-hole. It is recorded because fronts 28 and 30 — the two that decide what may be
-cached — inherit it.
+`streaming_test.bp` "dynamic: …" asserts a static page (`"d":false`), the
+query and the request each marking, a boundary's read marking the page from its
+own process, and the flag not leaking into the next render. rakun's half — its
+own front-22 `PageContext` and `searchParams(route)` — leaves with rakun's page
+registry (decision 114); `status.md` records it.
 
 ## Front 28 — the request, and the three things it dropped
 

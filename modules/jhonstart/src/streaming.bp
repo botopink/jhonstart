@@ -49,7 +49,7 @@ import {Element, ElementBase} from "element";
 import {encoding} from "std";
 import {table: {parseTable, RouteEntry}, match: {matchPath, RouteMatch}, navigation: {NavKind, NavOutcome, signalFromReason}} from "routing";
 import {RequestData, enterRequest, leaveRequest} from "server";
-import {fill} from "router";
+import {fill, renderIsDynamic, markDynamic, resetDynamic} from "router";
 import {ErrorInfo, isSignal, notFoundReason} from "error_boundary";
 import {Boundary} from "suspense";
 import {
@@ -225,7 +225,11 @@ fn refusedTarget(to: string) -> string {
 
 // ── the resolution of one boundary (in its own process on erlang) ───────────
 
-pub type Resolved(id: string, kind: string, html: string, reason: string, css: string)
+// `dynamic` is the boundary process's own DYNAMIC mark (router.bp): on the
+// erlang row a boundary renders in its own process, so a `searchParams()` or
+// `request()` read inside it marks that process, and the render ORs the mark
+// back in (`carryDynamic`) before the payload's `d` is written.
+pub type Resolved(id: string, kind: string, html: string, reason: string, css: string, dynamic: bool)
 
 fn defaultNotFound() -> Element {
     return Element(tag: "h1", value: "", children: [Element(tag: "#text", value: "Not found", children: [], attrs: [])], attrs: []);
@@ -240,9 +244,9 @@ fn renderOrFail(tree: Element) -> @Result<string, string> {
 // the erlang row — including the plugins' `chunk(id)`: a stylesheet library
 // that registers per process only sees the classes the boundary's render
 // registered from inside that process.
-fn resolveIn(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, b: Boundary) -> @Task<Resolved> {
+fn resolveIn(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, query: string, b: Boundary) -> @Task<Resolved> {
     enterRequest(req);
-    fill(route.pathname, encoding.formStringify(route.params), encoding.formStringify(route.query), route.pattern, 0);
+    fill(route.pathname, encoding.formStringify(route.params), query, route.pattern, 0);
     val child = b.child;
     val outcome = await componentOutcome(child);
     val failure = case outcome {
@@ -253,12 +257,12 @@ fn resolveIn(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext,
         val nf = __jhTryValue({ -> renderNode(__jhStashedNotFound(defaultNotFound())) });
         val nfCss = await chunksFrom(plugins, 0, b.id);
         return case nf {
-            Ok(html) -> Resolved(id: b.id, kind: "signal", html: html, reason: failure, css: nfCss);
-            Error(message) -> Resolved(id: b.id, kind: "error", html: "", reason: message, css: "");
+            Ok(html) -> Resolved(id: b.id, kind: "signal", html: html, reason: failure, css: nfCss, dynamic: renderIsDynamic());
+            Error(message) -> Resolved(id: b.id, kind: "error", html: "", reason: message, css: "", dynamic: renderIsDynamic());
         };
     };
-    if (isSignal(failure)) return Resolved(id: b.id, kind: "signal", html: "", reason: failure, css: "");
-    if (failure != "") return Resolved(id: b.id, kind: "error", html: "", reason: failure, css: "");
+    if (isSignal(failure)) return Resolved(id: b.id, kind: "signal", html: "", reason: failure, css: "", dynamic: renderIsDynamic());
+    if (failure != "") return Resolved(id: b.id, kind: "error", html: "", reason: failure, css: "", dynamic: renderIsDynamic());
     val tree = case outcome {
         Ok(t) -> t;
         Error(message) -> defaultNotFound();
@@ -266,8 +270,8 @@ fn resolveIn(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext,
     val html = renderOrFail(tree);
     val css = await chunksFrom(plugins, 0, b.id);
     return case html {
-        Ok(h) -> Resolved(id: b.id, kind: "fill", html: h, reason: "", css: css);
-        Error(message) -> Resolved(id: b.id, kind: "error", html: "", reason: message, css: "");
+        Ok(h) -> Resolved(id: b.id, kind: "fill", html: h, reason: "", css: css, dynamic: renderIsDynamic());
+        Error(message) -> Resolved(id: b.id, kind: "error", html: "", reason: message, css: "", dynamic: renderIsDynamic());
     };
 }
 
@@ -392,7 +396,7 @@ fn mergedHead(input: PageInput) -> string {
 // ── step 8: the render ──────────────────────────────────────────────────────
 
 fn routeOf(input: PageInput) -> PageContext {
-    return PageContext(pathname: input.pathname, pattern: input.pattern, params: encoding.formParse(input.params), query: encoding.formParse(input.query), rest: []);
+    return PageContext(pathname: input.pathname, pattern: input.pattern, params: encoding.formParse(input.params), rest: []);
 }
 
 fn payloadOf(input: PageInput, holes: string[], extras: Array<#(string, Json)>) -> Payload {
@@ -406,7 +410,7 @@ fn payloadOf(input: PageInput, holes: string[], extras: Array<#(string, Json)>) 
         islands: __jhIslands(),
         actions: input.actions,
         holes: holes,
-        dynamic: true,
+        dynamic: renderIsDynamic(),
         extras: extras,
     );
 }
@@ -462,6 +466,7 @@ fn early(site: App, input: PageInput, res: Response, reason: string) -> @Task<@R
 
 pub fn renderWith(site: App, input: PageInput, req: RequestData, res: Response, streaming: bool) -> @Task<@Result<void, string>> {
     __jhStateReset();
+    resetDynamic();
     enterRequest(req);
     val route = routeOf(input);
     fill(route.pathname, input.params, input.query, route.pattern, 0);
@@ -506,18 +511,26 @@ fn holeIds(boundaries: Array<Boundary>) -> string[] {
     return boundaries.map({ b -> b.id });
 }
 
-fn thunksOf(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, boundaries: Array<Boundary>) -> Array<fn() -> @Task<Resolved>> {
-    return boundaries.map({ b -> boundaryThunk(plugins, req, route, b) });
+fn thunksOf(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, query: string, boundaries: Array<Boundary>) -> Array<fn() -> @Task<Resolved>> {
+    return boundaries.map({ b -> boundaryThunk(plugins, req, route, query, b) });
 }
 
-fn boundaryThunk(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, b: Boundary) -> fn() -> @Task<Resolved> {
-    return { -> resolveIn(plugins, req, route, b) };
+fn boundaryThunk(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, query: string, b: Boundary) -> fn() -> @Task<Resolved> {
+    return { -> resolveIn(plugins, req, route, query, b) };
 }
 
 // The late half: after the first write a signal is markup, a failure ends the
 // stream, and nothing after either is written. Every branch returns what it
 // wrote (`-> @Task<i32>`), the value `completion`'s callback type answers.
+// A boundary's DYNAMIC mark joins the render's before anything else, so a
+// boundary resolved after a late signal still counts.
+fn carryDynamic(r: Resolved) -> i32 {
+    if (r.dynamic) return markDynamic();
+    return 0;
+}
+
 fn onResolved(site: App, input: PageInput, res: Response, r: Resolved) -> @Task<i32> {
+    carryDynamic(r);
     if (__jhLate() != "") return 0;
     if (r.kind == "fill") {
         val wrote = await writeFill(site, res, r);
@@ -585,7 +598,7 @@ fn streamed(site: App, input: PageInput, req: RequestData, route: PageContext, r
     header("content-type", "text/html; charset=utf-8");
     val write = res.write;
     await write(documentStart(site.lang, mergedHead(input), pluginHead, input.pattern) + shellHtml + "</div>");
-    await __jhEachCompleted(thunksOf(site.plugins, req, route, boundaries), completion(site, input, res));
+    await __jhEachCompleted(thunksOf(site.plugins, req, route, input.query, boundaries), completion(site, input, res));
     val failure = lateFailure();
     if (failure != "") {
         val failed = await finish(res, failure);
@@ -598,8 +611,9 @@ fn streamed(site: App, input: PageInput, req: RequestData, route: PageContext, r
 // Every boundary resolves first — a signal among them is still before the
 // first chunk — and the whole document is one write, the fills in shell order.
 fn whole(site: App, input: PageInput, req: RequestData, route: PageContext, res: Response, shellHtml: string, boundaries: Array<Boundary>) -> @Task<@Result<void, string>> {
-    await __jhEachCompleted(thunksOf(site.plugins, req, route, boundaries), { index, r -> collectResolved(r) });
+    await __jhEachCompleted(thunksOf(site.plugins, req, route, input.query, boundaries), { index, r -> collectResolved(r) });
     val resolved = takeResolved();
+    for (resolved) { r -> carryDynamic(r); };
     var failure = "";
     for (resolved) { r ->
         if (failure == "") {
@@ -652,7 +666,7 @@ fn takeResolved() -> Array<Resolved> {
 }
 
 fn resolvedFor(resolved: Array<Resolved>, id: string) -> Resolved {
-    var found = Resolved(id: id, kind: "fill", html: "", reason: "", css: "");
+    var found = Resolved(id: id, kind: "fill", html: "", reason: "", css: "", dynamic: false);
     for (resolved) { r ->
         if (r.id == id) found = r;
     };
