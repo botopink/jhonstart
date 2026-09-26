@@ -1124,7 +1124,7 @@ pub fn renderBoundaryChecked(b: ErrorBoundary) -> @Result<Element, string> // Er
 pub fn catchError(id, fallback, child) -> ErrorBoundary                   // the constructor, readably
 pub fn infoFor(message) -> ErrorInfo        // message "" + digest — what a fallback renders
 pub fn serverInfoFor(message) -> ErrorInfo  // message + the same digest — the logger's only
-pub fn digestOf(message) -> string          // std's content_hash.contentHash
+pub fn digestOf(message) -> string          // std's hash.contentHash
 pub fn wrap(id, tree) -> Element            // <div data-jh-e="ID">…</div>
 pub fn resetAttr(id) -> #(string, string)   // #("data-jh-reset", ID)
 pub fn notFound() -> string                 // raises nav:not-found
