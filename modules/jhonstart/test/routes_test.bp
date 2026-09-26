@@ -3,20 +3,14 @@
 // check` skips decorator invocation and reports every `@emit`ted name
 // (`__jhPage_*`, `<page>Params`) as unbound.
 //
-// Wrong-placement cases are COMPILE failures, not values, so they are recorded
-// here as the exact message, each located at the annotation (measured against
-// compiler `f011850c`). The application site imports what a marker EMITS —
-// `jhPage` / `jhLayout` / `jhTemplate` / `jhDefault`, `PageContext`,
-// `ctxParam` / `ctxRest` — beside the marker itself:
-//
-//   #[page("blog")] on a `type`
-//     error: #[page] must annotate a function
-//   #[page("blog")] on `fn blog(route: PageContext) -> Element`
-//     error: #[page] on `blog`: a page is `fn blog(route: PageContext) -> @Component<ElementBase, Element>`, not `Element`
-//   #[layout("")] on `fn Root(props: LayoutProps) -> @Task<Element>`
-//     error: #[layout] on `Root`: a layout is `fn Root(props: LayoutProps) -> @Component<ElementBase, Element>`, not `Task`
-//   #[template("")] on a fn returning `Element`
-//     error: #[template] on `…`: a template is `fn …(props: LayoutProps) -> @Component<ElementBase, Element>`, not `Element`
+// Wrong-placement cases are COMPILE failures, not values, so no `test { }`
+// block holds them: each is a project under the repository's `refusals/`,
+// refused by `botopink check` with its exact located message
+// (`scripts/check-refusals.sh`, stage 4 of the pre-commit gate) — a layout, a
+// page and a template whose return is not `@Component<ElementBase, Element>`.
+// The application site imports what a marker EMITS — `jhPage` / `jhLayout` /
+// `jhTemplate` / `jhDefault`, `PageContext`, `ctxParam` / `ctxRest` — beside
+// the marker itself.
 
 import {Element, ElementBase, text, div, p} from "element";
 import {main} from "elements";

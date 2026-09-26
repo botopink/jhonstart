@@ -111,6 +111,52 @@ runStandaloneGate() {
 
     # 3. every example builds, unless listed as known broken.
     runExamplesGate "$bin"
+
+    # 4. every refusal fixture is refused with its exact message.
+    runRefusalsGate "$bin"
+}
+
+# runRefusalsGate <botopink-bin>
+#
+# `refusals/<case>/` holds a project that must NOT compile — a compile-time
+# refusal of the library (a decorator's `decl.fail`), which no `test { }` block
+# can express. Each case is `botopink check`ed; it passes when the check fails
+# and its output holds every line of the case's `expect.txt` (the message and
+# its ` --> file:line:col` location), verbatim. A case that compiles, or that
+# fails with another message, fails the gate.
+runRefusalsGate() {
+    local bin="$1"
+    local root
+    root=$(git rev-parse --show-toplevel)
+    [ -d "$root/refusals" ] || return 0
+    local dir rel out line bad=""
+    for dir in "$root"/refusals/*/; do
+        [ -f "$dir/botopink.json" ] || continue
+        rel="refusals/$(basename "$dir")"
+        [ -f "$dir/expect.txt" ] || fail "$rel has no expect.txt"
+        echo -n "  Refusing $rel (botopink check)... "
+        if out=$( cd "$dir" && "$bin" check 2>&1 ); then
+            echo -e "${RED}✗${NC}"
+            bad="$bad\n  $rel compiles — it must be refused"
+            continue
+        fi
+        out=$(printf '%s\n' "$out" | sed -r 's/\x1b\[[0-9;]*m//g')
+        local missing=""
+        while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            printf '%s\n' "$out" | grep -qxF -- "$line" || missing="$missing\n    $line"
+        done < "$dir/expect.txt"
+        if [ -n "$missing" ]; then
+            echo -e "${RED}✗${NC}"
+            bad="$bad\n  $rel is refused, but without:$missing\n  re-run: ( cd $dir && $bin check )"
+        else
+            echo -e "${GREEN}✓${NC}"
+        fi
+    done
+    if [ -n "$bad" ]; then
+        echo -e "$bad"
+        fail "$(basename "$root"): refusals gate failed"
+    fi
 }
 
 # runExamplesGate <botopink-bin>
