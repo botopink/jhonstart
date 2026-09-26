@@ -10,8 +10,6 @@
     "element.bp",
     "hooks.bp",
     "router.bp",
-    "link.bp",
-    "reconcile.bp",
     "server.bp",
     "client.bp",
     "error_boundary.bp",

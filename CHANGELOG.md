@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Front 95 — the package cut: `jhonstart-link` member.** Front 27's
+  render-time half — `link.bp` and `reconcile.bp`, with `link_test.bp` and
+  `reconcile_test.bp` — moves out of the core into `modules/jhonstart-link/`
+  (`from "jhonstart-link"`), as `specs/1.0.10-beta/04-jhonstart/modules.md` § 1
+  cuts it. A relocation only: the one edit per file is `from "element"` →
+  `from "jhonstart"` in `link.bp` and `link_test.bp`; `reconcile.bp` keeps its
+  sibling import of `link`. Nothing in the core imported either module. The
+  member inherits `[commonJS, erlang]` (the code is pure). The core reads 85/85
+  on both rows where it read 120, the member 35/35 on both rows.
+
 - **Front 32 — metadata** (`metadata.bp`). `Metadata` / `OpenGraph` /
   `TwitterCard` / `Icons` and a separate `Viewport`, the merge rule (strings
   replace when non-empty, lists wholesale, records field by field, the
@@ -17,7 +27,7 @@
   signal is re-raised (`renderBoundary`) or answered `Error(reason)`
   (`renderBoundaryChecked`). `notFound()` / `redirect(url)` raise `routing`'s
   `nav:` reasons. `root.bp` and `files` now list the modules in front-number order
-  (26, 27, 28, 29, 31, then 94's `elements` last — front 94's rule). Core 128 → 147 on both
+  (26, 28, 29, 31, then 94's `elements` last — front 94's rule). Core 128 → 147 on both
   rows.
 
 - **Fronts 27 and 29 — decision 113's spellings.** Every marker jhonstart

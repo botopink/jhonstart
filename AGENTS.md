@@ -30,7 +30,8 @@ are compiled and each ships its own host half on both rows
 (`router_runtime.mjs` / `sidecars/jhonstart_router.erl`, `server_runtime.mjs` /
 `sidecars/jhonstart_server.erl`). Client navigation is compiled too since
 front 27 — but only its RENDER-TIME half (`link.bp`, `reconcile.bp`, both pure,
-no host cell of any target): the browser half waits on front 68's generated
+no host cell of any target, in the `jhonstart-link` member since front 95's
+relocation): the browser half waits on front 68's generated
 bundle and front 60's route-kind table, and is not stubbed. The server/client
 BOUNDARY is compiled since front 29 (`client.bp`, also pure): `#[client]` and
 `#[clientProps]` are comptime markers with four refusals, and the island, the
@@ -55,10 +56,10 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, elements.bp, client_runtime.bp, server.bp, link.bp, reconcile.bp, client.bp]
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, client_runtime.bp] (front-number order, 94's `elements` last)
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
-│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod elements; pub mod server; pub mod link; pub mod reconcile; pub mod client; mod client_runtime;`
+│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod error_boundary; pub mod metadata; pub mod elements; mod client_runtime;`
 │   │   │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │   │   │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<ElementBase,_>, pure server-pass bodies) + test {} (imports `Element`)
 │   │   │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
@@ -71,20 +72,16 @@ repository/jhonstart/
 │   │   │   │   └── jhonstart_server.erl ← HOST (BEAM): the request's six cells + `fill/6`, same process dictionary, same non-`files` discovery
 │   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`enterRequest`/`leaveRequest`/`cookies`/`headers`, `renderServerComponent`
 │   │   │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
-│   │   │   ├── link.bp        ← COMPILED (front 27), PURE: `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`. NO host cell — the browser half is front 68's
-│   │   │   ├── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
 │   │   │   ├── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
 │   │   │   ├── error_boundary.bp ← COMPILED (front 31): `ErrorInfo`/`ErrorBoundary`, `renderBoundary`/`renderBoundaryChecked`/`catchError`, the digest (std `content_hash`), `notFound`/`redirect` raising `routing`'s `nav:` reasons, `isSignal`
 │   │   │   ├── metadata.bp    ← COMPILED (front 32), PURE: `Metadata`/`OpenGraph`/`TwitterCard`/`Icons`/`Viewport`, the merge rule, `renderHead`/`renderViewport` over std `escape`
-│   │   │   ├── signal_runtime.mjs ← HOST (js): `raise` / `capture` / `captureTask` — the one place a raise becomes a `@Result` value
-│   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same three cells
+│   │   │   ├── signal_runtime.mjs ← HOST (js): `raise` / `capture` / `captureTask` / `tryValue` / `tryTask` — the one place a raise becomes a `@Result` value
+│   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same cells
 │   │   └── test/
 │   │       ├── metadata_test.bp ← `botopink test` flat suite: the merge rule row by row, the head's order and escaping, the viewport (front 32) — both rows
 │   │       ├── error_boundary_test.bp ← `botopink test` flat suite: the catch, the digest, signals passing through, the file conventions (front 31) — both rows
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │   │       ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `@Task` component and loader conventions (front 28) — both rows
-│   │       ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table and the layout key (front 27) — both rows
-│   │       ├── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, the whole remount decision without a DOM (front 27) — both rows
 │   │       └── client_test.bp   ← `botopink test` flat suite: the `#[client]` emit, a whitelisted props record, the island, the hole and the poison pill (front 29) — both rows
 │   ├── jhonstart-html/ ← MEMBER (front 95): the `html """…"""` DSL — what `from "jhonstart-html"` gives a consumer; the core does not depend on it
 │   │   ├── botopink.json  ← name jhonstart-html, src src/, entry root.bp, target commonJS, files [root.bp, html.bp], dependencies { jhonstart: { workspace: true } }
@@ -95,6 +92,15 @@ repository/jhonstart/
 │   │   └── test/
 │   │       ├── html_test.bp     ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body) — builders from "jhonstart"
 │   │       └── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
+│   ├── jhonstart-link/ ← MEMBER (front 27's code, relocated by front 95): client navigation's render-time half — what `from "jhonstart-link"` gives a consumer; the core does not depend on it
+│   │   ├── botopink.json  ← name jhonstart-link, src src/, entry root.bp, target commonJS (inherits [commonJS, erlang]), files [root.bp, link.bp, reconcile.bp], dependencies { jhonstart: { workspace: true } }
+│   │   ├── src/
+│   │   │   ├── root.bp        ← `pub mod link; pub mod reconcile;`
+│   │   │   ├── link.bp        ← COMPILED (front 27), PURE: `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`. NO host cell — the browser half is front 68's; imports `Element` from "jhonstart"
+│   │   │   └── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
+│   │   └── test/
+│   │       ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table and the layout key (front 27) — both rows
+│   │       └── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, the whole remount decision without a DOM (front 27) — both rows
 │   └── jhonstart-test/ ← MEMBER (front 95): the test-helper member — `assert<Subject>(loc, …)` helpers, fixtures, builders; EMPTY `pub` surface until the track-C fronts fill it (`specs/1.0.10-beta/04-jhonstart/modules.md` § 5)
 │       ├── botopink.json  ← name jhonstart-test, files [root.bp], dependencies { jhonstart: { workspace: true } }
 │       └── src/root.bp    ← one inline `test` proving the core resolves from the member
@@ -111,8 +117,15 @@ repository/jhonstart/
 stands on std's `asserts` and `snapshots`, and each track-C front adds its
 `assert_<subject>.bp` and `pub mod` line. It re-exports nothing from std.
 
+`modules/jhonstart-link/` holds front 27's `link.bp` and `reconcile.bp` and
+their two suites, moved out of the core by front 95 as a relocation only: the
+one edit is `import {Element, ElementBase} from "jhonstart";` in `link.bp` (and
+the same line in `link_test.bp`); nothing in the core imported either module.
+The member declares no `targets`, so it inherits both rows — its code is pure;
+the four `#[@External.Node]` cells front 68 brings reopen that question
+(`specs/1.0.10-beta/04-jhonstart/modules.md` § 4).
+
 The other members `specs/1.0.10-beta/04-jhonstart/modules.md` § 1 plans —
-`jhonstart-link` (front 27's `link.bp`/`reconcile.bp`, still in core),
 `jhonstart-forms` (67) and the `jhonstart-emilia` bridge (30, decision 113) —
 are created by those fronts, not here.
 
@@ -313,7 +326,7 @@ the two `string` hooks compare directly either way.
    own rule above to bite it: every field of the adapter is a **lambda**
    (`{ t -> isVoidTag(t) }`), never a bare function name.
 3. **A `Link`.** It did not come along from `router.d.bp`. It is front 27's
-   `src/link.bp` (landed), and front 26 adds nothing to it and reads nothing
+   `link.bp` (landed; the `jhonstart-link` member since front 95), and front 26 adds nothing to it and reads nothing
    from it.
 
 ### The `query` hole front 23 left, and what front 26 says about it
@@ -638,7 +651,7 @@ commonJS row and runs once.
 
 Since the umbrella is a workspace, the `repository/` root contributes its
 **members** by manifest name: `--lib jhonstart` selects `modules/jhonstart/`,
-the umbrella has no row, and `jhonstart-html`, `jhonstart-test`,
+the umbrella has no row, and `jhonstart-html`, `jhonstart-link`, `jhonstart-test`,
 `jhonstart-counter` / `jhonstart-markup` / `jhonstart-todo` are rows of their own. Over the workspace the runner prints
 (measured 2026-09-21 against the `zig-out` binary of the workspace's
 `botopink-lang` checkout; the core member's rows are `botopink test` inside
@@ -646,8 +659,9 @@ the umbrella has no row, and `jhonstart-html`, `jhonstart-test`,
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 120/120 | ✓ 120/120 |
+| `jhonstart` | ✓ 85/85 | ✓ 85/85 |
 | `jhonstart-html` (member) | ✓ 5/5 | ✓ 5/5 |
+| `jhonstart-link` (member) | ✓ 35/35 | ✓ 35/35 |
 | `jhonstart-test` | ✓ 1/1 | ✓ 1/1 |
 | `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
 | `jhonstart-markup` | ✓ 7/7 | ✓ 7/7 |
@@ -655,7 +669,10 @@ the umbrella has no row, and `jhonstart-html`, `jhonstart-test`,
 
 Front 95 moved `html_test.bp` (2) and `elements_test.bp` (3) with the DSL into
 `jhonstart-html`, so the core reads 120 where it read 125 (measured 2026-09-25
-against botopink-lang feat `29b5a725`). The core member was 103/103 on both rows before front 29, 68/68 before front 27,
+against botopink-lang feat `29b5a725`); front 95's second cut moved
+`link_test.bp` (25) and `reconcile_test.bp` (10) with their modules into
+`jhonstart-link`, so the core reads 85 and the member 35 (measured 2026-09-26
+against botopink-lang feat `248d0896`). The core member was 103/103 on both rows before front 29, 68/68 before front 27,
 51/51 before front 28 and 27/27 before front 26; the client boundary adds 22, all
 of them in `client_test.bp`, and every one RUNS on **both** rows because
 `client.bp` reaches no host cell at all. Front 29's assigned target is commonJS;

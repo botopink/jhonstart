@@ -153,8 +153,9 @@ pub fn aside(
 // headings and text-level
 //
 // `h1` lives in `element.bp`; the rest live here. `timeTag` carries the `<time>`
-// tag under a different name because `time` is a std module, and a consumer
-// doing `import {time} from "std"` in the same file would collide.
+// tag under a different name because `time` was a std module when it was named
+// (std's clock is `io.clock` since decision 106), and a consumer importing it
+// in the same file would have collided.
 
 pub fn h2(
     children: Children,

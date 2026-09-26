@@ -23,6 +23,7 @@ expanding markup to the builder pipeline at comptime.
 ```bp
 import {div, p, text, state, effect, renderToString} from "jhonstart";
 import {html} from "jhonstart-html";   // the markup DSL, its own member
+import {Link, linkProps} from "jhonstart-link";   // client navigation, its own member
 ```
 
 ## Layout
@@ -31,6 +32,7 @@ import {html} from "jhonstart-html";   // the markup DSL, its own member
 decision 75 of 1.0.10-beta): it compiles nothing and ships nothing. The library is the member
 [`modules/jhonstart/`](modules/jhonstart/) — `from "jhonstart"` resolves to it — beside
 [`modules/jhonstart-html/`](modules/jhonstart-html/) (`from "jhonstart-html"`: the `html """…"""` DSL),
+[`modules/jhonstart-link/`](modules/jhonstart-link/) (`from "jhonstart-link"`: `Link` and the remount decision),
 [`modules/jhonstart-test/`](modules/jhonstart-test/) (the test-helper member, empty until the track-C
 fronts fill it) and the runnable examples [`examples/jhonstart-counter/`](examples/jhonstart-counter/),
 [`examples/jhonstart-markup/`](examples/jhonstart-markup/) and

@@ -220,7 +220,7 @@ error was rejected: it is a second convention, and it is unreachable from the
 | Tag | Constructor | Why |
 |---|---|---|
 | `<html>` | `htmlTag` | `html` is already the `html """…"""` template fn (member `jhonstart-html`), and a file importing the DSL beside the tags would bind two `html`s — a collision. The DSL keeps the name |
-| `<time>` | `timeTag` | `time` is a std module, and a consumer doing `import {time} from "std"` in the same file would collide |
+| `<time>` | `timeTag` | `time` was a std module when the tag was named (std's clock is `io.clock` since decision 106), and a consumer importing it in the same file would have collided |
 | `<main>` | `main` | Shipped under its own name, because the consuming fronts import it that way |
 
 **The `main` caveat.** A module that declares the program entry point `fn main()`
@@ -772,7 +772,10 @@ render correctly during the server pass.
 
 **The render-time half is what ships.** It reaches no host cell, so `Link`
 renders identically on commonJS and on erlang, and every assertion in
-`test/link_test.bp` and `test/reconcile_test.bp` RUNS on both rows.
+`test/link_test.bp` and `test/reconcile_test.bp` RUNS on both rows. It is its
+own member, `jhonstart-link` — a consumer writes
+`import {Link, linkProps} from "jhonstart-link";` beside the builders
+`from "jhonstart"`, and the core does not depend on it.
 
 ### The props are a record, and why
 
@@ -1244,7 +1247,7 @@ front 66's README.
   the server-component convention (`server.bp`, with both host halves), the
   render-time half of client navigation — `Link`, `LinkProps` and its five
   `with*` helpers, `prefetchMode`, `layoutKey`, `layoutKeys`, `sharedDepth`,
-  `linkStatusOf` (`link.bp` + `reconcile.bp`, pure, no host cell), the client
+  `linkStatusOf` (`link.bp` + `reconcile.bp` in `jhonstart-link`, pure, no host cell), the client
   boundary — `#[client]`, `#[clientProps]` and the four comptime refusals
   around them, `islandId`/`islandAttrOf`/`islandAttr`, `Island`, `clientMount`,
   `islandEntry`, `propsOf`, `serverSlotAttr`/`serverSlot` and the `serverOnly`
