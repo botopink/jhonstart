@@ -15,6 +15,7 @@
     "server.bp",
     "client.bp",
     "error_boundary.bp",
+    "metadata.bp",
     "elements.bp",
     "client_runtime.bp"
   ]

@@ -75,9 +75,11 @@ repository/jhonstart/
 │   │   │   ├── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
 │   │   │   ├── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
 │   │   │   ├── error_boundary.bp ← COMPILED (front 31): `ErrorInfo`/`ErrorBoundary`, `renderBoundary`/`renderBoundaryChecked`/`catchError`, the digest (std `content_hash`), `notFound`/`redirect` raising `routing`'s `nav:` reasons, `isSignal`
+│   │   │   ├── metadata.bp    ← COMPILED (front 32), PURE: `Metadata`/`OpenGraph`/`TwitterCard`/`Icons`/`Viewport`, the merge rule, `renderHead`/`renderViewport` over std `escape`
 │   │   │   ├── signal_runtime.mjs ← HOST (js): `raise` / `capture` / `captureTask` — the one place a raise becomes a `@Result` value
 │   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same three cells
 │   │   └── test/
+│   │       ├── metadata_test.bp ← `botopink test` flat suite: the merge rule row by row, the head's order and escaping, the viewport (front 32) — both rows
 │   │       ├── error_boundary_test.bp ← `botopink test` flat suite: the catch, the digest, signals passing through, the file conventions (front 31) — both rows
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │   │       ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `@Task` component and loader conventions (front 28) — both rows

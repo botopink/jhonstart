@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Front 32 — metadata** (`metadata.bp`). `Metadata` / `OpenGraph` /
+  `TwitterCard` / `Icons` and a separate `Viewport`, the merge rule (strings
+  replace when non-empty, lists wholesale, records field by field, the
+  parent's `titleTemplate` applied once to the child's title), and
+  `renderHead` / `renderViewport` writing one tag per line in a fixed order
+  through std's `escape`. Core 147 → 163 on both rows.
+
 - **Front 31 — error boundaries** (`error_boundary.bp`). A boundary's child is a
   `@Result` thunk called exactly once through `__jhCapture`, the one host cell
   that turns a raise into a value (`signal_runtime.mjs` /

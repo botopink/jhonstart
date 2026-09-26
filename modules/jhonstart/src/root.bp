@@ -32,5 +32,6 @@ pub mod reconcile;    // front 27
 pub mod server;       // front 28, replacing server.d.bp
 pub mod client;       // front 29
 pub mod error_boundary; // front 31
+pub mod metadata;     // front 32
 pub mod elements;     // front 94
 mod client_runtime;
