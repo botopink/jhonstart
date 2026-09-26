@@ -213,7 +213,8 @@ test "router: a fill replaces the WHOLE snapshot, never one field of it" {
 // and reads the value; the `use` form below activates it inside a component.
 test "router: each hook answers the field it names, called without `use`" {
     val ignored = fill("/blog/hi", "slug=hi", "sort=new", "/blog/[slug]", 0);
-    assert (await pathname()) == "/blog/hi";
+    val path = await pathname();
+    assert path == "/blog/hi";
     val ps = await params();
     assert ps.length == 1;
     val qs = await searchParams();
@@ -228,9 +229,11 @@ test "router: selectedLayoutSegment(s) answer the layout depth, root-first" {
     val segs = await selectedLayoutSegments();
     assert segs.length == 2;
     assert segs.join("/") == "blog/[slug]";
-    assert (await selectedLayoutSegment()) == "blog";
+    val top = await selectedLayoutSegment();
+    assert top == "blog";
     val deeper = fill("/blog/hi", "slug=hi", "", "/blog/[slug]", 1);
-    assert (await selectedLayoutSegment()) == "[slug]";
+    val inner = await selectedLayoutSegment();
+    assert inner == "[slug]";
 }
 
 // A component by the rule: a `@Component<ElementBase, Element>` return (the owner
