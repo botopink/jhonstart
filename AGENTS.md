@@ -330,7 +330,7 @@ rendering a `@Component<ElementBase, Element>` component through `use pathname()
 | Its accessors | `r.param(n)` · `r.searchParam(n)` · `r.segments()` · `r.segment()` | every one answers a plain `string`/`Array<string>`, `""` when absent or out of range. Never `?string` |
 | The pair decoder | `pairValue(pairs, name)` | the package's ONE pair-list decoder, FIRST match of a duplicated key. Fronts 28 and 32 import it from here rather than growing a copy |
 | The pair codec | std's `encoding.formParse` · `encoding.formStringify` | decision 116 rule 4: percent-aware, the codec rakun uses; the package carries no copy. `formStringify` writes NO leading `?` — the caller adds it |
-| The segment readers | `patternSegments(pattern)` · `segmentAt(segments, i)` | typed-parameter readers. An `xs.at(i).unwrapOr("")` written at a call site reads the element back unwrapped on the erlang row |
+| The segment readers | `patternSegments(pattern)` · `segmentAt(segments, i)` | typed-parameter readers |
 | The build | `snapshot()` | five cells in, the record out. No `?T` unwrap that can fail |
 | **The writer** | `fill(path, params, search, pattern, selected)` | the ONE way route state is installed, and the seam fronts 27/28/29 need. `params`/`search` go in querystring-encoded, exactly as the payload's `m` and `q` carry them. Every field at once — a half-updated snapshot is a component reading the previous route's params against the next route's pattern |
 | The six hooks | `router` · `pathname` · `params` · `searchParams` · `selectedLayoutSegment` · `selectedLayoutSegments` | each `-> @Component<ElementBase, T>`, each one read of `snapshot()`. `selectedLayoutSegments()` is root-first |
@@ -338,11 +338,8 @@ rendering a `@Component<ElementBase, Element>` component through `use pathname()
 | What a verb recorded | `lastNavigation()` | `"<kind> <href>"`, `""` when nothing has. On erlang this is the 307 front 28's dispatcher writes; in the browser the last href the History API was handed |
 | The host halves | `src/router_runtime.mjs` · `src/sidecars/jhonstart_router.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, the snapshot dies with it, two concurrent renders cannot see each other's route |
 
-**One call-site rule, and it only shows on the erlang row** — the same one
-rakun's front 23 records: a function-valued record field must be read into a
-local before it is called (`val tagOf = v.tagOf; tagOf(e)`, never `v.tagOf(e)`,
-which lowers to a method call and dies `function tagOf/2 undefined` while
-staying silent on commonJS).
+A function-valued record field is called in place (`v.tagOf(e)` applies the
+field on every row).
 
 **One rule that shows on both** — a hook called WITHOUT `use` keeps its
 `@Component<ElementBase, T>` type. The type is transparent to a property or a method
