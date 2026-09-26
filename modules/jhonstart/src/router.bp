@@ -19,6 +19,9 @@
 // from, and the disagreement would only show on the routes nobody tested.
 
 import {Element, ElementBase} from "element";
+import {encoding} from "std";
+import {table: {parseTable, RouteEntry}, match: {matchPath, attempt, RouteMatch}, navigation: {NavKind, NavOutcome, signalFromWire}} from "routing";
+import {refresh.refreshValue} from "actions";
 
 pub type RouterState(
     path: string,
@@ -94,72 +97,15 @@ pub fn segmentAt(segments: Array<string>, index: i32) -> string {
     return found;
 }
 
-// ── the pair-list decoder for the two querystring-encoded snapshot values ────
+// ── the pair codec: std's `encoding`, not a copy (decision 116 rule 4) ──────
 //
-// This is `std/querystring.parse` spelled here, and it is a STAND-IN with a
-// measured reason, not a second opinion about what a query string is:
-//
-//   `libs/std/src/querystring.bp:22` writes `query.slice(1, query.length)`.
-//   Reached through `from "std"`, that module emits a call to a bare local
-//   `slice/3` on the erlang row and never defines it, so `erlc` refuses the
-//   module with `undefined_function {slice,3}`, the test runner's sibling
-//   loader SKIPS a module that does not compile, and the first
-//   `querystring.parse` call dies `{error,undef}`. The same `s.slice(a, b)` in
-//   a project module lowers correctly to an emitted `string_slice/3` helper —
-//   the loss is specific to a `libs/std` module compiled as a dependency.
-//   Measured 2026-09-21; `repro/erlang-std-slice-shim/` is the jhonstart-free
-//   package, and the defect is the compiler's.
-//
-// erlang is this front's assigned target, so importing a module that cannot
-// run there is not an option. The behaviour is querystring's: a leading `?` is
-// stripped, `""` decodes to `[]` (never `[#("", "")]`), empty chunks are
-// dropped, duplicate keys are preserved in order, and a chunk with no `=`
-// decodes to an empty value. There is exactly ONE divergence, and it is in
-// this one's favour: on a chunk with two `=` (`a=b=c`) querystring's
-// `split("=")` keeps only `b` while this keeps `b=c`. querystring's own header
-// records that input as not round-tripping until percent-encoding lands, so
-// nothing depends on the truncation. When the shim defect closes, this
-// function becomes `querystring.parse` and nothing else in the file moves.
-pub fn decodePairs(query: string) -> Array<#(string, string)> {
-    val body = stripQueryPrefix(query);
-    if (body == "") return [];
-    return body.split("&").filter({ chunk ->
-        chunk != "";
-    }).map({ chunk ->
-        decodePair(chunk);
-    });
-}
-
-fn stripQueryPrefix(query: string) -> string {
-    if (query.startsWith("?")) return query.slice(1, query.length);
-    return query;
-}
-
-fn decodePair(chunk: string) -> #(string, string) {
-    val cut = chunk.indexOf("=");
-    if (cut < 0) return #(chunk, "");
-    return #(chunk.slice(0, cut), chunk.slice(cut + 1, chunk.length));
-}
-
-// The inverse, and it is here for the same reason `decodePairs` is:
-// `std/querystring.stringify` has no `slice` of its own, but it lives in the
-// module `stripPrefix` kills, and a module `erlc` refuses takes its whole
-// surface down with it. Every front downstream that rewrites a URL — front
-// 27's `Link` href, a sort control that keeps the other query parameters —
-// needs an encoder, and one encoder in the package is the same argument
-// `pairValue` makes about decoders.
-//
-// No leading `?`: the caller adds it when composing a URL, exactly as
-// `querystring.stringify` documents.
-pub fn encodePairs(pairs: Array<#(string, string)>) -> string {
-    return pairs.map({ p ->
-        encodePair(p);
-    }).join("&");
-}
-
-fn encodePair(p: #(string, string)) -> string {
-    return p._0 + "=" + p._1;
-}
+// The two querystring-encoded snapshot values (`m`, `q`) are decoded with
+// std's `encoding.formParse` and a URL the router rewrites is written with
+// `encoding.formStringify` — the percent-aware codec rakun uses on the server,
+// so a space written as `a%20b` reads back as `a b` on both rows. The package
+// used to carry a stand-in pair codec here because `std/querystring` did not
+// run on erlang; the stand-in did not percent-decode, and decision 116 deletes
+// it. `encoding.formParse("")` is `[]`, never `[#("", "")]`.
 
 // ── step 2: the host cells and the snapshot builder ─────────────────────────
 //
@@ -220,7 +166,7 @@ pub declare fn __jhRouteSelected() -> i32;
 // no BEAM row at all, and a server that reached into another library's process
 // dictionary keys would be coupled to them forever. So the seam is HERE and it
 // is `pub`: front 28's server adapter calls it once per request, and fronts 27
-// and 29 call it with the values the `__onze` payload carried on every client
+// and 29 call it with the values the payload (`globals.payload`) carried on every client
 // transition. It is also what makes `snapshot()` assertable — the front's own
 // test plan asks for "`snapshot()` over a stubbed host module", and a stub you
 // cannot seed is a stub you cannot assert.
@@ -248,13 +194,14 @@ pub fn fill(
     return __jhRouteFill(path, params, search, pattern, selected);
 }
 
-// The snapshot the render reads. No `?T` unwrap that can fail: `decodePairs`
-// answers `[]` for an empty string, and every cell answers a total value.
+// The snapshot the render reads. No `?T` unwrap that can fail:
+// `encoding.formParse` answers `[]` for an empty string, and every cell
+// answers a total value.
 pub fn snapshot() -> RouterState {
     return RouterState(
         path: __jhRoutePath(),
-        params: decodePairs(__jhRouteParams()),
-        search: decodePairs(__jhRouteSearch()),
+        params: encoding.formParse(__jhRouteParams()),
+        search: encoding.formParse(__jhRouteSearch()),
         pattern: __jhRoutePattern(),
         selected: __jhRouteSelected(),
     );
@@ -376,10 +323,82 @@ pub fn forward() -> i32 {
     return __jhNavigate("forward", "");
 }
 
+// The re-request carries the action header onze names, with the value the
+// bundled library `actions` spells (decision 116 rule 2) — the router writes
+// no `refresh` literal of its own. On the server `refresh` stays a no-op; in
+// the browser the cell hands the value to the re-request.
 pub fn refresh() -> i32 {
-    return __jhNavigate("refresh", "");
+    return __jhNavigate("refresh", refreshValue());
 }
 
 pub fn prefetch(href: string) -> i32 {
     return __jhNavigate("prefetch", href);
+}
+
+// ── the envelope's navigation signal (decision 116 rule 1) ─────────────────
+//
+// An action envelope (front 67 hands it the parsed result) or the envelope a
+// `refresh()` answers carries a navigation signal in its `n` field. It is read
+// with `routing`'s `navigation.signalFromWire` — never a second copy of the
+// grammar: `""` nothing, `"N"` the nearest not-found, `"R|307|/login"` a
+// `replace` to `/login`. A malformed `n` reads as `None`, so a bad field from
+// the network cannot crash a render. A server action's `redirect` is rakun's
+// and a page's is jhonstart's (decision 117 rule 4); the router reads both
+// through the same codec without importing rakun.
+//
+// `navigationFor` is the pure decision — `""`, `"not-found"` or
+// `"replace <location>"` — and `applySignal` performs it through the one
+// navigation cell.
+pub fn navigationFor(wire: string) -> string {
+    val out = signalFromWire(wire);
+    return case out.kind {
+        None -> "";
+        NotFound -> "not-found";
+        Redirect -> "replace " + out.location;
+    };
+}
+
+pub fn applySignal(wire: string) -> i32 {
+    val out = signalFromWire(wire);
+    return case out.kind {
+        None -> 0;
+        NotFound -> __jhNavigate("not-found", "");
+        Redirect -> __jhNavigate("replace", out.location);
+    };
+}
+
+// ── the route a URL is, through `routing`'s matcher (decision 115) ─────────
+//
+// The client rebuilds `RouterState` after a navigation — a `popstate`, a bare
+// `pushState` the application performed, a `clientApp` start — by matching
+// the pathname against the table the payload's `t` carries. The table is read
+// with `routing`'s `parseTable` and matched with `matchPath`, the function
+// rakun's server matches with: the router has no matcher and no table parser
+// of its own, so it cannot disagree with the server about precedence.
+//
+// An unmatched pathname answers a record whose `pattern` is `""` and whose
+// params are `[]` — the caller renders the not-found boundary. The params are
+// read in pattern order through `routing`'s `attempt`, a catch-all's value
+// being its segments joined with `/`.
+pub fn resolveRoute(tableWire: string, path: string, search: string) -> RouterState {
+    var pattern = "";
+    if (matchPath(parseTable(tableWire), path)) { m ->
+        pattern = matchedPattern(m);
+    };
+    var pairs: Array<#(string, string)> = [];
+    if (pattern != "") {
+        val a = attempt(pattern, path);
+        var i = 0;
+        for (a.names) { n ->
+            pairs = pairs.append([#(n, segmentAt(a.values, i))]);
+            i = i + 1;
+        };
+    };
+    return RouterState(path: path, params: pairs, search: encoding.formParse(search), pattern: pattern, selected: 0);
+}
+
+// A typed parameter: a match read back through the optional binder loses its
+// type on the erlang row (`routing`'s `paramOf` carries the same note).
+fn matchedPattern(m: RouteMatch) -> string {
+    return m.entry.pattern;
 }

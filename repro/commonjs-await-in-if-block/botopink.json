@@ -1,0 +1,1 @@
+{ "name": "commonjs-await-in-if-block", "version": "0.0.1", "src": "src/", "entry": "main.bp", "targets": ["commonJS", "erlang"] }

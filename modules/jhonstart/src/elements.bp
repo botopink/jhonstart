@@ -460,8 +460,8 @@ test "the form surface builds the shape front 24 binds an action to" {
             select([option([text("a", attrs: [])], attrs: [#("value", "a")])], attrs: [#("name", "kind")]),
             textarea([], attrs: [#("name", "body")]),
             button([text("Save", attrs: [])], attrs: [#("type", "submit")]),
-        ], attrs: [#("data-onze-a", "createPost")]);
-    assert renderToString(f) == "<form data-onze-a=\"createPost\"><label for=\"title\">Title</label><select name=\"kind\"><option value=\"a\">a</option></select><textarea name=\"body\"></textarea><button type=\"submit\">Save</button></form>";
+        ], attrs: [#("data-jh-a", "createPost")]);
+    assert renderToString(f) == "<form data-jh-a=\"createPost\"><label for=\"title\">Title</label><select name=\"kind\"><option value=\"a\">a</option></select><textarea name=\"body\"></textarea><button type=\"submit\">Save</button></form>";
 }
 
 test "the document shell and the table surface build" {

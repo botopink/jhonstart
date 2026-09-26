@@ -1,0 +1,1 @@
+{ "name": "dep", "version": "0.0.1", "src": "src/", "entry": "root.bp", "targets": ["commonJS", "erlang"], "files": ["root.bp", "b.bp", "a.bp"] }

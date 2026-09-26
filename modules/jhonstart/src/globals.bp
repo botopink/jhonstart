@@ -1,0 +1,79 @@
+// jhonstart/globals — the three browser globals the HTML names by text
+// (front 30, decisions 113, 115 and 117).
+//
+// Only a value the HTML names by text is a global, and there are three: the
+// payload variable, the fill function a fill's `<script>` calls, and the
+// signal function a late navigation signal's `<script>` calls. Each gets an
+// indexed alias `__bp<N>` from this registry, `N` counting in DECLARATION
+// ORDER below, so the server build and the client build agree without
+// exchanging anything. No alias is spelled by hand anywhere else: adding a
+// global is one registry entry.
+//
+// The three are read through `globals()` — a function answering a record, not
+// the module-level `pub val`s the README sketches. A `pub val` of a user
+// record type imported from a sibling module is undefined on commonJS and an
+// unbound variable on erlang (measured 2026-09-26, compiler `248d0896`; the
+// `language-gaps.md` row "`pub val` of a user record type is unexercised"),
+// and three flat `pub val`s named `payload` / `fill` / `signal` would shadow
+// front 26's `fill` in a consumer's flat `import {…} from "jhonstart"`.
+//
+// The browser half is three cells over `render.mjs`, called only by onze front
+// 68's generated entry: the payload script's JSON text (decoded here with
+// std's `json.decode`, decision 117 rule 7), and the registration of the fill
+// and signal functions. Each has an erlang twin that answers the empty value —
+// a called node-only cell reds the erlang compile of the core member, and on
+// the server there is no DOM to register into.
+
+import {json: {Json, decode}} from "std";
+
+val registry = ["payload", "fill", "signal"];
+
+// `"__bp"` + the name's index in the registry. An unknown name fails.
+pub fn alias(name: string) -> string {
+    var found = 0 - 1;
+    var i = 0;
+    for (registry) { entry ->
+        if (entry == name) found = i;
+        i = i + 1;
+    };
+    assert found >= 0, "jhonstart: globals: `" + name + "` is not a registered global - the registry is payload, fill, signal";
+    return "__bp" + found.toString();
+}
+
+pub type Globals(payload: string, fill: string, signal: string)
+
+pub fn globals() -> Globals {
+    return Globals(payload: alias("payload"), fill: alias("fill"), signal: alias("signal"));
+}
+
+// The payload script's JSON text: everything after `window.<name> = ` in the
+// last payload script, `""` when there is none (and always `""` on the server).
+#[@External.Node("./render.mjs", "payloadText"),
+  @External.Erlang("jhonstart_render", "payload_text")]
+declare fn __jhPayloadText(name: string) -> string;
+
+// Registers the fill function under `name` (`globals().fill`), with the holes
+// still open when the shell flushed (the payload's `h`).
+#[@External.Node("./render.mjs", "registerFill"),
+  @External.Erlang("jhonstart_render", "register_fill")]
+declare fn __jhRegisterFill(name: string, holes: string[]) -> i32;
+
+// Registers the signal function under `name` (`globals().signal`), checking a
+// late redirect against the same `allowedRedirects` list `app(…)` got.
+#[@External.Node("./render.mjs", "registerSignal"),
+  @External.Erlang("jhonstart_render", "register_signal")]
+declare fn __jhRegisterSignal(name: string, allowedRedirects: string[]) -> i32;
+
+// The payload the render assigned, decoded with std's `json.decode`. A text
+// `json.decode` refuses is an `Error` — never a partial payload.
+pub fn readPayload(name: string) -> @Result<Json, string> {
+    return try decode(__jhPayloadText(name));
+}
+
+pub fn registerFill(name: string, holes: string[]) -> i32 {
+    return __jhRegisterFill(name, holes);
+}
+
+pub fn registerSignal(name: string, allowedRedirects: string[]) -> i32 {
+    return __jhRegisterSignal(name, allowedRedirects);
+}

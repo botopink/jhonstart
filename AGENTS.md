@@ -29,11 +29,12 @@ and 28 there is **no `.d.bp` module left**: the route snapshot and the request
 are compiled and each ships its own host half on both rows
 (`router_runtime.mjs` / `sidecars/jhonstart_router.erl`, `server_runtime.mjs` /
 `sidecars/jhonstart_server.erl`). Client navigation is compiled too since
-front 27 — but only its RENDER-TIME half (`link.bp`, `reconcile.bp`, both pure,
-no host cell of any target, in the `jhonstart-link` member since front 95's
-relocation): the browser half waits on front 68's generated
-bundle and front 60's route-kind table, and is not stubbed. The server/client
-BOUNDARY is compiled since front 29 (`client.bp`, also pure): `#[client]` and
+front 27 (`link.bp`, `reconcile.bp`, in the `jhonstart-link` member since front
+95's relocation): the render-time half is pure, and the browser half —
+`linkMount`, `linkPrefetch`, `linkRouteKind`, `linkStatus` — sits over four
+dual-target cells whose erlang twins answer the server's idle truth; the
+transition driver and front 60's route-kind table are still to come. The
+server/client BOUNDARY is compiled since front 29 (`client.bp`): `#[client]` and
 `#[clientProps]` are comptime markers with four refusals, and the island, the
 hole and the poison pill are ordinary `.bp`; what ENFORCES the boundary over the
 module graph is front 68's and is not stubbed either. Nothing is embedded
@@ -56,28 +57,57 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, elements.bp, client_runtime.bp, server.bp, client.bp, html_attrs.bp]
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, globals.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, plugin.bp, routes.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp, html_attrs.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
-│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod elements; pub mod server; pub mod client; pub mod html_attrs; mod client_runtime;`
+│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; pub mod html_attrs; mod client_runtime;`
 │   │   │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │   │   │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<ElementBase,_>, pure server-pass bodies) + test {} (imports `Element`)
 │   │   │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │   │   │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
 │   │   │   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
-│   │   │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `decodePairs`, `snapshot`/`fill`
+│   │   │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `snapshot`/`fill`, `navigationFor`/`applySignal` (the envelope's `n`, through `routing`), `resolveRoute` (`routing`'s `matchPath` over the payload's `t`)
+│   │   │   ├── client_app.bp  ← COMPILED (front 26 Step 6): `ClientApp` / `clientApp(routes, mount, allowedRedirects).start()` — a client-only app over `routing`'s matcher, front 30's `compose` and the one browser write `__jhMount`; `notFound` / `redirect` handled as the server render handles them. Host halves `client_app.mjs` / `sidecars/jhonstart_client_app.erl` (a module store when there is no `window`)
 │   │   │   ├── router_runtime.mjs ← HOST (js): the router's store and the History API half of `navigate`
 │   │   │   ├── sidecars/
 │   │   │   │   ├── jhonstart_router.erl ← HOST (BEAM): the same cells over the calling process's dictionary. NOT a `files` entry — `shipErlSidecars` finds it under the package's `src/sidecars/`
 │   │   │   │   └── jhonstart_server.erl ← HOST (BEAM): the request's six cells + `fill/6`, same process dictionary, same non-`files` discovery
-│   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`fillRequest`/`cookies`/`headers`, `renderServerComponent`
+│   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`enterRequest`/`leaveRequest`/`cookies`/`headers`, `renderServerComponent`
 │   │   │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
 │   │   │   ├── html_attrs.bp  ← COMPILED (front 48 of the CSS track), PURE: `classAttr` (the `class` pair spelled once), `withAttrs` (append, base first — `renderToString` writes attrs in array order), `attrValue` (the last pair of a name, `""` when absent). Imports only `element` and names no styling library: the styling side hands over a `#(string, string)` pair and merges its own class names
-│   │   │   └── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-onze-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
+│   │   │   ├── client.bp      ← COMPILED (front 29): `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`, and `hydrate()` / `propsFor(name)` over two dual-target cells (`island_runtime.mjs` / `sidecars/jhonstart_island.erl`). The graph walk is front 68's
+│   │   │   ├── suspense.bp    ← COMPILED (front 30): `Boundary(id, fallback, child: fn() -> @Component<…>)` (an UNSTARTED thunk), `Suspense` (the `data-jh-h` hole; registers the boundary with the render), `holeId`
+│   │   │   ├── render.bp      ← COMPILED (front 30): `renderNode` (the escaping, void-aware walker over std `escape`), `raw`, `shellHtml`, `mountIsland` (i0, i1 … through front 29's `islandAttr`), `compose` (layout > template > error > loading > not-found > page; layouts run first), `Payload`/`writePayload` (std `json` + `escape.scriptJson`), `RenderHooks`/`setHooks`, the document
+│   │   │   ├── streaming.bp   ← COMPILED (front 30): `Chunk`/`resolve`/`fillHtml`, the late-signal markup, `Response` + `guarded`, `PageInput`, `App`/`app` with `render` / `renderStream` (→ `@Task<@Result<void, string>>`), the signal translation and the redirect-target check
+│   │   │   ├── plugin.bp      ← COMPILED (front 30): `RenderPlugin(name, head, chunk, close, payload)` — a record of async functions, called in `app`'s order
+│   │   │   ├── globals.bp     ← COMPILED (front 30): the registry `payload, fill, signal` → `__bp0/1/2` via `globals()`; `readPayload` (std `json.decode`), `registerFill`, `registerSignal`
+│   │   │   ├── routes.bp      ← COMPILED (front 30): `#[page]`/`#[layout]`/`#[template]`/`#[defaultView]`, `PageContext`, `LayoutProps`, the UI registry (`jhPage`… `uiTable()`), `UiSegment` + `segment`/`with*`/`segmentFor`
+│   │   │   ├── render.mjs     ← HOST (js): per-render state + `eachCompleted`, and the browser half (fill / signal functions, payload text)
+│   │   │   ├── routes.mjs     ← HOST (js): the UI registry
+│   │   │   ├── sidecars/jhonstart_render.erl ← HOST (BEAM): per-render state in the process dictionary, hooks in `persistent_term`, `each_completed/2` (one process per boundary, values handed back in completion order)
+│   │   │   ├── sidecars/jhonstart_routes.erl ← HOST (BEAM): the UI registry, an ETS table with an owner process
+│   │   │   ├── error_boundary.bp ← COMPILED (front 31): `ErrorInfo`/`ErrorBoundary`, `renderBoundary`/`renderBoundaryChecked`/`catchError`, the digest (std `hash.contentHash`), `notFound`/`redirect` raising `routing`'s `nav:` reasons, `isSignal`
+│   │   │   ├── metadata.bp    ← COMPILED (front 32), PURE: `Metadata`/`OpenGraph`/`TwitterCard`/`Icons`/`Viewport`, the merge rule, `renderHead`/`renderViewport` over std `escape`
+│   │   │   ├── signal_runtime.mjs ← HOST (js): `raise` / `capture` / `captureTask` / `tryValue` / `tryTask` — the one place a raise becomes a `@Result` value
+│   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same cells
 │   │   └── test/
+│   │       ├── render_test.bp ← `botopink test` flat suite: the walker, the hole, the fill, the globals, the payload (front 30) — both rows
+│   │       ├── streaming_test.bp ← `botopink test` flat suite: `render`/`renderStream` over a recording `Response`, composition, signals before and after the first chunk, the plugin order (front 30) — both rows
+│   │       ├── routes_test.bp ← `botopink test` flat suite: the four markers, `uiTable()` through `routing`, the params accessors (front 30) — both rows
+│   │       ├── metadata_test.bp ← `botopink test` flat suite: the merge rule row by row, the head's order and escaping, the viewport (front 32) — both rows
+│   │       ├── error_boundary_test.bp ← `botopink test` flat suite: the catch, the digest, signals passing through, the file conventions (front 31) — both rows
+│   │       ├── client_app_test.bp ← `botopink test` flat suite: `clientApp` start, the two signals, the target check (front 26 Step 6) — both rows
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │   │       ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `@Task` component and loader conventions (front 28) — both rows
 │   │       └── client_test.bp   ← `botopink test` flat suite: the `#[client]` emit, a whitelisted props record, the island, the hole and the poison pill (front 29) — both rows
+│   ├── jhonstart-emilia/ ← MEMBER (front 30, additive): the bridge — `plugin() -> RenderPlugin` over emilia's `flush()`, contributing the payload's `s`; the ONE member naming both jhonstart and emilia
+│   │   ├── botopink.json  ← name jhonstart-emilia, files [root.bp], dependencies { jhonstart: { workspace: true }, emilia: { path: ../../../emilia/modules/emilia } }
+│   │   ├── src/root.bp    ← `plugin()`, `classesIn(css)`; the flushed names per render in a host cell
+│   │   └── test/bridge_test.bp ← `botopink test`: the styled page's one head `<style>`, a streamed boundary's fill style before its markup, `s`, `close` (front 30) — both rows
+│   ├── jhonstart-forms/ ← MEMBER (front 67, additive): a form bound to a server action — `formAction`/`formAttrs`/`hiddenActionField`/`actionForm`, `submitForm`/`invokeAction`/`formMount`, the `actionState`/`formStatus`/`optimistic` hooks, `applyOptimistic`, the GET search form (`searchFormAttrs`, `searchHref`, `prefetchSearch`); the envelope, the state grammar and the RPC body are the bundled library `actions`'. Wire names come from `setWireNames(field, header)` (onze, at boot) — no literal here
+│   │   ├── botopink.json  ← name jhonstart-forms, files [root.bp, form.bp], dependencies { jhonstart, jhonstart-link: { workspace: true } }
+│   │   ├── src/{root.bp, form.bp, form_runtime.mjs, sidecars/jhonstart_forms.erl} ← the six browser cells, dual-target (the erlang twin answers the server's quiet truth and records the call for the test)
+│   │   └── test/form_test.bp ← `botopink test`: the binding's markup, the body handed to the cell and the state read back, the hooks' server pass, the search form (front 67) — both rows
 │   ├── jhonstart-html/ ← MEMBER (front 95): the `html """…"""` DSL — what `from "jhonstart-html"` gives a consumer; the core does not depend on it
 │   │   ├── botopink.json  ← name jhonstart-html, src src/, entry root.bp, target commonJS, files [root.bp, html.bp], dependencies { jhonstart: { workspace: true } }
 │   │   ├── src/
@@ -91,7 +121,7 @@ repository/jhonstart/
 │   │   ├── botopink.json  ← name jhonstart-link, src src/, entry root.bp, target commonJS (inherits [commonJS, erlang]), files [root.bp, link.bp, reconcile.bp], dependencies { jhonstart: { workspace: true } }
 │   │   ├── src/
 │   │   │   ├── root.bp        ← `pub mod link; pub mod reconcile;`
-│   │   │   ├── link.bp        ← COMPILED (front 27), PURE: `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`. NO host cell — the browser half is front 68's; imports `Element` from "jhonstart"
+│   │   │   ├── link.bp        ← COMPILED (front 27): `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`, and the browser half `linkMount` / `linkPrefetch` / `linkRouteKind` / the `linkStatus` hook over four DUAL-target cells (`link_runtime.mjs` / `sidecars/jhonstart_link.erl`); imports `Element` from "jhonstart"
 │   │   │   └── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
 │   │   └── test/
 │   │       ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table and the layout key (front 27) — both rows
@@ -277,7 +307,7 @@ rendering a `@Component<ElementBase, Element>` component through `use pathname()
 | The snapshot | `RouterState(path, params, search, pattern, selected)` | a plain record, no behavior. `params`/`search` are `Array<#(string, string)>`, `selected` the layout depth (root layout `0`) |
 | Its accessors | `r.param(n)` · `r.searchParam(n)` · `r.segments()` · `r.segment()` | every one answers a plain `string`/`Array<string>`, `""` when absent or out of range. Never `?string` |
 | The pair decoder | `pairValue(pairs, name)` | the package's ONE pair-list decoder, FIRST match of a duplicated key. Fronts 28 and 32 import it from here rather than growing a copy |
-| The querystring codec | `decodePairs(q)` · `encodePairs(pairs)` | `std/querystring.parse`/`.stringify` spelled here, because that module is dead on the erlang row (`repro/erlang-std-slice-shim/`). `encodePairs` has NO leading `?` — the caller adds it. Front 27's href arithmetic uses these two, not a third copy |
+| The pair codec | std's `encoding.formParse` · `encoding.formStringify` | decision 116 rule 4: percent-aware, the codec rakun uses; the package carries no copy. `formStringify` writes NO leading `?` — the caller adds it |
 | The segment readers | `patternSegments(pattern)` · `segmentAt(segments, i)` | typed-parameter readers. An `xs.at(i).unwrapOr("")` written at a call site reads the element back unwrapped on the erlang row |
 | The build | `snapshot()` | five cells in, the record out. No `?T` unwrap that can fail |
 | **The writer** | `fill(path, params, search, pattern, selected)` | the ONE way route state is installed, and the seam fronts 27/28/29 need. `params`/`search` go in querystring-encoded, exactly as the payload's `m` and `q` carry them. Every field at once — a half-updated snapshot is a component reading the previous route's params against the next route's pattern |
@@ -414,14 +444,12 @@ So the seam is **here** and it is `pub`, which is the conclusion front 26 alread
 reached and wrote down for the route snapshot: a server that reached into
 another library's process dictionary keys would be coupled to them forever.
 `jhonstart_server` / `server_runtime.mjs` are the two halves, cell for cell;
-`fillRequest(method, path, params, query, headers, cookies)` is the one writer
-and the seam front 62's dispatcher calls once per request. If front 62 would
-rather own the module name, it is one line per accessor in `server.bp` and
-nothing else in jhonstart moves — which is the property the README was after.
+`enterRequest(req)` is the one writer and `leaveRequest()` its pair; front 30's
+render calls both, once per render, with the `RequestData` onze handed it.
 
-`fillRequest` is deliberately **not** front 26's `fill` under another name, and
+`enterRequest` is deliberately **not** front 26's `fill` under another name, and
 the two stores stay separate: a route snapshot is re-filled DURING a render (its
-`selected` is the layout depth) while a request is filled once and is constant
+`selected` is the layout depth) while a request is entered once and is constant
 for the whole render. Folding them would make "the request" mutate mid-page.
 
 ### Two things front 28 does NOT provide
@@ -462,7 +490,7 @@ question, not a code one.
 | The request | `RequestData(method, path, params, query, headers, cookies)` | a plain record, no behavior. Every plural field `Array<#(string, string)>`; **no `body` field** — form bodies are front 24's, route-handler bodies front 25's |
 | Its accessors | `r.param(n)` · `r.queryParam(n)` · `r.header(n)` · `r.cookie(n)` | plain `string`, `""` when absent, never raises. All four through front 26's `pairValue`, so a duplicated key means one thing |
 | The build | `request()` | six cells in, the record out. A plain function, not a hook, until front 19 step 2 |
-| **The writer** | `fillRequest(method, path, params, query, headers, cookies)` | the ONE way request state is installed. The four pair-shaped values go in querystring-encoded (`k=v&k=v`), exactly as front 23's payload carries them. Six at once — a half-updated request is a component reading the previous reader's cookie |
+| **The writer pair** | `enterRequest(req)` · `leaveRequest()` | the ONE way request state is installed and removed, called by front 30's render once per render. The four pair lists are stored `encoding.formStringify`-encoded. Between the two `request()`/`cookies()`/`headers()` read it; outside them they RAISE |
 | The shortcuts | `cookies()` · `headers()` | the only two re-exported. `after`, `connection`, `draftMode` and memoization are front 62's, called from there |
 | The render entry | `renderServerComponent(component) -> @Task<string>` | takes an **unstarted thunk** `fn() -> @Task<Element>`, awaits exactly once, renders synchronously afterwards; `renderComponent` takes a `fn() -> @Component<ElementBase, Element>` thunk |
 | The host halves | `src/server_runtime.mjs` · `src/sidecars/jhonstart_server.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, it dies with it, two concurrent renders cannot see each other's cookies |
@@ -493,7 +521,7 @@ it renders in the browser.
 | What | Where | Shape |
 |---|---|---|
 | The props | `LinkProps(href, prefetch, replace, scroll, target, className)` | a plain record. `linkProps(href)` fills Next's defaults; `withPrefetch`/`withReplace`/`withScroll`/`withTarget`/`withClass` each return a NEW record with one field changed |
-| The anchor | `Link(props, children) -> Element` | `<a href=… data-onze-l="1">`, plus one attribute per prop that DIFFERS from its default. `target` and `class` are real attributes, the other three are `data-onze-*` |
+| The anchor | `Link(props, children) -> Element` | `<a href=… data-jh-l="1">`, plus one attribute per prop that DIFFERS from its default. `target` and `class` are real attributes, the other three are `data-jh-*` |
 | The prefetch decision | `prefetchMode(kind, hasLoading, requested) -> string` | `"full"` / `"partial"` / `"skip"`, Next's § 8 table verbatim. BOTH inputs are front 60's; jhonstart computes neither |
 | The layout key | `layoutKey(segments, depth)` | `"/" + segments.take(depth).join("/")`. `segments` is front 26's `RouterState.segments()`, so the client's key and the server's are the same string |
 | The remount decision | `layoutKeys(segments)` · `sharedDepth(current, target)` | root-first keys including the root; the common-prefix length. `[0, keep)` stays mounted, `[keep, n]` is replaced. Never `0` — the root layout is never remounted |
@@ -501,18 +529,18 @@ it renders in the browser.
 
 **No arbitrary-attribute parameter.** `Link` has no pass-through `attrs` list —
 only `target` and `className`, through `LinkProps`. An anchor that accepts any
-attribute is an anchor that can be handed its own `data-onze-l`, and that marker
+attribute is an anchor that can be handed its own `data-jh-l`, and that marker
 is what the browser half queries on.
 
 ### What fronts 60 · 67 · 68 have to bring, and why none of it is stubbed here
 
 | Missing | Owner | Note |
 |---|---|---|
-| `__onzeLinkMount()` | 68 | delegated click interception + an intersection observer over `[data-onze-l]`. The generated entry calls it ONCE, after hydrating the islands, alongside front 67's `__jhFormMount()`. Front 29 owns the per-island hydrate point, not the entry, and does not call this |
-| `__onzeLinkPrefetch(href, mode)` | 68 | warms the client route cache; `mode` is `prefetchMode`'s answer |
-| `__onzeLinkStatus()` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | 68 | the hook is then `return linkStatusOf(__onzeLinkStatus());` and nothing else in `link.bp` moves |
-| `__onzeLinkRouteKind(href)` | 60 | reads the route-kind table front 60 emits into the bundle |
-| `reconcile(current, target)` | 68 (+ 60) | the transition driver: front 68's DOM primitives for the two ranges, front 60's flag for whether the payload had to be fetched, front 29's `data-onze-s` adoption and front 31's `data-onze-e` re-anchoring |
+| `__jhLinkMount()` | 68 | delegated click interception + an intersection observer over `[data-jh-l]`. The generated entry calls it ONCE, after hydrating the islands, alongside front 67's `__jhFormMount()`. Front 29 owns the per-island hydrate point, not the entry, and does not call this |
+| `__jhLinkPrefetch(href, mode)` | 68 | warms the client route cache; `mode` is `prefetchMode`'s answer |
+| `__jhLinkStatus()` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | 68 | the hook is then `return linkStatusOf(__jhLinkStatus());` and nothing else in `link.bp` moves |
+| `__jhLinkRouteKind(href)` | 60 | reads the route-kind table front 60 emits into the bundle |
+| `reconcile(current, target)` | 68 (+ 60) | the transition driver: front 68's DOM primitives for the two ranges, front 60's flag for whether the payload had to be fetched, front 29's `data-jh-s` adoption and front 31's `data-jh-e` re-anchoring |
 
 Two measurements make declaring them today wrong rather than merely early, and
 they point in opposite directions:
@@ -557,11 +585,11 @@ server pass exactly as it renders in the browser.
 |---|---|---|
 | The marker | `#[client]` | a `@Decl`-first comptime fn. Emits `pub fn __jhClient_<Name>() -> string` — a PURE function, never a call into a host registry, because an `@emit` fires on every target and a Node-only call would break the erlang server render |
 | The props rule | `#[clientProps]` | on the props RECORD, because `@Decl` does not expose a function's parameters. Whitelist: `string` · `i32` · `f64` · `bool` |
-| The island marker | `islandId(n)` · `islandAttrOf(id)` · `islandAttr(n)` | decision 77: `islandAttrOf` is the ONE occurrence of `"data-onze-i"` in this tree. Front 23 fills `RenderHooks.islandAttr` from `islandAttr`; front 68's entry imports the same function |
+| The island marker | `islandId(n)` · `islandAttrOf(id)` · `islandAttr(n)` | decision 77: `islandAttrOf` is the ONE occurrence of `"data-jh-i"` in this tree. Front 23 fills `RenderHooks.islandAttr` from `islandAttr`; front 68's entry imports the same function |
 | The island | `Island(id, component, props)` · `clientMount(island, children)` | the placeholder carries the id and NOTHING else; the component name and encoded props go to the payload's `i` row |
-| The payload row | `islandEntry(island)` | `#(id, component, "k=v&k=v")`, encoded with front 26's `encodePairs` — not `std/querystring.stringify`, which is dead on the erlang row |
+| The payload row | `islandEntry(island)` | `#(id, component, "k=v&k=v")`, encoded with std's `encoding.formStringify` (decision 116 rule 4) |
 | The decode | `propsOf(raw)` | the pure half of the front's `propsFor(name)`; `propsOf("")` is `[]` |
-| The hole | `serverSlotAttr()` · `serverSlot(children)` | `data-onze-s="1"` — the server-rendered subtree the client ADOPTS and must not reconstruct |
+| The hole | `serverSlotAttr()` · `serverSlot(children)` | `data-jh-s="1"` — the server-rendered subtree the client ADOPTS and must not reconstruct |
 | The poison pill | `serverOnly()` | the value is meaningless; its presence in a module's import list is the signal |
 
 **What is enforced today** — four comptime refusals, no flag that turns them off
@@ -610,8 +638,8 @@ ELEMENT TYPE on `Field`".
 
 | Missing | Owner | Note |
 |---|---|---|
-| `hydrate()` — the PER-ISLAND hydrate point: walks `[data-onze-i]`, decodes that island's props from the payload's `i` row, starts the component | 68 | it is not the bundle entry and it mounts no links and no forms; front 68's generated entry calls it, then front 27's `__onzeLinkMount()` and front 67's `__jhFormMount()` once each |
-| `islandProps(name)` / `__onzeClientPropsRaw(name)` and the `propsFor(name)` wrapper | 68 | `propsFor` is then `return propsOf(__onzeClientPropsRaw(name));` and nothing else in `client.bp` moves |
+| `hydrate()` — the PER-ISLAND hydrate point: walks `[data-jh-i]`, decodes that island's props from the payload's `i` row, starts the component | 68 | it is not the bundle entry and it mounts no links and no forms; front 68's generated entry calls it, then front 27's `__jhLinkMount()` and front 67's `__jhFormMount()` once each |
+| `islandProps(name)` / `__jhClientPropsRaw(name)` and the `propsFor(name)` wrapper | 68 | `propsFor` is then `return propsOf(__jhClientPropsRaw(name));` and nothing else in `client.bp` moves |
 | every "may not" rule above | 68 | the walk over the client module graph |
 
 Same two measurements front 27 records, re-measured for this file: a **called**
@@ -656,13 +684,23 @@ the umbrella has no row, and `jhonstart-html`, `jhonstart-link`, `jhonstart-test
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 85/85 | ✓ 85/85 |
+| `jhonstart` | ✓ 187/187 | ✓ 187/187 |
 | `jhonstart-html` (member) | ✓ 5/5 | ✓ 5/5 |
-| `jhonstart-link` (member) | ✓ 35/35 | ✓ 35/35 |
+| `jhonstart-link` (member) | ✓ 38/38 | ✓ 38/38 |
+| `jhonstart-emilia` (member) | ✓ 6/6 | ✓ 6/6 |
+| `jhonstart-forms` (member) | ✓ 15/15 | ✓ 15/15 |
 | `jhonstart-test` | ✓ 1/1 | ✓ 1/1 |
 | `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
 | `jhonstart-markup` | ✓ 7/7 | ✓ 7/7 |
 | `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
+
+Measured 2026-09-26 against botopink-lang `f011850c` (`botopink test` in each
+member, summed per module). Track C's second wave took the core from 85 to 187:
+fronts 26/28's codec and writer cells (+7), front 29 (+3), front 31's
+`error_boundary_test.bp` (19), front 32's `metadata_test.bp` (16), front 30's
+`render_test.bp` (22), `streaming_test.bp` (23) and `routes_test.bp` (8), and
+front 26's `client_app_test.bp` (4); `jhonstart-link` gained front 27's three
+browser-cell tests.
 
 Front 95 moved `html_test.bp` (2) and `elements_test.bp` (3) with the DSL into
 `jhonstart-html`, so the core reads 120 where it read 125 (measured 2026-09-25

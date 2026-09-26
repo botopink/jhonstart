@@ -244,3 +244,57 @@ So the bare spelling should either be lowered everywhere or **rejected with a
 the backend. It is not only jhonstart's two examples:
 `repository/onze/examples/onze/src/main.bp:77` writes `print(...)` too and its
 erlang row fails identically.
+
+---
+
+## `commonjs-await-in-if-block/` — owner `00 · 24-effects-by-return` (commonJS lowering)
+
+**An `if` block that `await`s without returning, inside a `@Task` body, is
+lowered into a non-`async` arrow — the module does not load.** Found by front
+30's `onResolved`; measured 2026-09-26 against botopink-lang `f011850c`.
+
+```text
+$ botopink test --target commonJS
+    (() => { if (flag) { const got = await one(); … } })();
+SyntaxError: await is only valid in async functions and the top level bodies of modules
+$ botopink test --target erlang      # 1 passed, 0 failed
+```
+
+The runner then prints no summary line for the module and still reports
+`1 MODULE(S) RAN`: a crashed module is not counted as failed. The workaround in
+jhonstart is a branch that ends in `return` (`streaming.bp` `onResolved`).
+
+## `erlang-void-return-in-if/` — owner `00 · 02-erlang`
+
+**A bare `return;` inside an `if` block of a `@Task<void>` body does not leave
+the function on erlang** — the statements after the block still run. commonJS
+returns. Found by front 30; measured against `f011850c`.
+
+```text
+$ botopink test --target erlang
+  FAIL a bare return inside an if block leaves a @Task<void> fn  (assertion failed)
+```
+
+## `self-param-free-fn/` — owner `00 · 01-checker`
+
+**A free function whose first parameter is named `self` loses that parameter**:
+erlang emits `twice/1` (`variable 'Self' is unbound`, `function twice/2
+undefined`) and commonJS computes with `self` unbound (the assertion fails).
+Either `self` is refused outside a `type` body or it is an ordinary name; today
+it is neither. Found by front 30 (`renderWith(self: App, …)` became
+`renderWith/4`, and the `App` method calling it with five arguments failed to
+compile); measured against `f011850c`.
+
+## `dependency-files-order/` — owner `00 · 10-cli-residuals`
+
+**A dependency's modules are compiled in its `botopink.json` `files` order, not
+in import order**: `dep` lists `b.bp` (which imports `a`) before `a.bp`, and
+the consuming `app` fails with `unbound variable 'base'` on both rows, while
+`dep`'s own build resolves the same modules fine. Found when front 30's modules
+joined jhonstart's `files` (the core's list is now kept in dependency order);
+measured against `f011850c`.
+
+```sh
+cd repro/dependency-files-order/app && botopink test --target erlang
+error: unbound variable 'base'
+```

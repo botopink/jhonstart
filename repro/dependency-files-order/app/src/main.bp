@@ -1,0 +1,5 @@
+import {derived} from "dep";
+
+test "a dependency's module that imports a later-listed sibling" {
+    assert derived() == 2;
+}

@@ -1,0 +1,596 @@
+// `botopink test` flat suite for `src/streaming.bp` and the composition half
+// of `src/render.bp` (front 30): the render over a RECORDING `Response`.
+//
+// The recorder is two inline host templates per row — a list of events kept
+// in the test process (`put` / `get` on erlang, a `globalThis` array on
+// node): `status 404`, `header location /login`, `write <chunk>`, `close`.
+// On erlang the fills are written from the render's own process (the
+// completion gather hands each value back to it), so the recorder sees every
+// write.
+
+import {Element, ElementBase, text, div, p, span, ul, li} from "element";
+import {h2, section, main} from "elements";
+import {RequestData, cookies, request} from "server";
+import {selectedLayoutSegment, pathname} from "router";
+import {notFound, redirect, ErrorInfo} from "error_boundary";
+import {Boundary, Suspense, holeId} from "suspense";
+import {compose, resetRender, registeredBoundaries, renderNode, RenderHooks, setHooks, defaultHooks, attemptTask} from "render";
+import {Response, PageInput, App, app, redirectAllowed, extrasProblem, guarded} from "streaming";
+import {RenderPlugin, Json} from "plugin";
+import {PageContext, LayoutProps, UiSegment, segment, withLayout, withTemplate, withError, withLoading, withNotFound} from "routes";
+import {Metadata, Viewport, emptyMetadata} from "metadata";
+import {async} from "std";
+
+// ── the recorder ────────────────────────────────────────────────────────────
+
+#[@External.Node("""(globalThis.__jhRec = [], 0)""")]
+#[@External.Erlang("""(fun() -> put(jh_rec, []), 0 end)()""")]
+declare fn recReset() -> i32;
+
+#[@External.Node("""((globalThis.__jhRec = (globalThis.__jhRec || []).concat([$0])), 0)""")]
+#[@External.Erlang("""(fun(__E) -> put(jh_rec, (case get(jh_rec) of undefined -> []; __L -> __L end) ++ [__E]), 0 end)($0)""")]
+declare fn recPush(event: string) -> i32;
+
+#[@External.Node("""(globalThis.__jhRec || [])""")]
+#[@External.Erlang("""(fun() -> case get(jh_rec) of undefined -> []; __L -> __L end end)()""")]
+declare fn recEvents() -> Array<string>;
+
+fn recStatus(code: i32) -> void {
+    recPush("status " + code.toString());
+}
+
+fn recHeader(name: string, value: string) -> void {
+    recPush("header " + name + " " + value);
+}
+
+fn recWrite(chunk: string) -> @Task<void> {
+    recPush("write " + chunk);
+}
+
+fn recClose() -> @Task<void> {
+    recPush("close");
+}
+
+fn recorder() -> Response {
+    recReset();
+    return Response(
+        status: { code -> recStatus(code) },
+        header: { name, value -> recHeader(name, value) },
+        write: { chunk -> recWrite(chunk) },
+        close: { -> recClose() },
+    );
+}
+
+fn writes() -> Array<string> {
+    return recEvents().filter({ e -> e.startsWith("write ") });
+}
+
+fn countOf(kind: string) -> i32 {
+    return recEvents().filter({ e -> e.startsWith(kind) }).length;
+}
+
+fn allText() -> string {
+    return recEvents().join("\n");
+}
+
+fn req() -> RequestData {
+    return RequestData(method: "GET", path: "/blog/hi", params: [#("slug", "hi")], query: [], headers: [], cookies: [#("session", "s1")]);
+}
+
+fn anonymous() -> RequestData {
+    return RequestData(method: "GET", path: "/dashboard", params: [], query: [], headers: [], cookies: []);
+}
+
+val table = "L|/\nP|/blog/[slug]\nP|/login\nP|/blog\nP|/dashboard";
+
+fn inputOf(pattern: string, chain: Array<UiSegment>, page: fn() -> @Component<ElementBase, Element>) -> PageInput {
+    return PageInput(
+        build: "b1",
+        pathname: "/blog/hi",
+        pattern: pattern,
+        params: "slug=hi",
+        query: "",
+        table: table,
+        actions: [],
+        chain: chain,
+        page: page,
+        metadata: [],
+        viewports: [],
+    );
+}
+
+fn outcomeText(r: @Result<void, string>) -> string {
+    return case r {
+        Ok(v) -> "ok";
+        Error(message) -> message;
+    };
+}
+
+// ── pages and layouts ───────────────────────────────────────────────────────
+
+fn RootLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
+    val depth = use selectedLayoutSegment();
+    return main([props.children], attrs: [#("class", "root")]);
+}
+
+fn BlogPage() -> @Component<ElementBase, Element> {
+    val slug = use pathname();
+    return p([text("post " + slug, attrs: [])], attrs: []);
+}
+
+fn slowPosts() -> @Component<ElementBase, Element> {
+    val rows = await async.delay(30, ["a", "b"]);
+    return ul(rows.map({ r -> li([text(r, attrs: [])], attrs: []) }), attrs: [#("class", "posts")]);
+}
+
+fn fastAside() -> @Component<ElementBase, Element> {
+    return span([text("aside", attrs: [])], attrs: []);
+}
+
+fn StreamedPage() -> @Component<ElementBase, Element> {
+    return section([
+            h2([text("Blog", attrs: [])], attrs: []),
+            Suspense(Boundary(id: holeId(1), fallback: div([text("wait", attrs: [])], attrs: []), child: { -> slowPosts() })),
+            Suspense(Boundary(id: holeId(2), fallback: div([text("wait2", attrs: [])], attrs: []), child: { -> fastAside() })),
+        ], attrs: []);
+}
+
+fn MissingPage() -> @Component<ElementBase, Element> {
+    notFound();
+    return div([], attrs: []);
+}
+
+fn LoginRedirectPage() -> @Component<ElementBase, Element> {
+    redirect("/login");
+    return div([], attrs: []);
+}
+
+fn NowhereRedirectPage() -> @Component<ElementBase, Element> {
+    redirect("/nowhere");
+    return div([], attrs: []);
+}
+
+fn EvilRedirectPage() -> @Component<ElementBase, Element> {
+    redirect("https://evil.example");
+    return div([], attrs: []);
+}
+
+fn AccountsRedirectPage() -> @Component<ElementBase, Element> {
+    redirect("https://accounts.example/");
+    return div([], attrs: []);
+}
+
+fn pageRan() -> @Component<ElementBase, Element> {
+    recPush("page ran");
+    return div([], attrs: []);
+}
+
+fn SessionLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
+    val jar = cookies();
+    if (jar.length == 0) {
+        redirect("/login");
+    };
+    return div([props.children], attrs: [#("class", "dash")]);
+}
+
+fn NotFoundView() -> Element {
+    return div([h2([text("No such post", attrs: [])], attrs: [])], attrs: []);
+}
+
+fn ErrorView(info: ErrorInfo) -> Element {
+    return div([text("failed " + info.digest, attrs: [])], attrs: [#("class", "err")]);
+}
+
+fn LoadingView() -> Element {
+    return div([text("loading", attrs: [])], attrs: [#("class", "sk")]);
+}
+
+fn TemplateView(props: LayoutProps) -> @Component<ElementBase, Element> {
+    return div([props.children], attrs: [#("class", "tpl")]);
+}
+
+fn LayoutView(props: LayoutProps) -> @Component<ElementBase, Element> {
+    return section([props.children], attrs: [#("class", "layout")]);
+}
+
+fn fullSegment() -> UiSegment {
+    return withNotFound(withLoading(withError(withTemplate(withLayout(segment("/blog/[slug]"), { props -> LayoutView(props) }), { props -> TemplateView(props) }), { info -> ErrorView(info) }), { -> LoadingView() }), { -> NotFoundView() });
+}
+
+// ── step 8: the streamed render ─────────────────────────────────────────────
+
+test "stream: a page with boundaries writes the shell, then each fill, each awaited" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    val w = writes();
+    assert w.length == 4;
+    assert w.at(0).unwrapOr("").contains("<body><div data-jh-root=\"\">");
+    assert w.at(0).unwrapOr("").contains("data-jh-h=\"h1\"");
+    assert w.at(0).unwrapOr("").contains("class=\"posts\"") == false;
+    assert countOf("close") == 1;
+    assert recEvents().at(0).unwrapOr("") == "status 200";
+}
+
+test "stream: fills come in completion order, each carrying its own markup" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val w = writes();
+    assert w.at(1).unwrapOr("").startsWith("write <template data-jh-f=\"h2\"><span>aside</span></template>");
+    assert w.at(2).unwrapOr("").startsWith("write <template data-jh-f=\"h1\"><ul class=\"posts\">");
+    assert w.at(3).unwrapOr("").contains("<script>window.__bp0 = {\"v\":1,");
+    assert w.at(3).unwrapOr("").contains("\"h\":[\"h1\",\"h2\"]");
+}
+
+fn loaderA() -> @Component<ElementBase, Element> {
+    val v = await async.delay(50, "a");
+    return span([text(v, attrs: [])], attrs: []);
+}
+
+fn loaderB() -> @Component<ElementBase, Element> {
+    val v = await async.delay(50, "b");
+    return span([text(v, attrs: [])], attrs: []);
+}
+
+fn TwoLoaders() -> @Component<ElementBase, Element> {
+    return div([
+            Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> loaderA() })),
+            Suspense(Boundary(id: holeId(2), fallback: div([], attrs: []), child: { -> loaderB() })),
+        ], attrs: []);
+}
+
+#[@External.Node("""Math.floor(performance.now())""")]
+#[@External.Erlang("erlang:monotonic_time(1000)")]
+declare fn nowMillis() -> i64;
+
+test "stream: two 50 ms boundaries resolve concurrently — well under 100 ms" {
+    val site = app([], []);
+    val start = nowMillis();
+    val out = await site.renderStream(inputOf("/blog", [], { -> TwoLoaders() }), req(), recorder());
+    val took = nowMillis() - start;
+    assert outcomeText(out) == "ok";
+    assert took < 95;
+    assert writes().length == 4;
+}
+
+// ── step 4: composition ─────────────────────────────────────────────────────
+
+test "compose: layout > template > error > loading > not-found > page, in the markup" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog/[slug]", [fullSegment()], { -> BlogPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    val shell = writes().at(0).unwrapOr("");
+    val nest = shell.indexOf("<section class=\"layout\"><div class=\"tpl\"><div data-jh-t=");
+    assert shell.contains("<section class=\"layout\"><div data-jh-t=\"/blog/[slug]#");
+    assert shell.contains("\"><div class=\"tpl\"><div data-jh-e=\"/blog/[slug]\"><div data-jh-h=\"h1\"><div class=\"sk\">loading</div></div></div></div></div></section>");
+    val fill = writes().at(1).unwrapOr("");
+    assert fill.contains("<template data-jh-f=\"h1\"><div data-jh-n=\"/blog/[slug]\"><p>post /blog/hi</p></div></template>");
+}
+
+test "compose: a segment with no template contributes no wrapper" {
+    val site = app([], []);
+    val bare = withLayout(segment("/"), { props -> LayoutView(props) });
+    val out = await site.render(inputOf("/blog/[slug]", [bare], { -> BlogPage() }), req(), recorder());
+    val doc = writes().at(0).unwrapOr("");
+    assert doc.contains("<div data-jh-root=\"\"><section class=\"layout\"><p>post /blog/hi</p></section></div>");
+}
+
+fn depthLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
+    val here = use selectedLayoutSegment();
+    return div([text("[" + here + "]", attrs: []), props.children], attrs: []);
+}
+
+test "compose: each layout receives its selected depth, root-first" {
+    val site = app([], []);
+    val chain = [
+        withLayout(segment("/"), { props -> depthLayout(props) }),
+        withLayout(segment("/blog"), { props -> depthLayout(props) }),
+        withLayout(segment("/blog/[slug]"), { props -> depthLayout(props) }),
+    ];
+    val out = await site.render(inputOf("/blog/[slug]", chain, { -> BlogPage() }), req(), recorder());
+    val doc = writes().at(0).unwrapOr("");
+    assert doc.contains("<div>[blog]<div>[[slug]]<div>[]<p>post /blog/hi</p></div></div></div>");
+}
+
+test "compose: two renders of one route give the template two keys" {
+    val site = app([], []);
+    val tpl = withTemplate(segment("/blog"), { props -> TemplateView(props) });
+    val a = await site.render(inputOf("/blog", [tpl], { -> BlogPage() }), req(), recorder());
+    val first = writes().at(0).unwrapOr("");
+    val b = await site.render(inputOf("/blog", [tpl], { -> BlogPage() }), req(), recorder());
+    val second = writes().at(0).unwrapOr("");
+    assert first.contains("data-jh-t=\"/blog#");
+    assert first != second;
+}
+
+// ── step 8: the request the render entered ──────────────────────────────────
+
+fn RequestEcho() -> @Component<ElementBase, Element> {
+    val r = use request();
+    return p([text(r.cookie("session"), attrs: [])], attrs: []);
+}
+
+fn readAfter() -> @Component<ElementBase, Element> {
+    val r = use request();
+    return p([], attrs: []);
+}
+
+fn readRequestOutside() -> @Task<i32> {
+    val r = await request();
+    return r.cookies.length;
+}
+
+test "stream: a component reads the req the render received, and nothing after it ends" {
+    val site = app([], []);
+    val out = await site.render(inputOf("/blog", [], { -> RequestEcho() }), req(), recorder());
+    assert writes().at(0).unwrapOr("").contains("<p>s1</p>");
+    val outside = await attemptTask({ -> readRequestOutside() });
+    val message = case outside {
+        Ok(n) -> "read " + n.toString();
+        Error(m) -> m;
+    };
+    assert message.contains("request() read outside a render");
+}
+
+fn bundleTag(route: string) -> string {
+    return "<script src=\"/b.js\"></script>";
+}
+
+test "stream: defaultHooks renders a working document with no <script src>; one field replaced keeps the other" {
+    val site = app([], []);
+    setHooks(defaultHooks());
+    val plain = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
+    val doc = writes().at(0).unwrapOr("");
+    assert doc.contains("<script src") == false;
+    assert doc.startsWith("write <!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">");
+    assert doc.endsWith("</body></html>");
+    val base = defaultHooks();
+    setHooks(RenderHooks(headExtra: base.headExtra, bodyExtra: { route -> bundleTag(route) }));
+    val bundled = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
+    val withBundle = writes().at(0).unwrapOr("");
+    assert withBundle.contains("</script><script src=\"/b.js\"></script></body></html>");
+    assert withBundle.contains("<meta charset=\"utf-8\"></head>");
+    setHooks(defaultHooks());
+}
+
+// ── navigation signals before the first chunk ───────────────────────────────
+
+test "signal: notFound before the first chunk is a 404 with the nearest not-found boundary" {
+    val site = app([], []);
+    val seg = withNotFound(segment("/blog/[slug]"), { -> NotFoundView() });
+    val out = await site.render(inputOf("/blog/[slug]", [seg], { -> MissingPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert recEvents().at(0).unwrapOr("") == "status 404";
+    assert writes().length == 1;
+    assert writes().at(0).unwrapOr("").contains("<h2>No such post</h2>");
+    assert countOf("close") == 1;
+}
+
+test "signal: redirect(\"/login\") before the first chunk is a 307 with no body" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> LoginRedirectPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert allText() == "status 307\nheader location /login\nclose";
+}
+
+test "signal: a layout's redirect means the page never runs" {
+    val site = app([], []);
+    val guard = withLayout(segment("/dashboard"), { props -> SessionLayout(props) });
+    val out = await site.renderStream(inputOf("/dashboard", [guard], { -> pageRan() }), anonymous(), recorder());
+    assert allText() == "status 307\nheader location /login\nclose";
+    assert allText().contains("page ran") == false;
+}
+
+test "signal: a target outside the table, or an unlisted absolute one, fails the render" {
+    val site = app([], []);
+    val nowhere = await site.renderStream(inputOf("/blog", [], { -> NowhereRedirectPage() }), req(), recorder());
+    assert outcomeText(nowhere).contains("`/nowhere` refused");
+    assert allText() == "close";
+    val evil = await site.renderStream(inputOf("/blog", [], { -> EvilRedirectPage() }), req(), recorder());
+    assert outcomeText(evil).contains("`https://evil.example` refused");
+    assert allText() == "close";
+    val listed = app([], ["https://accounts.example/"]);
+    val ok = await listed.renderStream(inputOf("/blog", [], { -> AccountsRedirectPage() }), req(), recorder());
+    assert outcomeText(ok) == "ok";
+    assert allText() == "status 307\nheader location https://accounts.example/\nclose";
+}
+
+test "signal: redirectAllowed checks relative targets against the table only" {
+    assert redirectAllowed(table, [], "/login");
+    assert redirectAllowed(table, [], "/blog/hi?x=1");
+    assert redirectAllowed(table, [], "/nowhere") == false;
+    assert redirectAllowed(table, [], "https://a.example") == false;
+    assert redirectAllowed(table, ["https://a.example"], "https://a.example");
+    assert redirectAllowed(table, [], "login") == false;
+}
+
+// ── late signals: after the first chunk ─────────────────────────────────────
+
+fn lateMissing() -> @Component<ElementBase, Element> {
+    notFound();
+    return div([], attrs: []);
+}
+
+fn lateLogin() -> @Component<ElementBase, Element> {
+    redirect("/blog");
+    return div([], attrs: []);
+}
+
+fn lateNowhere() -> @Component<ElementBase, Element> {
+    redirect("/nowhere");
+    return div([], attrs: []);
+}
+
+fn LateNotFoundPage() -> @Component<ElementBase, Element> {
+    return div([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> lateMissing() }))], attrs: []);
+}
+
+fn LateRedirectPage() -> @Component<ElementBase, Element> {
+    return div([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> lateLogin() }))], attrs: []);
+}
+
+fn LateNowherePage() -> @Component<ElementBase, Element> {
+    return div([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> lateNowhere() }))], attrs: []);
+}
+
+test "late: a notFound after the shell is the last chunk, status 200, no later fill" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> LateNotFoundPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert countOf("status") == 1;
+    assert recEvents().at(0).unwrapOr("") == "status 200";
+    assert writes().at(1).unwrapOr("") == "write <template data-jh-g=\"not-found\"><h1>Not found</h1></template><script>__bp2()</script>";
+    assert countOf("close") == 1;
+}
+
+test "late: a redirect after the shell is data-jh-g markup through escape.attribute" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> LateRedirectPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert writes().at(1).unwrapOr("") == "write <template data-jh-g=\"redirect\" data-jh-to=\"/blog\"></template><script>__bp2()</script>";
+    assert countOf("status") == 1;
+}
+
+test "late: a refused target after the shell fails the render and writes no markup" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> LateNowherePage() }), req(), recorder());
+    assert outcomeText(out).contains("`/nowhere` refused");
+    assert allText().contains("data-jh-g") == false;
+    assert countOf("close") == 1;
+}
+
+// ── the response guard ──────────────────────────────────────────────────────
+
+fn statusAfterWrite() -> @Task<i32> {
+    val g = guarded(recorder());
+    val w = g.write;
+    await w("x");
+    val s = g.status;
+    s(500);
+    return 0;
+}
+
+test "response: status after the first write fails, naming the call" {
+    resetRender();
+    val out = await site_attempt();
+    assert out.contains("status(500) after the first write");
+}
+
+fn site_attempt() -> @Task<string> {
+    val r = await attemptTask({ -> statusAfterWrite() });
+    return case r {
+        Ok(v) -> "ok";
+        Error(m) -> m;
+    };
+}
+
+// ── step 6: the render plugin and the order it is called in ─────────────────
+
+fn plHead() -> @Task<string> {
+    recPush("plugin head");
+    return "<style>.head{}</style>";
+}
+
+fn plChunk(holeId: string) -> @Task<string> {
+    recPush("plugin chunk " + holeId);
+    val css = await async.delay(5, "<style>." + holeId + "{}</style>");
+    return css;
+}
+
+fn plClose() -> @Task<@Result<void, string>> {
+    recPush("plugin close");
+    return;
+}
+
+fn plCloseFails() -> @Task<@Result<void, string>> {
+    throw "a class was registered after the last chunk";
+}
+
+fn plPayload() -> @Task<Array<#(string, Json)>> {
+    recPush("plugin payload");
+    return [#("x", "[1]")];
+}
+
+fn plNoPayload() -> @Task<Array<#(string, Json)>> {
+    return [];
+}
+
+fn plRenderKey() -> @Task<Array<#(string, Json)>> {
+    return [#("t", "1")];
+}
+
+fn recording() -> RenderPlugin {
+    return RenderPlugin(name: "rec", head: { -> plHead() }, chunk: { id -> plChunk(id) }, close: { -> plClose() }, payload: { -> plPayload() });
+}
+
+fn quiet(name: string) -> RenderPlugin {
+    return RenderPlugin(name: name, head: { -> quietHead() }, chunk: { id -> quietChunk(id) }, close: { -> plClose() }, payload: { -> plNoPayload() });
+}
+
+fn quietHead() -> @Task<string> {
+    return "";
+}
+
+fn quietChunk(holeId: string) -> @Task<string> {
+    return "";
+}
+
+fn pluginList() -> Array<RenderPlugin> {
+    return [recording()];
+}
+
+fn pluginEvents() -> string[] {
+    return recEvents().filter({ e -> e.startsWith("plugin ") });
+}
+
+// `chunk(id)` runs in the process that resolved the boundary (its own process
+// on erlang, so a per-process stylesheet sees what the boundary registered);
+// its calls are read off the fills it styled, in completion order.
+test "plugin: head once, chunk per boundary in completion order, close once, payload last" {
+    val site = app([recording()], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert pluginEvents().filter({ e -> e.startsWith("plugin chunk") == false }).join("|") == "plugin head|plugin close|plugin payload";
+    val w = writes();
+    assert w.at(1).unwrapOr("").contains("<style>.h2{}</style>");
+    assert w.at(2).unwrapOr("").contains("<style>.h1{}</style>");
+    assert allText().indexOf("plugin head") < allText().indexOf("write <!DOCTYPE");
+    assert allText().indexOf("plugin close") > allText().indexOf("data-jh-f=\"h1\"");
+}
+
+test "plugin: head lands in <head>, each chunk first inside its fill, the payload key verbatim" {
+    val site = app([recording()], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val w = writes();
+    assert w.at(0).unwrapOr("").contains("<style>.head{}</style></head>");
+    assert w.at(1).unwrapOr("").startsWith("write <template data-jh-f=\"h2\"><style>.h2{}</style><span>aside</span>");
+    assert w.at(2).unwrapOr("").startsWith("write <template data-jh-f=\"h1\"><style>.h1{}</style><ul");
+    assert w.at(3).unwrapOr("").contains("\"x\":[1]}");
+}
+
+test "plugin: a render with no plugin writes no <style> and no plugin key" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    assert allText().contains("<style>") == false;
+    assert allText().contains("\"x\"") == false;
+    val quietSite = app([quiet("q")], []);
+    val q = await quietSite.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    assert allText().contains("<style>") == false;
+}
+
+test "plugin: a close answering Error fails the render with that message" {
+    val failing = RenderPlugin(name: "sheet", head: { -> quietHead() }, chunk: { id -> quietChunk(id) }, close: { -> plCloseFails() }, payload: { -> plNoPayload() });
+    val site = app([failing], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    assert outcomeText(out).contains("plugin `sheet` failed to close: a class was registered after the last chunk");
+    assert countOf("close") == 1;
+}
+
+test "plugin: a render key, or one key from two plugins, fails the render naming them" {
+    val bad = RenderPlugin(name: "bad", head: { -> quietHead() }, chunk: { id -> quietChunk(id) }, close: { -> plClose() }, payload: { -> plRenderKey() });
+    val site = app([bad], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    assert outcomeText(out).contains("plugin `bad` gave the payload key `t`");
+    assert extrasProblem([#("a", "s", "[]"), #("b", "s", "[]")]).contains("plugins `a` and `b` both gave the payload key `s`");
+    assert extrasProblem([#("a", "s", "[]")]) == "";
+}

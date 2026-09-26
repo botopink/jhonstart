@@ -372,36 +372,15 @@ measurement that made rakun's front 22 spell `paramOf(m, name)` and front 23
 `chunkAt(page, i)`. `patternSegments` and `segmentAt` are typed-parameter
 readers for the same reason.
 
-### `decodePairs` — and why it is not `querystring.parse`
+### The pair codec is std's `encoding` (decision 116 rule 4)
 
-```bp
-pub fn decodePairs(query: string) -> Array<#(string, string)>
-```
-
-`std/querystring.parse` is what this front's spec calls for, and it cannot run
-on the front's assigned target. `libs/std/src/querystring.bp:22` writes
-`query.slice(1, query.length)`; reached through `from "std"` that module emits
-a call to a bare local `slice/3` on the erlang row and never defines it, so
-`erlc` refuses the module (`undefined_function {slice,3}`), the test runner's
-sibling loader skips a module that does not compile, and the first
-`querystring.parse` call dies `{error,undef}`. The same `s.slice(a, b)` in a
-project module lowers correctly to an emitted `string_slice/3` — the loss is
-specific to a `libs/std` module compiled as a dependency.
-`repro/erlang-std-slice-shim/` is the jhonstart-free package.
-
-`encodePairs(pairs) -> string` is the inverse, here for the same reason:
-`querystring.stringify` has no `slice` of its own, but it lives in the module
-`stripPrefix` kills, and a module `erlc` refuses takes its whole surface down
-with it. No leading `?` — the caller adds it when composing a URL. Front 27's
-href arithmetic uses these two rather than a third copy.
-
-`decodePairs` is querystring's documented behaviour spelled here: a leading `?`
-is stripped, `""` decodes to `[]` (never `[#("", "")]`), empty chunks are
-dropped, duplicate keys are preserved in order, and a chunk with no `=` decodes
-to an empty value. One divergence, in this one's favour: `a=b=c` keeps `b=c`
-where querystring's `split("=")` keeps only `b` — an input querystring's own
-header records as not round-tripping. When the shim defect closes this becomes
-`querystring.parse` and nothing else moves.
+The two pair-shaped snapshot values (`m`, `q`), the request's four lists and an
+island's props are decoded with std's `encoding.formParse` and written with
+`encoding.formStringify` — the percent-aware form codec rakun uses on the
+server. `q=a%20b` reads back as `a b` on both rows, `encoding.formParse("")` is
+`[]` (never `[#("", "")]`), a field with no `=` is a name with an empty value,
+and `formStringify` writes no leading `?`. The package carries no pair codec of
+its own.
 
 ### The snapshot, the five cells and `fill`
 
@@ -425,14 +404,15 @@ five values:
 
 The two pair-shaped values travel querystring-encoded. No JSON, no record
 serialization, nothing that has to agree between an Erlang term and a JS
-object. `snapshot()` performs no `?T` unwrap that can fail: `decodePairs`
-answers `[]` for an empty string and every cell answers a total value.
+object. `snapshot()` performs no `?T` unwrap that can fail:
+`encoding.formParse` answers `[]` for an empty string and every cell answers a
+total value.
 
 `fill` is the one writer, and it is `pub` **surface**, not an internal. The
 five values go in together — a half-updated snapshot is a component reading the
 previous route's params against the next route's pattern. A server adapter
 calls it once per request; a client transition calls it with the values the
-`__onze` payload carried, then re-renders. Nothing here is reactive: the router
+payload (`globals.payload`) carried, then re-renders. Nothing here is reactive: the router
 is a snapshot, not a subscription.
 
 Both halves ship with the package:
@@ -543,6 +523,50 @@ A navigation never disturbs the snapshot: `fill` is the only writer of route
 state, and the suite asserts that a `push` leaves the current `path` and
 `params` exactly as they were.
 
+`refresh()` hands the cell the value the bundled library `actions` spells —
+`refreshValue()` (decision 116 rule 2) — so the re-request header value is
+written nowhere in this package.
+
+### The envelope's navigation signal, and the route a URL is
+
+```bp
+pub fn navigationFor(wire: string) -> string   // "" · "not-found" · "replace <location>"
+pub fn applySignal(wire: string) -> i32        // performs it through the navigation cell
+pub fn resolveRoute(table: string, path: string, search: string) -> RouterState
+```
+
+An action or refresh envelope's `n` field is read with `routing`'s
+`navigation.signalFromWire` (decision 116 rule 1): `""` nothing, `"N"` the
+nearest not-found, `"R|307|/login"` a `replace` to `/login`; a malformed `n`
+reads as nothing, so a bad field from the network cannot crash a render. A
+server action's `redirect` is rakun's and a page's is jhonstart's; the router
+reads both through the same codec without importing rakun.
+
+`resolveRoute` rebuilds the snapshot a client navigation needs: the table (the
+payload's `t`, contract 1's wire) is read with `routing`'s `parseTable` and the
+pathname matched with `matchPath` — the function rakun's server matches with.
+The router has no matcher and no table parser of its own. An unmatched pathname
+answers `pattern == ""` and no params.
+
+### `clientApp` — a client-only app (`client_app.bp`)
+
+```bp
+clientApp(routes: routeTable, mount: "#root", allowedRedirects: []).start()   // -> @Task<@Result<void, string>>
+```
+
+An application with no server runs the same pages under the router alone
+(decision 117 rule 1). `routes` is contract 1's wire, read with `routing`'s
+`parseTable` and matched with `matchPath`; `start()` composes the matched chain
+(the UI registry's pages, layouts and conventions) with front 30's `compose` and
+writes the markup into `mount` — the one browser write, `__jhMount`. A signal is
+handled as the server render handles it: `notFound()` renders the route's
+nearest not-found boundary with the URL unchanged; a relative `redirect(to)`
+found in `routes` is the router's `replace(to)` (`history.replaceState`) and a
+client navigation; an absolute one listed in `allowedRedirects` is
+`location.replace(to)`; anything else fails `start()` and navigates nowhere.
+With no `window` (node, the test row) the location and the mount are a module
+store (`setClientLocation`, `mountedHtml`, `replacedLocation`).
+
 ## Server components (`server.bp`) — compiled
 
 Promoted from `server.d.bp` (front 28). The declaration file listed three
@@ -567,7 +591,7 @@ pub type RequestData(
 ```
 
 Six fields, every plural one an `Array<#(string, string)>` — the shape the route
-snapshot uses, the shape `decodePairs` produces and the shape `Element.attrs`
+snapshot uses, the shape `encoding.formParse` produces and the shape `Element.attrs`
 takes, so a value read off the request is handed straight to an attribute with
 no conversion. No `Dict`: naming `dict.Dict<string, string>` as a type across a
 module boundary is unexercised anywhere in this tree, and the pair list is what
@@ -598,34 +622,41 @@ there is nothing to look up by name in a single string.
 ### The six cells, and where they point
 
 ```bp
-pub fn fillRequest(method, path, params, query, headers, cookies) -> i32
+pub fn enterRequest(req: RequestData) -> i32
+pub fn leaveRequest() -> i32
 pub fn request() -> @Component<ElementBase, RequestData>
 pub fn cookies() -> Array<#(string, string)>
 pub fn headers() -> Array<#(string, string)>
 ```
 
-`params`, `query`, `headers` and `cookies` travel **querystring-encoded**
-(`k=v&k=v`), the same encoding the route snapshot's `m`/`q` use and the same
-encoding front 23's payload carries. No JSON, no record serialization, nothing
-that has to agree between an Erlang term and a JS object. They are decoded with
-front 26's `decodePairs` — see *`decodePairs` — and why it is not
-`querystring.parse`* above; that std module is dead on the erlang row.
+`enterRequest(req)` is the one writer and `leaveRequest()` its pair. Front 30's
+render calls both, once per render, with the `RequestData` onze handed it
+(decision 114 item 8); outside `server.bp` and `render.bp` nothing in `src/`
+calls either. Between the two, `request()`, `cookies()` and `headers()` read
+the entered request; **outside** them they raise — there is no request to read,
+and an empty one would be a silent wrong answer. A component that must render
+with no host takes a `RequestData` parameter instead.
+
+The four pair lists are stored `k=v&k=v` with std's `encoding.formStringify`
+and read back with `encoding.formParse` (decision 116 rule 4), so a cookie or
+query value carrying `%20` reads as a space here exactly as it does in rakun.
+No JSON, no record serialization, nothing that has to agree between an Erlang
+term and a JS object.
 
 The cells name **`jhonstart_server`** / **`./server_runtime.mjs`**, not front
 62's `rakun_request_context`, and both halves ship with the module
 (`src/sidecars/jhonstart_server.erl`, `src/server_runtime.mjs`) exactly as the
 router's do. Two measurements force it, and `AGENTS.md` § *Why the request cells
 are jhonstart's own* carries them: an erlang-only cell reds the **commonJS
-compile** at its call site, and rakun's member is `targets: ["commonJS"]` so
-`rakun_request_context` has no BEAM row to bind to at all. `fillRequest` is the
-one writer and the seam front 62's dispatcher calls once per request — six
-values at once, never one at a time, because a half-updated request is a
-component reading the previous reader's cookie against this reader's path.
+compile** at its call site, and jhonstart imports no rakun module
+(decision 113). Six values go in at once, never one at a time, because a
+half-updated request is a component reading the previous reader's cookie
+against this reader's path.
 
 It is **not** the router's `fill` under another name and the two stores stay
 separate on purpose: a route snapshot is re-filled DURING a render (its
-`selected` is the layout depth and changes per layout) while a request is filled
-once and is constant for the whole render.
+`selected` is the layout depth and changes per layout) while a request is
+entered once and is constant for the whole render.
 
 `after()`, `connection()`, `draftMode()` and per-request memoization are front
 62's and are called from there directly. `cookies()` and `headers()` are the
@@ -717,9 +748,9 @@ pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
 }
 ```
 
-**`@Task` is EAGER on the erlang row** (decision 120 of botopink 1.0.10-beta):
-a `@Task<T>` resolves to `T` and the caller's `await` is identity on that
-backend. Two `@Task` loaders do
+**`@Task` is EAGER on the erlang row** (decision 120 of botopink 1.0.10-beta;
+`libs/std/src/http.bp:16-18`): a `@Task<T>` resolves to `T` and the caller's
+`await` is identity on that backend. Two `@Task` loaders do
 **not** load in parallel because they are Tasks — they run in the order the
 body reaches them and the page costs the **sum** of its loaders. Porting the
 Next.js pattern shape-for-shape and stopping there produces a page slower than
@@ -745,7 +776,7 @@ stand-in here would be a second answer to "what is an escaped `&`" the day it
 lands. `test/server_test.bp` pins the unescaped answer so the change is a red
 cell rather than a silent difference.
 
-The `__onze` payload is front 23's to build and to escape. Nothing from
+The payload (`globals.payload`) is front 23's to build and to escape. Nothing from
 `server.bp` crosses to the client: a value read from a header or a cookie must
 not be reachable from an island's props, and the check that it is not is front
 68's build-time graph walk.
@@ -806,19 +837,19 @@ links does not carry five redundant pairs on each of them.
 | Prop | Attribute | Emitted when |
 |---|---|---|
 | `href` | `href="…"` | always |
-| — | `data-onze-l="1"` | always — the marker the runtime queries for |
-| `prefetch` | `data-onze-prefetch="0"` | only when `false` |
-| `replace` | `data-onze-replace="1"` | only when `true` |
-| `scroll` | `data-onze-scroll="0"` | only when `false` |
+| — | `data-jh-l="1"` | always — the marker the runtime queries for |
+| `prefetch` | `data-jh-prefetch="0"` | only when `false` |
+| `replace` | `data-jh-replace="1"` | only when `true` |
+| `scroll` | `data-jh-scroll="0"` | only when `false` |
 | `target` | `target="…"` | only when non-empty |
 | `className` | `class="…"` | only when non-empty |
 
 ```text
 renderToString(Link(linkProps("/about"), [text("About", attrs: [])]))
-  == "<a href=\"/about\" data-onze-l=\"1\">About</a>"
+  == "<a href=\"/about\" data-jh-l=\"1\">About</a>"
 ```
 
-`data-onze-` is the milestone's marker family; this front owns the link markers
+`data-jh-` is the milestone's marker family; this front owns the link markers
 inside it and adds no other vocabulary.
 
 ### The prefetch decision
@@ -867,10 +898,10 @@ and one hook are missing, all of them blocked on fronts that have not started:
 
 | Missing | Needs |
 |---|---|
-| `__onzeLinkMount()` — delegated click interception + an intersection observer over `[data-onze-l]` | front 68's generated client bundle (the module the cell binds to), which calls it once after hydrating the islands |
-| `__onzeLinkPrefetch(href, mode)` — warms the client route cache | the same bundle |
-| `__onzeLinkStatus() -> string` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__onzeLinkStatus());` |
-| `__onzeLinkRouteKind(href) -> string` | **front 60**'s route-kind table, emitted into that bundle |
+| `__jhLinkMount()` — delegated click interception + an intersection observer over `[data-jh-l]` | front 68's generated client bundle (the module the cell binds to), which calls it once after hydrating the islands |
+| `__jhLinkPrefetch(href, mode)` — warms the client route cache | the same bundle |
+| `__jhLinkStatus() -> string` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__jhLinkStatus());` |
+| `__jhLinkRouteKind(href) -> string` | **front 60**'s route-kind table, emitted into that bundle |
 | `reconcile(current, target)` — the transition driver | front 68's DOM primitives (mount/unmount), plus front 60's flag for whether the target payload had to be fetched |
 
 Two measurements make stubbing them the wrong move rather than a shortcut:
@@ -910,7 +941,7 @@ component** (here), and **front 68 walks the module graph** (not here).
 pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
     return button([text(c.value.toString() + " likes", attrs: [])], attrs: [
-        #("data-onze-on-click", "LikeButton:like"),
+        #("data-jh-on-click", "LikeButton:like"),
     ]);
 }
 ```
@@ -976,17 +1007,17 @@ in render order, and front 68 can walk it.
 | Function | Shape |
 |---|---|
 | `islandId(ordinal)` | `0` → `"i0"` — what an ordinal is written as |
-| `islandAttrOf(id)` | `#("data-onze-i", id)` — **the only occurrence of the attribute name in this tree** |
-| `islandAttr(ordinal)` | `0` → `#("data-onze-i", "i0")` — decision 77's export |
+| `islandAttrOf(id)` | `#("data-jh-i", id)` — **the only occurrence of the attribute name in this tree** |
+| `islandAttr(ordinal)` | `0` → `#("data-jh-i", "i0")` — decision 77's export |
 | `Island(id, component, props)` | one island; `props` is `Array<#(string, string)>` |
-| `clientMount(island, children)` | the placeholder: `<div data-onze-i="i0">…children…</div>` |
+| `clientMount(island, children)` | the placeholder: `<div data-jh-i="i0">…children…</div>` |
 | `islandEntry(island)` | the payload row `#(id, component, "k=v&k=v")` |
 | `propsOf(raw)` | the inverse decode; `propsOf("")` is `[]` |
 
 ```text
 renderToString(clientMount(Island(id: "i0", component: "Counter",
                                   props: [#("start", "3")]), []))
-  == "<div data-onze-i=\"i0\"></div>"
+  == "<div data-jh-i=\"i0\"></div>"
 
 islandEntry(Island(id: "i0", component: "Counter", props: [#("start", "3")]))
   == #("i0", "Counter", "start=3")
@@ -1001,12 +1032,10 @@ a bare function name used as a value lowers to an unbound erlang variable, and
 the field must then be read into a local before it is called (`val f =
 hooks.islandAttr; f(0)`).
 
-The encoder is front 26's `encodePairs`, not `std/querystring.stringify`: that
-module is dead on the erlang row, which is why front 26 spelled the codec in
-`router.bp` in the first place. It does **not** percent-encode, so a prop value
-containing `&` or `=` does not round-trip — front 26's codec to widen, not a
-second answer to grow here. Nothing about the payload is escaped or built here;
-front 23 collects the rows and escapes the script.
+The encoder is std's `encoding.formStringify` (decision 116 rule 4), so a prop
+value containing `&`, `=` or a space round-trips; `propsOf` decodes with
+`encoding.formParse`. Nothing about the payload is escaped or built here; front
+30's render collects the rows and escapes the script.
 
 ### The hole — `serverSlot`
 
@@ -1014,17 +1043,17 @@ A client component may wrap server-rendered children: the Context Provider
 pattern puts a `'use client'` provider in the root layout with the entire server
 tree inside it. The provider is client code; its children are not.
 
-So the payload has a **hole**: inside `data-onze-i`, the subtree is server markup
+So the payload has a **hole**: inside `data-jh-i`, the subtree is server markup
 the client must adopt as-is and must not re-render — re-rendering it would need
 the server's data and the server's secrets. jhonstart marks the hole explicitly.
 
 ```text
-renderToString(serverSlot([])) == "<div data-onze-s=\"1\"></div>"
+renderToString(serverSlot([])) == "<div data-jh-s=\"1\"></div>"
 ```
 
 Three rules follow, and **front 68** enforces all three:
 
-1. a `data-onze-s` subtree is adopted by the client reconciler, never
+1. a `data-jh-s` subtree is adopted by the client reconciler, never
    reconstructed;
 2. a server component may be a *child* of a client component and never a *prop*
    of one — which is why `Element` is off the whitelist;
@@ -1085,8 +1114,8 @@ All three are module-**graph** predicates and there is no graph here.
 
 | Missing | Needs |
 |---|---|
-| `hydrate()` — walks every `[data-onze-i]`, decodes that island's props from the payload's `i` row and starts the component | front 68's generated module `jhonstart/client-runtime`, which the cell would bind to. It is the **per-island** hydrate point, not the bundle entry: front 68 generates the entry, which calls `hydrate()` and then front 27's link mount and front 67's form mount once each |
-| `__onzeClientPropsRaw(name)` and the `propsFor(name)` wrapper over it | the same module. `propsFor` is then `return propsOf(__onzeClientPropsRaw(name));` and nothing else moves |
+| `hydrate()` — walks every `[data-jh-i]`, decodes that island's props from the payload's `i` row and starts the component | front 68's generated module `jhonstart/client-runtime`, which the cell would bind to. It is the **per-island** hydrate point, not the bundle entry: front 68 generates the entry, which calls `hydrate()` and then front 27's link mount and front 67's form mount once each |
+| `__jhClientPropsRaw(name)` and the `propsFor(name)` wrapper over it | the same module. `propsFor` is then `return propsOf(__jhClientPropsRaw(name));` and nothing else moves |
 | every "may not" rule above | front 68's walk over the client module graph |
 
 Neither cell is declared and neither is stubbed, for the two measurements
@@ -1098,6 +1127,273 @@ Neither cell is declared and neither is stubbed, for the two measurements
 2. a **declared and never called** node-only cell is fine, but the module it
    names does not exist, so the declaration would emit a `require` of a file
    nobody writes — silently at build time, loudly at run time.
+
+## Render and streaming (`render.bp`, `streaming.bp`, `suspense.bp`, `plugin.bp`, `globals.bp`, `routes.bp`) — compiled
+
+Front 30. jhonstart writes the HTML (decision 113): the escaping walker, the
+document, the payload, the streamed fills and the navigation-signal
+translation are here, and rakun / onze hand values in.
+
+### The walker
+
+`renderNode(e)` is what every path renders through — never `renderToString`:
+`#text` through std's `escape.html`, every attribute value through
+`escape.attribute`, a void tag (front 94's `isVoidTag`) with no closing tag,
+`script` / `style` (front 94's `isRawTextTag`) verbatim — a body holding
+`</script` / `</style` in any case **fails the render**, never escaped — and
+`raw(html)`, the one element written verbatim. `shellHtml(page)` is the page
+with every boundary showing its fallback.
+
+### Boundaries and fills
+
+```bp
+pub type Boundary(id: string, fallback: Element, child: fn() -> @Component<ElementBase, Element>)
+pub fn Suspense(b: Boundary) -> Element      // <div data-jh-h="h1">fallback</div>
+pub fn holeId(index: i32) -> string          // "h1"
+pub fn resolve(b: Boundary) -> @Task<Chunk>  // awaits the child once
+pub fn fillHtml(c: Chunk, css: string) -> string
+//   <template data-jh-f="h1">css…markup…</template><script>__bp1("h1")</script>
+```
+
+The child is an **unstarted thunk**: `@Task` is eager on erlang, so a started
+Task would already have run. `Suspense` registers the boundary with the render
+(an `Element` has nowhere to carry the thunk). `renderStream` hands each
+boundary's thunk to its own process and writes the fills in **completion**
+order as they report; `render` resolves them all first and writes one
+document. On erlang the render's request and route are re-entered in each
+boundary's process, and the plugins' `chunk(id)` runs there too, so a
+per-process stylesheet sees what the boundary registered.
+
+### `compose`, the UI conventions and `UiSegment`
+
+`compose(chain, route, page)` wraps the page per segment, root-first:
+`layout > template > error > loading > not-found > page`. Layouts **run
+first** (each with a placeholder child, substituted afterwards), so a layout's
+`redirect` means the page never runs. Each layout gets its `selected` depth
+through the route snapshot; a template wrapper carries
+`data-jh-t="<pattern>#<n>"`, fresh per render; `error` catches below it,
+`loading` makes everything below it a streamed boundary, `not-found` wraps
+below it in `data-jh-n` and is the tree a not-found signal renders.
+
+`UiSegment` is one segment's conventions (`segment(pattern)` +
+`withLayout`/`withTemplate`/`withError`/`withLoading`/`withNotFound`, or
+`segmentFor(pattern)` from the registry). It is not `Segment`: that name is
+the bundled `routing`'s, and a consumer's flat `import {Segment} from
+"jhonstart"` would be ambiguous.
+
+| File in `app/` | Marker | Signature it accepts |
+|---|---|---|
+| `layout.bp` | `#[layout(seg)]` | `fn(props: LayoutProps) -> @Component<ElementBase, Element>` |
+| `template.bp` | `#[template(seg)]` | `fn(props: LayoutProps) -> @Component<ElementBase, Element>` |
+| `page.bp` | `#[page(seg)]` | `fn(route: PageContext) -> @Component<ElementBase, Element>` (+ `<name>Params(route)`) |
+| `default.bp` | `#[defaultView(seg)]` | `fn(props: LayoutProps) -> Element` |
+
+`#[page]`, `#[layout]` and `#[template]` refuse any other return, naming the
+function and the form it needs. The application site imports what a marker
+emits (`jhPage`, `jhLayout`, `jhTemplate`, `jhDefault`, `PageContext`,
+`ctxParam`, `ctxRest`). `uiTable()` answers the registry as contract-1 lines;
+onze copies it into rakun's table.
+
+### The response and the two entries
+
+```bp
+pub type Response(status: fn(code: i32) -> void, header: fn(name: string, value: string) -> void,
+                  write: fn(chunk: string) -> @Task<void>, close: fn() -> @Task<void>)
+pub type PageInput(build, pathname, pattern, params, query, table, actions,
+                   chain: Array<UiSegment>, page: fn() -> @Component<ElementBase, Element>,
+                   metadata: Array<Metadata>, viewports: Array<Viewport>)
+pub fn app(plugins: Array<RenderPlugin>, allowedRedirects: string[] = []) -> App
+site.render(input, req, res) -> @Task<@Result<void, string>>
+site.renderStream(input, req, res) -> @Task<@Result<void, string>>
+```
+
+The render enters `req` (front 28) and leaves it, writes `status(200)` and the
+content type before its first `write`, and calls `close()` exactly once on
+every path; `status` / `header` after the first write fail the render. It
+answers `Ok` for a closed response — normal or signalled — and `Error(message)`
+for a failed render. `metadata` / `viewports` are the segments' resolved
+exports, merged root-first (front 32).
+
+| A signal raised | The render writes |
+|---|---|
+| `redirect(to)` before the first chunk | `status(307)`, `header("location", to)`, `close()` |
+| `notFound()` before the first chunk | `status(404)`, a document whose body is the nearest not-found boundary |
+| either, after the first chunk | `<template data-jh-g="redirect" data-jh-to="…">` / `<template data-jh-g="not-found">…` + `<script>__bp2()</script>` as the last chunk; status stays 200 |
+
+A redirect target is checked the same way everywhere: a relative target must be
+matched by `routing`'s `matchPath` in `PageInput.table`, an absolute one listed
+in `app(allowedRedirects: […])` (empty by default); anything else fails the
+render with no status, no `location` and no markup.
+
+### The payload and the globals
+
+One `<script>window.__bp0 = {…}</script>`, last in `<body>` before
+`RenderHooks.bodyExtra`: keys `v` (1), `b`, `p`, `r`, `m`, `q`, `t`, `i`, `a`,
+`h`, `d`, then each plugin's key. Written with std's `json.quote` /
+`json.array` / `json.object` and passed through `escape.scriptJson`, so
+`</script` cannot appear in it. Island ids are `i0`, `i1`, … in render order
+(`mountIsland`, through front 29's `islandEntry`).
+
+The three browser globals are aliases from `globals.bp`'s registry —
+`globals().payload == "__bp0"`, `.fill == "__bp1"`, `.signal == "__bp2"` — and
+no other file spells them. `readPayload(name)` decodes the payload text with
+std's `json.decode`; `registerFill` / `registerSignal` install `render.mjs`'s
+fill and signal functions (called only by onze front 68's entry).
+
+### `RenderPlugin`
+
+```bp
+pub type RenderPlugin(name: string, head: fn() -> @Task<string>, chunk: fn(holeId: string) -> @Task<string>,
+                      close: fn() -> @Task<@Result<void, string>>, payload: fn() -> @Task<Array<#(string, Json)>>)
+```
+
+A record of async functions (an array of two different behavior implementors
+does not type). `head` once, into `<head>`; `chunk(id)` per streamed boundary,
+first inside its fill; `close` at the end — an `Error` fails the render;
+`payload` once, last — a render key or a key two plugins give fails the render,
+naming them. The `jhonstart-emilia` member is the one plugin in this workspace.
+
+## Forms (`jhonstart-forms`) — compiled
+
+Front 67, `import {…} from "jhonstart-forms"`. A form is bound to front 24's
+action id (a string — this front echoes it and never constructs one) and its
+markup is contract 3's exactly, so it submits before the bundle arrives:
+
+```bp
+val binding = formAction("a_9f2c1b7e", "/blog/new", actionField);
+actionForm(binding, [input([], attrs: [#("name", "title")]), button([text("Save", attrs: [])], attrs: [])])
+// <form method="post" action="/blog/new" data-jh-a="a_9f2c1b7e"><input type="hidden" name="<actionField>" value="a_9f2c1b7e">…
+```
+
+| Function | What |
+|---|---|
+| `formAction(id, pathname, actionField)` · `formAttrs` · `hiddenActionField` · `actionForm` | the binding and contract 3's markup; an id not starting with `a_`, or holding `/`, a space or a quote, is refused |
+| `submitForm(binding, fields)` · `invokeAction(id, args, actionHeader)` | the POST / the JSON-RPC call; the answer read by `actions`' `parseActionState`; a redirect in `n` is the router's `push`; `ok: false` is DATA, returned as the state |
+| `formMount(actionHeader)` | one delegated submit listener over `[data-jh-a]`, called once by onze front 68's entry |
+| `actionState(id, initial)` | the hook — `#(state, binding, pending)`, read positionally; server pass: `initial`, `false` |
+| `formStatus()` · `formStatusOf(id)` | idle on the server pass and outside any form, never an error |
+| `optimistic(base, apply)` · `applyOptimistic(base, actions, apply)` | server pass `#(base, no-op)`; the fold is pure |
+| `searchFormProps` · `searchFormAttrs` · `searchHref` · `prefetchSearch` | § 25's GET `<Form>`: `method="get"`, `data-jh-sf="1"`, never `data-jh-a` |
+| `setWireNames(actionField, actionHeader)` | onze installs the two wire names once; this member spells neither |
+
+`formStatus` and `optimistic` are specified from upstream React
+(<https://react.dev/reference/react-dom/hooks/useFormStatus>,
+<https://react.dev/reference/react/useOptimistic>), not from `NEXTJS-DOCS.md`,
+which does not carry them.
+
+## Error boundaries (`error_boundary.bp`) — compiled
+
+Front 31. A boundary is a recovery point: its child is a **thunk** answering
+`@Result<Element, string>`, and the boundary is a `case` over what it answered.
+
+```bp
+pub type ErrorInfo(message: string, digest: string)
+pub type ErrorBoundary(id: string, fallback: fn(info: ErrorInfo) -> Element,
+                       child: fn() -> @Result<Element, string>)
+
+pub fn renderBoundary(b: ErrorBoundary) -> Element                        // re-raises a signal
+pub fn renderBoundaryChecked(b: ErrorBoundary) -> @Result<Element, string> // Error(reason) for a signal
+pub fn catchError(id, fallback, child) -> ErrorBoundary                   // the constructor, readably
+pub fn infoFor(message) -> ErrorInfo        // message "" + digest — what a fallback renders
+pub fn serverInfoFor(message) -> ErrorInfo  // message + the same digest — the logger's only
+pub fn digestOf(message) -> string          // std's hash.contentHash
+pub fn wrap(id, tree) -> Element            // <div data-jh-e="ID">…</div>
+pub fn resetAttr(id) -> #(string, string)   // #("data-jh-reset", ID)
+pub fn notFound() -> string                 // raises nav:not-found
+pub fn redirect(url) -> string              // raises nav:redirect:<url>
+pub fn isSignal(message) -> bool            // routing's isSignalReason
+```
+
+The thunk is called **exactly once**, through the one host cell that turns a
+raise into a value (`__jhCapture`, `signal_runtime.mjs` /
+`sidecars/jhonstart_signal.erl`): a returned `Error`, a thrown one and a
+component that crashed all reach the fallback. No client-visible `ErrorInfo`
+ever carries a message — the digest is what the reader reports and what the log
+line carries.
+
+**Signals are not errors.** `notFound()` and `redirect(url)` raise the `nav:`
+reasons of `contracts.md § 5b`, spelled by `routing`'s `navigation` (this file
+writes no `nav:` literal). A page, layout or template writes the call
+(`notFound();`) — a `@Component` body cannot `throw` — and a `@Result` thunk may
+write `throw notFound();`; both raise. A boundary re-raises a signal instead of
+rendering a fallback; front 30's render turns it into a 404 / 307 before the
+first chunk and `data-jh-g` markup after it, and front 26's `clientApp` does the
+same in the browser.
+
+| File | Exports | Rendered when | Owns its document? |
+|---|---|---|---|
+| `error.bp` | `pub fn ErrorPage(info: ErrorInfo) -> Element` | the segment's subtree answers `Error(…)` | no |
+| `not-found.bp` | `pub fn NotFound() -> Element` | a not-found signal reaches the segment | no |
+| `global-error.bp` | `pub fn GlobalError(info: ErrorInfo) -> Element` | the root segment fails, or no other boundary caught | **yes** — `htmlTag` and `body`, front 94's |
+
+`ErrorPage`, never `Error`: `Error(error: E)` is the `@Result` variant, and a
+module-level `pub fn Error` would shadow it in every `case` arm of the file.
+
+The browser rules (fronts 29 and 68 implement them):
+
+1. A `[data-jh-e="ID"]` element is the catch target — a client component that
+   throws during render is replaced by the nearest one's fallback, from the
+   same `ErrorInfo` shape.
+2. **Event-handler errors are not caught**: a handler is a `data-jh-on-click`
+   attribute, outside the `@Result` channel by construction.
+3. **`startTransition` errors are caught**: front 68's runtime routes the
+   failure to the nearest `data-jh-e`, with a digest computed the same way.
+
+`data-jh-reset="ID"` is the fallback's reset control — inert in the server HTML,
+bound at hydration to front 26's `refresh()`. An action envelope with
+`ok: false` is **data**, handled by front 67's form state, and never reaches a
+boundary; a boundary sees an action only when the POST itself raised.
+
+## Metadata (`metadata.bp`) — compiled
+
+Front 32. Metadata is the one part of a page **composed** down the layout chain
+rather than nested: each segment declares a `Metadata`, and front 30's render
+merges them root-first and splices `renderHead` into `<head>`.
+
+```bp
+pub type Metadata(title, titleTemplate, description, openGraph: OpenGraph, twitter: TwitterCard, icons: Icons)
+pub type OpenGraph(title, description, url, ogType, siteName, images: string[])
+pub type TwitterCard(card, title, description, images: string[])
+pub type Icons(icon, apple)
+pub type Viewport(width, initialScale, themeColor)
+
+pub fn emptyMetadata() -> Metadata        // also emptyOpenGraph / emptyTwitter / emptyIcons / emptyViewport
+pub fn mergeMetadata(parent, child) -> Metadata
+pub fn mergeViewport(parent, child) -> Viewport
+pub fn renderHead(m: Metadata) -> string  // one tag per line, fixed order, escaped
+pub fn renderViewport(v: Viewport) -> string
+pub fn pick / pickList / applyTemplate
+```
+
+No field is optional: an absent string is `""`, an absent list `[]`, and a
+`""` field emits no tag. Every value goes through std's `escape.html` (the
+`<title>` text) or `escape.attribute` (every `content` / `href`).
+
+**The export contract front 30 resolves against:**
+
+| Segment export | Kind | Front 30 does |
+|---|---|---|
+| `metadata()` | static — a zero-argument `pub fn`, not a `pub val` | calls it, merges onto the parent's |
+| `generateMetadata(params, parent)` | `-> @Task<Metadata>` | awaits it, merges onto the parent's |
+| both present | error | fails the build with a located message |
+| `viewport()` / `generateViewport(params)` | as above | merged independently of `Metadata` |
+
+**The merge rule:**
+
+| Field kind | Rule | Example |
+|---|---|---|
+| string | a non-empty child replaces; an empty child inherits | child `title: ""` keeps the parent's title |
+| array | a non-empty child replaces **wholesale**; an empty child inherits | one `og:image` on the page replaces the layout's three |
+| nested record | merged field by field, by the same two rules | `openGraph.title` from the page, `openGraph.siteName` from the layout |
+| `titleTemplate` | applied by the parent to the **child's** title, once; the result carries the child's template | `"%s \| botopink"` + `"Hello"` → `"Hello \| botopink"` |
+
+The head's order: `<title>`, `description`, `og:title`, `og:description`,
+`og:url`, `og:type`, `og:site_name`, one `og:image` per image, `twitter:card`,
+`twitter:title`, `twitter:description`, one `twitter:image` per image, the
+`icon` link, the `apple-touch-icon` link. `sitemap`, `robots`, `manifest` and
+`opengraph-image` are file routes — rakun front 66's; the image and icon paths
+reach `Metadata` as data onze copies in, and their convention is written in
+front 66's README.
 
 ## App layer (Next-style) — declared, host-bound
 
@@ -1143,8 +1439,8 @@ Neither cell is declared and neither is stubbed, for the two measurements
     `src/link.bp`, compiled and pure — see *Client navigation*;
   - the **browser half** of client navigation. `link.bp` and `reconcile.bp`
     ship the render-time half; the four `#[@External.Node]` cells
-    (`__onzeLinkMount`, `__onzeLinkPrefetch`, `__onzeLinkStatus`,
-    `__onzeLinkRouteKind`), the `linkStatus()` hook and the transition driver
+    (`__jhLinkMount`, `__jhLinkPrefetch`, `__jhLinkStatus`,
+    `__jhLinkRouteKind`), the `linkStatus()` hook and the transition driver
     `reconcile(current, target)` wait on front 68's generated bundle and front
     60's route-kind table, and are not stubbed;
   - the **build-time half** of the client boundary. `client.bp` ships the

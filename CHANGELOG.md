@@ -2,6 +2,47 @@
 
 ## Unreleased
 
+- **Front 67 — forms**, the new member `modules/jhonstart-forms` (additive):
+  contract 3's form markup (`formAttrs`, `hiddenActionField`), the transport
+  (`submitForm`, `invokeAction`, `formMount`) over six dual-target cells, the
+  `actionState` / `formStatus` / `optimistic` hooks with their quiet server
+  pass, `applyOptimistic`, and the GET search form. `ActionState`,
+  `parseActionState` and `writeRpcBody` are imported from the bundled
+  `actions`; the wire names come from onze through `setWireNames`. 15/15 on
+  both rows.
+
+- **Front 29 Step 4 — the hydrate point.** `hydrate()` (idempotent: walks
+  `[data-jh-i]`, starts each island's registered component with its payload
+  row, binds `[data-jh-reset]`) and `propsFor(name)` over two dual-target cells
+  (`island_runtime.mjs`, `sidecars/jhonstart_island.erl`). The core's `files`
+  list moves `globals.bp` before `client.bp`, which now imports it. Core
+  185 → 187 on both rows.
+
+- **Front 27 Step 4 — the link's browser half** (`jhonstart-link`):
+  `linkMount()` (one delegated click listener + a viewport prefetcher,
+  idempotent), `linkPrefetch`, `linkRouteKind` and the `linkStatus()` hook
+  over four dual-target cells (`link_runtime.mjs`, `sidecars/jhonstart_link.erl`
+  answering the server's idle truth). `jhonstart-link` 35 → 38 on both rows.
+
+- **Front 26 Step 6 — `clientApp`** (`client_app.bp`, decision 117): a
+  client-only app matches the location with `routing`, composes the matched
+  chain through front 30's `compose` and writes it into `mount`; `notFound` /
+  `redirect` are handled in the browser as the server render handles them,
+  with the same target check. Core 181 → 185 on both rows.
+
+- **Front 30 — render and streaming.** `render.bp` (the escaping walker over
+  std's `escape`, `compose`, the payload through std's `json` and
+  `escape.scriptJson`, `RenderHooks`), `streaming.bp` (`resolve` / `fillHtml`,
+  `Response` and its guard, `App.render` / `renderStream` →
+  `@Task<@Result<void, string>>`, navigation signals before and after the first
+  chunk, the redirect-target check), `suspense.bp`, `plugin.bp`, `globals.bp`,
+  `routes.bp` (`#[page]` / `#[layout]` / `#[template]` / `#[defaultView]`,
+  `uiTable()`, `UiSegment`) with their host halves, and the new member
+  `modules/jhonstart-emilia` (the bridge — additive). The core's `files` list
+  is now in DEPENDENCY order: a dependent loads the modules in that order, and
+  a module listed before one it imports is `unbound` there. Core 128 → 180 on
+  both rows; `jhonstart-emilia` 6/6 on both.
+
 - **Front 95 — the package cut: `jhonstart-link` member.** Front 27's
   render-time half — `link.bp` and `reconcile.bp`, with `link_test.bp` and
   `reconcile_test.bp` — moves out of the core into `modules/jhonstart-link/`
@@ -11,6 +52,44 @@
   sibling import of `link`. Nothing in the core imported either module. The
   member inherits `[commonJS, erlang]` (the code is pure). The core reads 85/85
   on both rows where it read 120, the member 35/35 on both rows.
+
+- **Front 32 — metadata** (`metadata.bp`). `Metadata` / `OpenGraph` /
+  `TwitterCard` / `Icons` and a separate `Viewport`, the merge rule (strings
+  replace when non-empty, lists wholesale, records field by field, the
+  parent's `titleTemplate` applied once to the child's title), and
+  `renderHead` / `renderViewport` writing one tag per line in a fixed order
+  through std's `escape`. Core 147 → 163 on both rows.
+
+- **Front 31 — error boundaries** (`error_boundary.bp`). A boundary's child is a
+  `@Result` thunk called exactly once through `__jhCapture`, the one host cell
+  that turns a raise into a value (`signal_runtime.mjs` /
+  `sidecars/jhonstart_signal.erl`); an ordinary failure renders the fallback
+  with a message-free `ErrorInfo` whose digest is std's `contentHash`, a
+  signal is re-raised (`renderBoundary`) or answered `Error(reason)`
+  (`renderBoundaryChecked`). `notFound()` / `redirect(url)` raise `routing`'s
+  `nav:` reasons. `root.bp` and `files` now list the modules in front-number order
+  (26, 28, 29, 31, then 94's `elements` last — front 94's rule). Core 128 → 147 on both
+  rows.
+
+- **Fronts 27 and 29 — decision 113's spellings.** Every marker jhonstart
+  writes carries the `data-jh-` prefix: the link's `data-jh-l` /
+  `data-jh-prefetch` / `data-jh-replace` / `data-jh-scroll`, the island's
+  `data-jh-i`, the hole's `data-jh-s`, the handler's `data-jh-on-click`; the
+  browser cells front 68 brings are named `__jhLink*` / `__jhClientPropsRaw`.
+  No `data-onze-` string is left under `modules/*/src/`. One new cell: a
+  `#[client]` on a plain `-> Element` component. Core 127 → 128 on both rows.
+
+- **Fronts 26 and 28 — decisions 115 and 116 in landed code.** The package's
+  stand-in pair codec (`decodePairs` / `encodePairs`, which did not
+  percent-decode) is deleted: the route snapshot, the request and an island's
+  props use std's `encoding.formParse` / `formStringify`, so `q=a%20b` reads
+  `a b` on both rows. `refresh()` carries `actions`' `refreshValue()`;
+  `navigationFor` / `applySignal` read an envelope's `n` with `routing`'s
+  `signalFromWire`; `resolveRoute(table, path, search)` rebuilds the snapshot
+  with `routing`'s `parseTable` / `matchPath`. The request's writer is the pair
+  `enterRequest(req)` / `leaveRequest()` (was `fillRequest(…six strings…)`),
+  and a `request()` / `cookies()` / `headers()` read outside them raises.
+  Core 120 → 127 on commonJS and erlang.
 
 - **Front 24 — effects by return type** (botopink decisions 118–128). The
   return type is the effect and the `#[@use]` / `#[@future]` annotations leave:
