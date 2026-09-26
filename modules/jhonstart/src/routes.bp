@@ -166,9 +166,11 @@ pub fn ctxRest(route: PageContext) -> string[] {
 
 // ── the four markers ────────────────────────────────────────────────────────
 //
-// `decl.returnType` carries no type argument: `-> @Component<ElementBase,
-// Element>` reflects as `"Component"`, `-> @Task<Element>` as `"Task"`,
-// `-> Element` as `"Element"`. The required spelling is in the message.
+// `decl.returnType` is the return type as the source spells it:
+// `-> @Component<ElementBase, Element>` reflects as
+// `"@Component<ElementBase, Element>"`, `-> @Task<Element>` as
+// `"@Task<Element>"`, `-> Element` as `"Element"`. The required spelling is in
+// the message.
 
 pub fn page(comptime decl: @Decl, seg: string) {
     @emit("val __jhPage_" + decl.name + " = jhPage(\"" + seg + "\", { route -> " + decl.name + "(route) });");
@@ -188,19 +190,19 @@ pub fn page(comptime decl: @Decl, seg: string) {
     });
     @emit("pub fn " + decl.name + "Params(route: PageContext) -> #(" + sigs.join(", ") + ") { " + lets.join(" ") + " return #(" + fields.join(", ") + "); }");
     if (decl.kind != DeclKind.Fn) decl.fail("#[page] must annotate a function");
-    if (decl.returnType != "Component") decl.fail("#[page] on `" + decl.name + "`: a page is `fn " + decl.name + "(route: PageContext) -> @Component<ElementBase, Element>`, not `" + decl.returnType + "`");
+    if (decl.returnType != "@Component<ElementBase, Element>") decl.fail("#[page] on `" + decl.name + "`: a page is `fn " + decl.name + "(route: PageContext) -> @Component<ElementBase, Element>`, not `" + decl.returnType + "`");
 }
 
 pub fn layout(comptime decl: @Decl, seg: string) {
     @emit("val __jhLayout_" + decl.name + " = jhLayout(\"" + seg + "\", { props -> " + decl.name + "(props) });");
     if (decl.kind != DeclKind.Fn) decl.fail("#[layout] must annotate a function");
-    if (decl.returnType != "Component") decl.fail("#[layout] on `" + decl.name + "`: a layout is `fn " + decl.name + "(props: LayoutProps) -> @Component<ElementBase, Element>`, not `" + decl.returnType + "`");
+    if (decl.returnType != "@Component<ElementBase, Element>") decl.fail("#[layout] on `" + decl.name + "`: a layout is `fn " + decl.name + "(props: LayoutProps) -> @Component<ElementBase, Element>`, not `" + decl.returnType + "`");
 }
 
 pub fn template(comptime decl: @Decl, seg: string) {
     @emit("val __jhTemplate_" + decl.name + " = jhTemplate(\"" + seg + "\", { props -> " + decl.name + "(props) });");
     if (decl.kind != DeclKind.Fn) decl.fail("#[template] must annotate a function");
-    if (decl.returnType != "Component") decl.fail("#[template] on `" + decl.name + "`: a template is `fn " + decl.name + "(props: LayoutProps) -> @Component<ElementBase, Element>`, not `" + decl.returnType + "`");
+    if (decl.returnType != "@Component<ElementBase, Element>") decl.fail("#[template] on `" + decl.name + "`: a template is `fn " + decl.name + "(props: LayoutProps) -> @Component<ElementBase, Element>`, not `" + decl.returnType + "`");
 }
 
 pub fn defaultView(comptime decl: @Decl, seg: string) {

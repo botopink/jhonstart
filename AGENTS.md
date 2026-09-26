@@ -605,8 +605,9 @@ server pass exactly as it renders in the browser.
 
 **What is enforced today** — four comptime refusals, no flag that turns them off
 (decision 67), each located at the annotation: `#[client]` on a non-`fn`;
-`#[client]` on a fn whose reflected `returnType` is not `Element` (a
-`-> @Task<Element>` server component reflects as `"Task"`); `#[clientProps]` on an
+`#[client]` on a fn whose reflected `returnType` is not `Element` or
+`@Component<ElementBase, Element>` (a `-> @Task<Element>` server component
+reflects as `"@Task<Element>"`); `#[clientProps]` on an
 enum; a field outside the four-scalar whitelist.
 
 **What is NOT enforced by anything in this tree**, and it is the front's whole
@@ -625,25 +626,12 @@ is written into an island's props, and nothing here notices.
 
 ### The whitelist is four names, not the spec's six
 
-`Field.typeName` cannot express `string[]` or `i32[]`. Measured against compiler
-`2e6bb4ac` over one record carrying a field of each shape:
-
-```text
-a: string -> "string"   e: Array<string>            -> "Array"
-b: i32    -> "i32"      f: string[]                 -> ""
-c: f64    -> "f64"      g: Array<i32>               -> "Array"
-d: bool   -> "bool"     h: Element                  -> "Element"
-                        i: fn(x: i32) -> i32        -> ""
-                        j: #(string, string)        -> ""
-                        k: Array<#(string, string)> -> "Array"
-```
-
-The element type is ERASED, so `Array<string>` and `Array<Element>` are the same
-string; admitting `"Array"` would admit an array of `Element`s through a check
-whose whole purpose is to refuse exactly that. The refusal wins — no array
-crosses today, an array-valued prop is spelled as an encoded `string`, and the
-front's first § Language gaps row widens from "no parameters on `Decl`" to "no
-ELEMENT TYPE on `Field`".
+The spec's `string[]` and `i32[]` were left out while `Field.typeName` erased an
+array's element type (`Array<string>` and `Array<Element>` both reflected as
+`"Array"`, `string[]` as `""`). `@Decl` now spells every type as the source
+writes it (`Array<string>`, `string[]`, `fn(i32) -> i32`), so the widening is
+this front's to make; until it lands an array-valued prop is an encoded
+`string`, and a refused field's message names its spelled type.
 
 ### What front 68 has to bring, and why none of it is stubbed here
 

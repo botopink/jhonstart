@@ -960,8 +960,8 @@ information; front 68 reads the set of `__jhClient_*` names off the graph.
 `#[client]` is a decorator and the `@Component<ElementBase, Element>` return is
 the effect (decisions 118/128), so the two coexist on one component. A **server**
 component that only loads data is `fn … -> @Task<Element>` and cannot be marked
-client: its reflected `returnType` is `"Task"`, which the second check below
-rejects.
+client: its reflected `returnType` is `"@Task<Element>"`, which the second check
+below rejects.
 
 Applying it requires importing it — `import { client, clientProps } from
 "jhonstart";` — and **`botopink check` cannot see the emitted name**: `check`
@@ -986,14 +986,11 @@ refused rather than guessed at, with a message located at the declaration.
 `Element` is not on it — a client component receives server-rendered children as
 *children*, never as a prop.
 
-**It is four names and not the six the front specified,** and that is a
-deliberate tightening. `Field.typeName` cannot express `string[]` or `i32[]`:
-measured against compiler `2e6bb4ac`, `Array<string>` and `Array<Element>` both
-reflect as `"Array"` (the element type is erased) and `string[]`, a function
-type and a tuple type all reflect as `""`. Admitting `"Array"` would admit an
-array of `Element`s through a check whose whole purpose is to refuse exactly
-that. So no array crosses today; an array-valued prop is spelled as an encoded
-`string` until reflection can name its element type.
+**It is four names and not the six the front specified.** `string[]` and
+`i32[]` were left out while `Field.typeName` erased an array's element type;
+reflection now spells every type as the source writes it, and admitting the two
+array spellings is front 29's to do. Until then an array-valued prop is spelled
+as an encoded `string`.
 
 ### The island — and the one place its marker is spelled
 

@@ -22,7 +22,8 @@
 //   1. `#[client]` on anything but a `fn` — refused, located at the annotation.
 //   2. `#[client]` on a fn whose return type is not `Element` — refused. A
 //      server component that only loads data is `fn … -> @Task<Element>`,
-//      whose reflected `returnType` is `"Task"`, so it cannot be marked client.
+//      whose reflected `returnType` is `"@Task<Element>"`, so it cannot be
+//      marked client.
 //   3. `#[clientProps]` on anything but a record — refused (an enum-shaped
 //      `type` has `variants`, a `fn` is not `DeclKind.Type`).
 //   4. A field of a `#[clientProps]` record whose type is not one of the four
@@ -89,12 +90,10 @@ import {globals} from "globals";
 // lowered ALONE into the eval script), and a `//` comment inside it breaks the
 // emitted line. So every predicate below is inlined and the body is bare.
 //
-// `decl.returnType` is the NAME of the return type, not its spelling: measured
-// against `2e6bb4ac`, a `fn … -> Element` reflects as `"Element"` and a
-// data-loading server component reflects as its wrapper's name — `"Future"`
-// then, `"Task"` for `fn … -> @Task<Element>` since front 24. That is what
-// makes check 2 reject a server component — and it is also why the message
-// says "returning Element" rather than quoting what was found.
+// `decl.returnType` is the return type as the source spells it: a
+// `fn … -> Element` reflects as `"Element"`, a component as
+// `"@Component<ElementBase, Element>"`, and a data-loading server component as
+// `"@Task<Element>"`. That is what makes check 2 reject a server component.
 //
 // `botopink check` skips decorator invocation entirely, so `__jhClient_<Name>`
 // reads as an UNBOUND NAME under `check`. The gate is `botopink test`, never
@@ -102,7 +101,7 @@ import {globals} from "globals";
 pub fn client(comptime decl: @Decl) {
     @emit("pub fn __jhClient_" + decl.name + "() -> string { return \"" + decl.name + "\"; }");
     if (decl.kind != DeclKind.Fn) decl.fail("#[client] must annotate a function");
-    if (decl.returnType != "Element" && decl.returnType != "Component") decl.fail("#[client] must annotate a component returning Element or @Component<ElementBase, Element>");
+    if (decl.returnType != "Element" && decl.returnType != "@Component<ElementBase, Element>") decl.fail("#[client] must annotate a component returning Element or @Component<ElementBase, Element>");
 }
 
 // ── step 2: `#[clientProps]` — the serializable whitelist ───────────────────
@@ -117,43 +116,18 @@ pub fn client(comptime decl: @Decl) {
 // receives server-rendered children as CHILDREN, never as a prop, which is the
 // rule `serverSlot` below marks in the markup.
 //
-// **The whitelist is four names and not six, and that is a deliberate
-// tightening of the front's spec.** § Step 2 asks for `string[]` and `i32[]`
-// as well. `Field.typeName` cannot express either, measured against `2e6bb4ac`
-// over a record with one field of each shape — the reflected names are:
-//
-//     a: string                   -> "string"
-//     b: i32                      -> "i32"
-//     c: f64                      -> "f64"
-//     d: bool                     -> "bool"
-//     e: Array<string>            -> "Array"
-//     f: string[]                 -> ""
-//     g: Array<i32>               -> "Array"
-//     h: Element                  -> "Element"
-//     i: fn(x: i32) -> i32        -> ""
-//     j: #(string, string)        -> ""
-//     k: Array<#(string, string)> -> "Array"
-//
-// The element type is ERASED, so `Array<string>` and `Array<Element>` are the
-// same string. Admitting `"Array"` would admit an array of `Element`s and an
-// array of function values through a check whose whole purpose is to refuse
-// exactly those — a silent hole in the boundary. Under decision 67 the
-// refusal wins: no array crosses today, an array-valued prop is spelled as an
-// encoded `string` until reflection can name its element type, and the gap is
-// reported rather than worked around (the front's first § Language gaps row
-// widens from "no parameters on `Decl`" to "no ELEMENT TYPE on `Field`").
-//
-// The `""` rows are why a function-typed prop and a tuple-typed prop are
-// refused with a message that says reflection could not name the type instead
-// of quoting an empty string: they are refused because they are not on the
-// whitelist, not because they were identified.
+// **The whitelist is four names and not six.** § Step 2 asks for `string[]`
+// and `i32[]` as well; they were left out while `Field.typeName` erased an
+// element type (`Array<string>` and `Array<Element>` both reflected as
+// `"Array"`, `string[]` as `""`). `typeName` is now the field's type as the
+// source spells it, so widening the whitelist by those two spellings is this
+// front's to do — until then an array-valued prop is an encoded `string`.
 pub fn clientProps(comptime decl: @Decl) {
     if (decl.kind != DeclKind.Type) decl.fail("#[clientProps] must annotate a type");
     if (decl.variants.length > 0) decl.fail("#[clientProps] must annotate a record, not an enum");
     decl.fields.forEach({ f ->
         val ok = f.typeName == "string" || f.typeName == "i32" || f.typeName == "f64" || f.typeName == "bool";
-        val shown = if (f.typeName == "") "a type reflection cannot name (a function, tuple or T[] type)" else f.typeName;
-        if (!ok) decl.fail("a client prop must be serializable; '" + f.name + "' is " + shown);
+        if (!ok) decl.fail("a client prop must be serializable; '" + f.name + "' is " + f.typeName);
     });
 }
 
