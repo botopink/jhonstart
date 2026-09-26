@@ -61,7 +61,7 @@ repository/jhonstart/
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
 │   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; pub mod html_attrs; mod client_runtime;`
-│   │   │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
+│   │   │   ├── element.bp     ← COMPILED CORE: `type ElementBase()` (the empty-record phantom base, decision 138) + type Element + builders (Children) + renderToString + test {}
 │   │   │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<ElementBase,_>, pure server-pass bodies) + test {} (imports `Element`)
 │   │   │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │   │   │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
