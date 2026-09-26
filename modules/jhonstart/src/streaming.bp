@@ -668,11 +668,11 @@ fn fillsInOrder(site: App, boundaries: Array<Boundary>, resolved: Array<Resolved
     return mine + rest;
 }
 
-// ── the app — declared last: a method body calls the module functions above
-// it, and on the erlang row a method only reaches a function declared BEFORE
-// its type (the method lowers into its own module, and a later function is
-// written as an unqualified local call there — `function renderWith/5
-// undefined`).
+// ── the app ─────────────────────────────────────────────────────────────────
+//
+// The free functions above take the app as `site`, never `self`: a free
+// function whose first parameter is named `self` loses it
+// (`repro/self-param-free-fn/`).
 
 pub type App(plugins: Array<RenderPlugin>, allowedRedirects: string[]) {
     // The non-streaming form: every boundary resolves before anything is
