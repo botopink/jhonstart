@@ -1,9 +1,9 @@
 # jhonstart
 
 > Path: `repository/jhonstart/`
-> Parent (workspace): [`../AGENTS.md`](../AGENTS.md) · Sibling (core): [`../botopink-lang/AGENTS.md`](../botopink-lang/AGENTS.md)
-> Spec: [`../../tasks/v0.beta.7/specs/jhonstart.md`](../../tasks/v0.beta.7/specs/jhonstart.md)
-> (port), originally [`../../tasks/v0.beta.5/specs/jhonstart.md`](../../tasks/v0.beta.5/specs/jhonstart.md)
+> Parent (workspace): [`../../AGENTS.md`](../../AGENTS.md) · Sibling (core): [`../botopink-lang/AGENTS.md`](../botopink-lang/AGENTS.md)
+> Track: [`../../specs/1.0.10-beta/04-jhonstart/README.md`](../../specs/1.0.10-beta/04-jhonstart/README.md)
+> (the v0.beta.5 / v0.beta.7 specs it was born from are gone)
 
 botopink's **React/Next-style** UI framework, written *in* botopink on the
 language's own primitives — **no jhonstart-specific compiler features**.
