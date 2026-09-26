@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **What onze owed from jhonstart** (fronts 29 and 30): the island starter
+  table is the registry's fourth global, `globals.starters` (`__bp3`), filled by
+  `registerStarter(name, start)` (one per component) and
+  `registerRouteStarters(pattern, load)` (one loader per route, called once by
+  `hydrate()` for the payload's matched pattern — the bundle splits by route);
+  onze's entry writes no `__jhIslandStarters` of its own. `app(…, lang:)` sets
+  the document's `<html lang>` (`"en"` when not given; a value that is not a
+  language tag is refused) where `lang="pt-BR"` was a literal. The render over
+  rakun's `ChunkWriter` (contract 5d) is asserted with a record spelled field for
+  field and adapted as onze does: a page, a pre-first-chunk redirect and a
+  pre-first-chunk `notFound()`. Core 190 → 199 on both rows.
+
 - **Front 67 — forms**, the new member `modules/jhonstart-forms` (additive):
   contract 3's form markup (`formAttrs`, `hiddenActionField`), the transport
   (`submitForm`, `invokeAction`, `formMount`) over six dual-target cells, the

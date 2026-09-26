@@ -59,7 +59,9 @@
 // and a CALLED node-only cell reds the erlang compile at its caller
 // (`decisions-pending.md` 27-a, the same choice). `hydrate()` is per-island:
 // it walks every `[data-jh-i]`, reads that island's `i` row from the payload
-// and starts the component front 68's entry registered for it; it is
+// and starts the starter front 68's entry registered for that component in
+// `globals.starters` (`registerStarter`, or a route's loader through
+// `registerRouteStarters` — the bundle splits by route); it is
 // idempotent, and it mounts no link and no form — front 68's entry calls it,
 // then front 27's `linkMount()` and front 67's `formMount()` once each.
 // `propsFor(name)` is `propsOf` over the cell's raw row.
@@ -316,24 +318,80 @@ pub fn serverOnly() -> i32 {
 //   | the poison-pill predicate   | a module in that graph importing `serverOnly` |
 //   | the request-scope predicate | a module in that graph importing `request`/`cookies`/`headers` from `server.bp` |
 //
-// Front 68 must also supply what this file could not declare: the module
-// `"jhonstart/client-runtime"`, holding `hydrate` (per-island) and
-// `islandProps(name)`. Until it exists, `hydrate()` and `propsFor(name)` are
-// absent rather than stubbed, and the boundary is a convention nobody walks.
+//   | the starter table           | `registerStarter(name, start)` / `registerRouteStarters(pattern, load)` into `globals.starters` |
+//
+// The entry calls `hydrate()` after registering; `propsFor(name)` reads a
+// component's props from the payload.
 
 // ── step 4: the hydrate point and the props cell ────────────────────────────
 
 #[@External.Node("./island_runtime.mjs", "hydrate"),
   @External.Erlang("jhonstart_island", "hydrate")]
-declare fn __jhHydrate(payloadName: string) -> i32;
+declare fn __jhHydrate(payloadName: string, tableName: string) -> i32;
+
+#[@External.Node("./island_runtime.mjs", "registerStarter"),
+  @External.Erlang("jhonstart_island", "register_starter")]
+declare fn __jhRegisterStarter(tableName: string, name: string, start: fn(raw: string, commit: fn(html: string) -> i32) -> i32) -> i32;
+
+#[@External.Node("./island_runtime.mjs", "registerRouteStarters"),
+  @External.Erlang("jhonstart_island", "register_route_starters")]
+declare fn __jhRegisterRouteStarters(tableName: string, pattern: string, load: fn() -> @Task<i32>) -> i32;
+
+#[@External.Node("./island_runtime.mjs", "starterNames"),
+  @External.Erlang("jhonstart_island", "starter_names")]
+declare fn __jhStarterNames(tableName: string) -> string[];
+
+#[@External.Node("./island_runtime.mjs", "routeLoaders"),
+  @External.Erlang("jhonstart_island", "route_loaders")]
+declare fn __jhRouteLoaders(tableName: string) -> string[];
 
 #[@External.Node("./island_runtime.mjs", "islandProps"),
   @External.Erlang("jhonstart_island", "island_props")]
 declare fn __jhClientPropsRaw(payloadName: string, name: string) -> string;
 
-// Starts every island not yet started; answers how many have started in all.
+// Starts every island not yet started whose component has a starter; answers
+// how many have started in all. When a loader is registered for the payload's
+// matched pattern (`r`), it is called once, and hydrate runs again when it
+// resolves.
 pub fn hydrate() -> i32 {
-    return __jhHydrate(globals.payload);
+    return __jhHydrate(globals.payload, globals.starters);
+}
+
+// ── the island starter table — `globals.starters` ───────────────────────────
+//
+// onze front 68's generated entry registers one starter per client component
+// it bundles eagerly, and one loader per route whose islands live in that
+// route's chunk. The table's name is the registry's (`globals.starters`), so
+// the entry writes no `__` name; the entry holds no host cell for it either.
+//
+// A starter receives the island's encoded props (`propsOf` decodes them) and
+// `commit(html)`, which writes the island's markup into its placeholder. A
+// loader brings the route's chunk in and registers that route's starters with
+// `registerStarter`; `hydrate()` calls it once, the first time the payload's
+// matched pattern is its route.
+
+// One starter per client component: a second registration for one name fails,
+// naming it, on both rows.
+pub fn registerStarter(name: string, start: fn(raw: string, commit: fn(html: string) -> i32) -> i32) -> i32 {
+    assert registeredStarters().contains(name) == false, "jhonstart: a starter for `" + name + "` is already registered - one starter per client component";
+    return __jhRegisterStarter(globals.starters, name, start);
+}
+
+// One loader per route pattern (the pattern the payload's `r` carries, the
+// manifest's `R` record — contract 6): a second one fails, naming it.
+pub fn registerRouteStarters(pattern: string, load: fn() -> @Task<i32>) -> i32 {
+    assert registeredRouteStarters().contains(pattern) == false, "jhonstart: a starter loader for route `" + pattern + "` is already registered - one loader per route";
+    return __jhRegisterRouteStarters(globals.starters, pattern, load);
+}
+
+// The component names with a starter, in registration order.
+pub fn registeredStarters() -> string[] {
+    return __jhStarterNames(globals.starters);
+}
+
+// The route patterns with a loader, in registration order.
+pub fn registeredRouteStarters() -> string[] {
+    return __jhRouteLoaders(globals.starters);
 }
 
 // The props the payload's `i` row carries for `name`, decoded; `[]` when the

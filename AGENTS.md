@@ -75,12 +75,12 @@ repository/jhonstart/
 │   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`enterRequest`/`leaveRequest`/`cookies`/`headers`, `renderServerComponent`
 │   │   │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
 │   │   │   ├── html_attrs.bp  ← COMPILED (front 48 of the CSS track), PURE: `classAttr` (the `class` pair spelled once), `withAttrs` (append, base first — `renderToString` writes attrs in array order), `attrValue` (the last pair of a name, `""` when absent). Imports only `element` and names no styling library: the styling side hands over a `#(string, string)` pair and merges its own class names
-│   │   │   ├── client.bp      ← COMPILED (front 29): `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`, and `hydrate()` / `propsFor(name)` over two dual-target cells (`island_runtime.mjs` / `sidecars/jhonstart_island.erl`). The graph walk is front 68's
+│   │   │   ├── client.bp      ← COMPILED (front 29): `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`, `hydrate()` / `propsFor(name)` and the starter table (`registerStarter`, `registerRouteStarters`, `registeredStarters`, `registeredRouteStarters` into `globals.starters`) over dual-target cells (`island_runtime.mjs` / `sidecars/jhonstart_island.erl`). The graph walk is front 68's
 │   │   │   ├── suspense.bp    ← COMPILED (front 30): `Boundary(id, fallback, child: fn() -> @Component<…>)` (an UNSTARTED thunk), `Suspense` (the `data-jh-h` hole; registers the boundary with the render), `holeId`
 │   │   │   ├── render.bp      ← COMPILED (front 30): `renderNode` (the escaping, void-aware walker over std `escape`), `raw`, `shellHtml`, `mountIsland` (i0, i1 … through front 29's `islandAttr`), `compose` (layout > template > error > loading > not-found > page; layouts run first), `Payload`/`writePayload` (std `json` + `escape.scriptJson`), `RenderHooks`/`setHooks`, the document
 │   │   │   ├── streaming.bp   ← COMPILED (front 30): `Chunk`/`resolve`/`fillHtml`, the late-signal markup, `Response` + `guarded`, `PageInput`, `App`/`app` with `render` / `renderStream` (→ `@Task<@Result<void, string>>`), the signal translation and the redirect-target check
 │   │   │   ├── plugin.bp      ← COMPILED (front 30): `RenderPlugin(name, head, chunk, close, payload)` — a record of async functions, called in `app`'s order
-│   │   │   ├── globals.bp     ← COMPILED (front 30): the registry `payload, fill, signal` → `__bp0/1/2`, the fields of `pub val globals`; `readPayload` (std `json.decode`), `registerFill`, `registerSignal`
+│   │   │   ├── globals.bp     ← COMPILED (front 30): the registry `payload, fill, signal, starters` → `__bp0/1/2/3`, the fields of `pub val globals`; `readPayload` (std `json.decode`), `registerFill`, `registerSignal`
 │   │   │   ├── routes.bp      ← COMPILED (front 30): `#[page]`/`#[layout]`/`#[template]`/`#[defaultView]`, `PageContext`, `LayoutProps`, the UI registry (`jhPage`… `uiTable()`), `UiSegment` + `segment`/`with*`/`segmentFor`
 │   │   │   ├── render.mjs     ← HOST (js): per-render state + `eachCompleted`, and the browser half (fill / signal functions, payload text)
 │   │   │   ├── routes.mjs     ← HOST (js): the UI registry
@@ -645,21 +645,23 @@ crosses today, an array-valued prop is spelled as an encoded `string`, and the
 front's first § Language gaps row widens from "no parameters on `Decl`" to "no
 ELEMENT TYPE on `Field`".
 
-### What front 68 has to bring, and why none of it is stubbed here
+### The hydrate point and the starter table — what front 68's entry calls
 
-| Missing | Owner | Note |
-|---|---|---|
-| `hydrate()` — the PER-ISLAND hydrate point: walks `[data-jh-i]`, decodes that island's props from the payload's `i` row, starts the component | 68 | it is not the bundle entry and it mounts no links and no forms; front 68's generated entry calls it, then front 27's `__jhLinkMount()` and front 67's `__jhFormMount()` once each |
-| `islandProps(name)` / `__jhClientPropsRaw(name)` and the `propsFor(name)` wrapper | 68 | `propsFor` is then `return propsOf(__jhClientPropsRaw(name));` and nothing else in `client.bp` moves |
-| every "may not" rule above | 68 | the walk over the client module graph |
+| Surface | What it does |
+|---|---|
+| `hydrate()` | the PER-ISLAND hydrate point: walks `[data-jh-i]`, finds that island's `i` row in the payload and starts the starter registered for its component in `globals.starters` (handing it the encoded props and a `commit(html)` that writes the island's markup); calls the loader registered for the payload's matched pattern (`r`) once, and runs again when it resolves; idempotent; mounts no link and no form |
+| `registerStarter(name, start)` | one starter per client component — a second one fails, naming it, on both rows |
+| `registerRouteStarters(pattern, load)` | one loader per route pattern (the manifest's `R` record): the route's chunk registers its own starters, so the bundle splits by route |
+| `registeredStarters()` / `registeredRouteStarters()` | the table's names, in registration order |
+| `propsFor(name)` | `propsOf` over the payload's first `i` row for `name` |
 
-Same two measurements front 27 records, re-measured for this file: a **called**
-node-only cell reds the ERLANG build at the call site and this module is
-compiled on both rows, so a `propsFor` wrapper would take every landed assertion
-off erlang; and a **declared, never called** node-only cell is fine, but the
-module it would name — `jhonstart/client-runtime` — is front 68's generated
-bundle and does not exist, so the declaration would emit a `require` of a file
-nobody writes.
+The table's name is the registry's fourth global (`globals.starters`, `__bp3`),
+so the entry writes no `__` name and holds no host cell for it. All five cells
+are dual-target (`island_runtime.mjs` / `sidecars/jhonstart_island.erl`, whose
+registration reads back the same in the process dictionary and which never
+calls a starter) — a called node-only cell reds the erlang build of the core
+(27-a). What stays front 68's: every "may not" rule above (the walk over the
+client module graph).
 
 ### One naming rule, and the checker defect behind it
 

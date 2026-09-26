@@ -14,7 +14,7 @@ import {RequestData, cookies, request} from "server";
 import {selectedLayoutSegment, pathname} from "router";
 import {notFound, redirect, ErrorInfo} from "error_boundary";
 import {Boundary, Suspense, holeId} from "suspense";
-import {compose, resetRender, registeredBoundaries, renderNode, RenderHooks, setHooks, defaultHooks, attemptTask} from "render";
+import {compose, resetRender, registeredBoundaries, renderNode, RenderHooks, setHooks, defaultHooks, attemptTask, attemptRender, isLangTag} from "render";
 import {Response, PageInput, App, app, redirectAllowed, extrasProblem, guarded} from "streaming";
 import {RenderPlugin, Json} from "plugin";
 import {PageContext, LayoutProps, UiSegment, segment, withLayout, withTemplate, withError, withLoading, withNotFound} from "routes";
@@ -342,7 +342,7 @@ test "stream: defaultHooks renders a working document with no <script src>; one 
     val plain = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
     val doc = writes().at(0).unwrapOr("");
     assert doc.contains("<script src") == false;
-    assert doc.startsWith("write <!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">");
+    assert doc.startsWith("write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">");
     assert doc.endsWith("</body></html>");
     val base = defaultHooks();
     setHooks(RenderHooks(headExtra: base.headExtra, bodyExtra: { route -> bundleTag(route) }));
@@ -593,4 +593,101 @@ test "plugin: a render key, or one key from two plugins, fails the render naming
     assert outcomeText(out).contains("plugin `bad` gave the payload key `t`");
     assert extrasProblem([#("a", "s", "[]"), #("b", "s", "[]")]).contains("plugins `a` and `b` both gave the payload key `s`");
     assert extrasProblem([#("a", "s", "[]")]) == "";
+}
+
+// ── the document's language — `app(lang: …)` ────────────────────────────────
+
+test "stream: app(lang:) is the document's <html lang>, \"en\" when not given" {
+    val plain = await app([], []).render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
+    assert writes().at(0).unwrapOr("").startsWith("write <!DOCTYPE html><html lang=\"en\">");
+    val site = app([], [], "pt-BR");
+    val streamed = await site.renderStream(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
+    assert writes().at(0).unwrapOr("").startsWith("write <!DOCTYPE html><html lang=\"pt-BR\"><head>");
+}
+
+fn badLang() -> App {
+    return app([], [], "en\"><script>");
+}
+
+test "stream: a lang that is not a language tag is refused by app, naming it" {
+    val out = attemptRender({ -> badLang() });
+    val message = case out {
+        Ok(a) -> "";
+        Error(m) -> m;
+    };
+    assert message.contains("app(lang: \"en\"><script>\") is not a language tag");
+    assert isLangTag("zh-Hant-TW");
+    assert isLangTag("") == false;
+    assert isLangTag("1en") == false;
+}
+
+// ── contract 5d — the render over rakun's `ChunkWriter` ─────────────────────
+//
+// rakun front 23's `ChunkWriter`, spelled here field for field — jhonstart
+// names no rakun type — and adapted into `Response` exactly as onze front 49
+// does (`contracts.md § 5d`). The three literals are the byte sequences rakun
+// front 23 asserts on the socket with a stub renderer: a page, a
+// pre-first-chunk `redirect("/login")` and a pre-first-chunk `notFound()`.
+
+type ChunkSink(
+    setStatus: fn(code: i32) -> void,
+    setHeader: fn(name: string, value: string) -> void,
+    write: fn(chunk: string) -> @Task<void>,
+    close: fn() -> @Task<void>,
+)
+
+fn recordingSink() -> ChunkSink {
+    recReset();
+    return ChunkSink(
+        setStatus: { code -> recStatus(code) },
+        setHeader: { name, value -> recHeader(name, value) },
+        write: { chunk -> recWrite(chunk) },
+        close: { -> recClose() },
+    );
+}
+
+fn overSink(out: ChunkSink) -> Response {
+    val setStatus = out.setStatus;
+    val setHeader = out.setHeader;
+    val write = out.write;
+    val close = out.close;
+    return Response(
+        status: { c -> setStatus(c) },
+        header: { n, v -> setHeader(n, v) },
+        write: { chunk -> write(chunk) },
+        close: { -> close() },
+    );
+}
+
+test "chunk writer: a page is 200, text/html, one document, one close" {
+    val site = app([], []);
+    val out = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), overSink(recordingSink()));
+    assert outcomeText(out) == "ok";
+    val events = recEvents();
+    assert events.length == 4;
+    assert events.at(0).unwrapOr("") == "status 200";
+    assert events.at(1).unwrapOr("") == "header content-type text/html; charset=utf-8";
+    assert events.at(2).unwrapOr("").startsWith("write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><div data-jh-root=\"\">");
+    assert events.at(2).unwrapOr("").endsWith("</body></html>");
+    assert events.at(3).unwrapOr("") == "close";
+}
+
+test "chunk writer: redirect(\"/login\") before the first chunk is 307, location, no body" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> LoginRedirectPage() }), req(), overSink(recordingSink()));
+    assert outcomeText(out) == "ok";
+    assert allText() == "status 307\nheader location /login\nclose";
+}
+
+test "chunk writer: notFound() before the first chunk is 404 and the not-found document" {
+    val site = app([], []);
+    val seg = withNotFound(segment("/blog/[slug]"), { -> NotFoundView() });
+    val out = await site.render(inputOf("/blog/[slug]", [seg], { -> MissingPage() }), req(), overSink(recordingSink()));
+    assert outcomeText(out) == "ok";
+    val events = recEvents();
+    assert events.at(0).unwrapOr("") == "status 404";
+    assert events.at(1).unwrapOr("") == "header content-type text/html; charset=utf-8";
+    assert events.at(2).unwrapOr("").contains("<h2>No such post</h2>");
+    assert events.at(events.length - 1).unwrapOr("") == "close";
+    assert countOf("close") == 1;
 }

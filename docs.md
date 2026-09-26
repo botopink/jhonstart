@@ -1110,23 +1110,22 @@ All three are module-**graph** predicates and there is no graph here.
 | the poison-pill predicate | a module in that graph importing `serverOnly` |
 | the request-scope predicate | a module in that graph importing `request`/`cookies`/`headers` from `server.bp` |
 
-### What is NOT shipped, and what it needs
+### The hydrate point and the starter table
 
-| Missing | Needs |
+| Surface | What it does |
 |---|---|
-| `hydrate()` — walks every `[data-jh-i]`, decodes that island's props from the payload's `i` row and starts the component | front 68's generated module `jhonstart/client-runtime`, which the cell would bind to. It is the **per-island** hydrate point, not the bundle entry: front 68 generates the entry, which calls `hydrate()` and then front 27's link mount and front 67's form mount once each |
-| `__jhClientPropsRaw(name)` and the `propsFor(name)` wrapper over it | the same module. `propsFor` is then `return propsOf(__jhClientPropsRaw(name));` and nothing else moves |
-| every "may not" rule above | front 68's walk over the client module graph |
+| `hydrate()` | walks every `[data-jh-i]`, finds that island's `i` row in the payload and starts the starter registered for its component, handing it the encoded props and `commit(html)`; calls the loader registered for the payload's matched pattern `r` once and runs again when it resolves; idempotent; mounts no link and no form |
+| `registerStarter(name, start: fn(raw: string, commit: fn(html: string) -> i32) -> i32)` | the starter for one client component; a second one for the same name fails, naming it |
+| `registerRouteStarters(pattern, load: fn() -> @Task<i32>)` | the loader of one route's chunk, which registers that route's starters — the bundle splits by route; one loader per pattern |
+| `registeredStarters()` / `registeredRouteStarters()` | the names in the table, in registration order |
+| `propsFor(name)` | `propsOf` over the payload's first `i` row for `name` |
 
-Neither cell is declared and neither is stubbed, for the two measurements
-`link.bp` records for its own four cells and this file re-measured:
-
-1. a **called** node-only cell reds the **erlang** build at its call site, and
-   this module is compiled on both rows of the core member — a `propsFor`
-   wrapper would take every landed assertion off erlang;
-2. a **declared and never called** node-only cell is fine, but the module it
-   names does not exist, so the declaration would emit a `require` of a file
-   nobody writes — silently at build time, loudly at run time.
+The table is `globals.starters` (`__bp3`), the registry's fourth global, so
+onze front 68's generated entry — which calls the two `register*` functions,
+then `hydrate()`, then front 27's `linkMount()` and front 67's `formMount()` —
+writes no `__` name. Every cell is dual-target; on the BEAM registration reads
+back the same and nothing is ever started. The "may not" rules above are front
+68's walk over the client module graph.
 
 ## Render and streaming (`render.bp`, `streaming.bp`, `suspense.bp`, `plugin.bp`, `globals.bp`, `routes.bp`) — compiled
 
@@ -1202,10 +1201,13 @@ pub type Response(status: fn(code: i32) -> void, header: fn(name: string, value:
 pub type PageInput(build, pathname, pattern, params, query, table, actions,
                    chain: Array<UiSegment>, page: fn() -> @Component<ElementBase, Element>,
                    metadata: Array<Metadata>, viewports: Array<Viewport>)
-pub fn app(plugins: Array<RenderPlugin>, allowedRedirects: string[] = []) -> App
+pub fn app(plugins: Array<RenderPlugin>, allowedRedirects: string[] = [], lang: string = "en") -> App
 site.render(input, req, res) -> @Task<@Result<void, string>>
 site.renderStream(input, req, res) -> @Task<@Result<void, string>>
 ```
+
+`lang` is the document's `<html lang>`: letters, digits and `-`, starting with
+a letter (`isLangTag`); `app` refuses anything else, naming it.
 
 The render enters `req` (front 28) and leaves it, writes `status(200)` and the
 content type before its first `write`, and calls `close()` exactly once on
@@ -1234,9 +1236,10 @@ One `<script>window.__bp0 = {…}</script>`, last in `<body>` before
 `</script` cannot appear in it. Island ids are `i0`, `i1`, … in render order
 (`mountIsland`, through front 29's `islandEntry`).
 
-The three browser globals are aliases from `globals.bp`'s registry —
-`globals.payload == "__bp0"`, `.fill == "__bp1"`, `.signal == "__bp2"`, the fields of one module-level `pub val globals` — and
-no other file spells them. `readPayload(name)` decodes the payload text with
+The four browser globals are aliases from `globals.bp`'s registry —
+`globals.payload == "__bp0"`, `.fill == "__bp1"`, `.signal == "__bp2"`,
+`.starters == "__bp3"` (the island starter table, front 29), the fields of one
+module-level `pub val globals` — and no other file spells them. `readPayload(name)` decodes the payload text with
 std's `json.decode`; `registerFill` / `registerSignal` install `render.mjs`'s
 fill and signal functions (called only by onze front 68's entry).
 
