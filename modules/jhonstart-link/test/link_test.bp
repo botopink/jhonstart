@@ -14,15 +14,10 @@
 //
 // ── What this file does NOT assert, and why ─────────────────────────────────
 //
-// The front's § Step 4 acceptance asks for `linkStatus()` idle, and
-// `__jhLinkMount()` idempotent. Neither is assertable: the four browser
-// cells are not declared (their host module is the bundle **front 68**
-// generates and does not exist), and `__jhLinkRouteKind`'s answer comes from
-// **front 60**'s route-kind table, which does not exist either. `link.bp`'s
-// header carries the measurement that makes a called node-only cell red the
-// erlang build of this member, which is why nothing here is stubbed to get a
-// green cell. What IS assertable is the pure derivation the hook would return
-// — `linkStatusOf` — and it is asserted below.
+// The browser half's four cells are dual-target (`link_runtime.mjs` /
+// `sidecars/jhonstart_link.erl`), so `linkStatus()` idle and `linkMount()`
+// idempotent are asserted on both rows at the foot of this file; the DOM half
+// (a click, an intersection) is front 53's browser-in-the-loop app.
 //
 // Nor is the transition driver here; see `reconcile_test.bp`.
 
@@ -39,6 +34,10 @@ import {
     layoutKey,
     LinkStatus,
     linkStatusOf,
+    linkStatus,
+    linkMount,
+    linkPrefetch,
+    linkRouteKind,
 } from "link";
 import {Element, text, span, renderToString} from "jhonstart";
 
@@ -241,4 +240,25 @@ test "link: linkStatusOf is pending for a navigation in flight" {
     val s = linkStatusOf("/checkout");
     assert s.pending;
     assert s.href == "/checkout";
+}
+
+// ── step 4: the browser cells, both rows ────────────────────────────────────
+
+test "link: linkStatus is idle when nothing is in flight" {
+    val s = await linkStatus();
+    assert s.pending == false;
+    assert s.href == "";
+}
+
+test "link: linkMount is idempotent — a second call registers nothing" {
+    val first = linkMount();
+    val second = linkMount();
+    assert first == 1;
+    assert second == 1;
+}
+
+test "link: a skip-mode prefetch warms nothing, and an unknown route kind is unknown" {
+    val none = linkPrefetch("/x", "skip");
+    assert none == 0;
+    assert linkRouteKind("/x") == "unknown";
 }

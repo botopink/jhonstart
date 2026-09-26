@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Front 27 Step 4 — the link's browser half** (`jhonstart-link`):
+  `linkMount()` (one delegated click listener + a viewport prefetcher,
+  idempotent), `linkPrefetch`, `linkRouteKind` and the `linkStatus()` hook
+  over four dual-target cells (`link_runtime.mjs`, `sidecars/jhonstart_link.erl`
+  answering the server's idle truth). `jhonstart-link` 35 → 38 on both rows.
+
 - **Front 26 Step 6 — `clientApp`** (`client_app.bp`, decision 117): a
   client-only app matches the location with `routing`, composes the matched
   chain through front 30's `compose` and writes it into `mount`; `notFound` /
