@@ -548,6 +548,25 @@ pathname matched with `matchPath` — the function rakun's server matches with.
 The router has no matcher and no table parser of its own. An unmatched pathname
 answers `pattern == ""` and no params.
 
+### `clientApp` — a client-only app (`client_app.bp`)
+
+```bp
+clientApp(routes: routeTable, mount: "#root", allowedRedirects: []).start()   // -> @Task<@Result<void, string>>
+```
+
+An application with no server runs the same pages under the router alone
+(decision 117 rule 1). `routes` is contract 1's wire, read with `routing`'s
+`parseTable` and matched with `matchPath`; `start()` composes the matched chain
+(the UI registry's pages, layouts and conventions) with front 30's `compose` and
+writes the markup into `mount` — the one browser write, `__jhMount`. A signal is
+handled as the server render handles it: `notFound()` renders the route's
+nearest not-found boundary with the URL unchanged; a relative `redirect(to)`
+found in `routes` is the router's `replace(to)` (`history.replaceState`) and a
+client navigation; an absolute one listed in `allowedRedirects` is
+`location.replace(to)`; anything else fails `start()` and navigates nowhere.
+With no `window` (node, the test row) the location and the mount are a module
+store (`setClientLocation`, `mountedHtml`, `replacedLocation`).
+
 ## Server components (`server.bp`) — compiled
 
 Promoted from `server.d.bp` (front 28). The declaration file listed three

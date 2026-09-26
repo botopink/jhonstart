@@ -23,6 +23,7 @@
 pub mod element;
 pub mod hooks;
 pub mod router;       // front 26, replacing router.d.bp
+pub mod client_app;   // front 26 (clientApp, decision 117)
 pub mod server;       // front 28, replacing server.d.bp
 pub mod client;       // front 29
 pub mod suspense;     // front 30

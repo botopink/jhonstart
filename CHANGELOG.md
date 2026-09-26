@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Front 26 Step 6 — `clientApp`** (`client_app.bp`, decision 117): a
+  client-only app matches the location with `routing`, composes the matched
+  chain through front 30's `compose` and writes it into `mount`; `notFound` /
+  `redirect` are handled in the browser as the server render handles them,
+  with the same target check. Core 181 → 185 on both rows.
+
 - **Front 30 — render and streaming.** `render.bp` (the escaping walker over
   std's `escape`, `compose`, the payload through std's `json` and
   `escape.scriptJson`, `RenderHooks`), `streaming.bp` (`resolve` / `fillHtml`,

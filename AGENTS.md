@@ -56,7 +56,7 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, client.bp, suspense.bp, streaming.bp, render.bp, plugin.bp, globals.bp, routes.bp, error_boundary.bp, metadata.bp, elements.bp, client_runtime.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, globals.bp, plugin.bp, routes.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
 │   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; mod client_runtime;`
@@ -66,6 +66,7 @@ repository/jhonstart/
 │   │   │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
 │   │   │   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
 │   │   │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `snapshot`/`fill`, `navigationFor`/`applySignal` (the envelope's `n`, through `routing`), `resolveRoute` (`routing`'s `matchPath` over the payload's `t`)
+│   │   │   ├── client_app.bp  ← COMPILED (front 26 Step 6): `ClientApp` / `clientApp(routes, mount, allowedRedirects).start()` — a client-only app over `routing`'s matcher, front 30's `compose` and the one browser write `__jhMount`; `notFound` / `redirect` handled as the server render handles them. Host halves `client_app.mjs` / `sidecars/jhonstart_client_app.erl` (a module store when there is no `window`)
 │   │   │   ├── router_runtime.mjs ← HOST (js): the router's store and the History API half of `navigate`
 │   │   │   ├── sidecars/
 │   │   │   │   ├── jhonstart_router.erl ← HOST (BEAM): the same cells over the calling process's dictionary. NOT a `files` entry — `shipErlSidecars` finds it under the package's `src/sidecars/`
@@ -93,6 +94,7 @@ repository/jhonstart/
 │   │       ├── routes_test.bp ← `botopink test` flat suite: the four markers, `uiTable()` through `routing`, the params accessors (front 30) — both rows
 │   │       ├── metadata_test.bp ← `botopink test` flat suite: the merge rule row by row, the head's order and escaping, the viewport (front 32) — both rows
 │   │       ├── error_boundary_test.bp ← `botopink test` flat suite: the catch, the digest, signals passing through, the file conventions (front 31) — both rows
+│   │       ├── client_app_test.bp ← `botopink test` flat suite: `clientApp` start, the two signals, the target check (front 26 Step 6) — both rows
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │   │       ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `@Task` component and loader conventions (front 28) — both rows
 │   │       └── client_test.bp   ← `botopink test` flat suite: the `#[client]` emit, a whitelisted props record, the island, the hole and the poison pill (front 29) — both rows

@@ -21,6 +21,7 @@
     "routes.bp",
     "render.bp",
     "streaming.bp",
+    "client_app.bp",
     "client_runtime.bp"
   ]
 }
