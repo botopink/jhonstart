@@ -237,9 +237,9 @@ fn renderOrFail(tree: Element) -> @Result<string, string> {
 }
 
 // Resolves one boundary IN THE PROCESS THAT RENDERED IT — its own process on
-// the erlang row — including the plugins' `chunk(id)`: a stylesheet that
-// registers per process (emilia's does) only sees the classes the boundary's
-// render registered from inside that process.
+// the erlang row — including the plugins' `chunk(id)`: a stylesheet library
+// that registers per process only sees the classes the boundary's render
+// registered from inside that process.
 fn resolveIn(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, b: Boundary) -> @Task<Resolved> {
     enterRequest(req);
     fill(route.pathname, encoding.formStringify(route.params), encoding.formStringify(route.query), route.pattern, 0);

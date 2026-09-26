@@ -8,6 +8,7 @@ import {UiSegment, Metadata, Viewport, ErrorInfo, LayoutProps, PageContext} from
 import {emilia, flush, Token, defaultTheme, className, cls, clsWith, styled, styledWith, mergeClass} from "emilia";
 import {renderNode, withAttrs, attrValue, classAttr, bracketPair} from "jhonstart";
 import { html } from "jhonstart-html";
+import {io.fs.walk, io.fs.readText} from "std";
 import {plugin, classesIn} from "root";
 
 // ── the recorder (the core suite's, per row) ────────────────────────────────
@@ -203,4 +204,18 @@ test "bridge: one token list is one class on both rows" {
     val drained = await flush();
     assert cls == again;
     assert cls.startsWith("e_");
+}
+
+// Decision 113: the core knows the plugin contract and no styling library.
+// Every file under the core's `src/` is read, and none names emilia.
+test "bridge: no file of the core's src names emilia" {
+    val root = "../jhonstart/src";
+    val files = walk(root).unwrapOr([]);
+    assert files.length > 10;
+    var naming: string[] = [];
+    for (files) { f ->
+        val body = readText(root + "/" + f).unwrapOr("");
+        if (body.toLower().contains("emilia")) naming.push(f);
+    };
+    assert naming.length == 0, "the core names emilia in: " + naming.join(", ");
 }
