@@ -15,21 +15,15 @@
 //// `sidecars/jhonstart_router.erl`, `server_runtime.mjs` /
 //// `sidecars/jhonstart_server.erl`), cell for cell on both rows.
 ////
-//// `link` and `reconcile` (front 27) are the render-time half of client
-//// navigation: the anchor, its props, the prefetch decision and the remount
-//// decision. Both are PURE — no host cell of any target — so they render and
-//// assert on both rows. The browser half they are the input to
-//// (`__onzeLinkMount`, `__onzeLinkPrefetch`, `__onzeLinkStatus`,
-//// `__onzeLinkRouteKind`, and the transition driver) lives in front 68's
-//// generated bundle and is not declared here until that module exists; see
-//// `link.bp`'s header.
+//// `link` and `reconcile` (front 27) are not here: they are the
+//// `jhonstart-link` member since front 95's relocation
+//// (`specs/1.0.10-beta/04-jhonstart/modules.md` § 1) — nothing in the core
+//// imports them, and a consumer that renders no `Link` ships without them.
 
 pub mod element;
 pub mod hooks;
 pub mod router;       // front 26, replacing router.d.bp
 pub mod elements;     // front 94
 pub mod server;       // front 28, replacing server.d.bp
-pub mod link;         // front 27
-pub mod reconcile;    // front 27
 pub mod client;       // front 29
 mod client_runtime;

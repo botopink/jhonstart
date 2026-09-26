@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Front 95 — the package cut: `jhonstart-link` member.** Front 27's
+  render-time half — `link.bp` and `reconcile.bp`, with `link_test.bp` and
+  `reconcile_test.bp` — moves out of the core into `modules/jhonstart-link/`
+  (`from "jhonstart-link"`), as `specs/1.0.10-beta/04-jhonstart/modules.md` § 1
+  cuts it. A relocation only: the one edit per file is `from "element"` →
+  `from "jhonstart"` in `link.bp` and `link_test.bp`; `reconcile.bp` keeps its
+  sibling import of `link`. Nothing in the core imported either module. The
+  member inherits `[commonJS, erlang]` (the code is pure). The core reads 85/85
+  on both rows where it read 120, the member 35/35 on both rows.
+
 - **Front 24 — effects by return type** (botopink decisions 118–128). The
   return type is the effect and the `#[@use]` / `#[@future]` annotations leave:
   every hook and component keeps its `-> @Component<ElementBase, T>` return and

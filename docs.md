@@ -760,7 +760,10 @@ render correctly during the server pass.
 
 **The render-time half is what ships.** It reaches no host cell, so `Link`
 renders identically on commonJS and on erlang, and every assertion in
-`test/link_test.bp` and `test/reconcile_test.bp` RUNS on both rows.
+`test/link_test.bp` and `test/reconcile_test.bp` RUNS on both rows. It is its
+own member, `jhonstart-link` — a consumer writes
+`import {Link, linkProps} from "jhonstart-link";` beside the builders
+`from "jhonstart"`, and the core does not depend on it.
 
 ### The props are a record, and why
 
@@ -1120,7 +1123,7 @@ Neither cell is declared and neither is stubbed, for the two measurements
   the server-component convention (`server.bp`, with both host halves), the
   render-time half of client navigation — `Link`, `LinkProps` and its five
   `with*` helpers, `prefetchMode`, `layoutKey`, `layoutKeys`, `sharedDepth`,
-  `linkStatusOf` (`link.bp` + `reconcile.bp`, pure, no host cell), the client
+  `linkStatusOf` (`link.bp` + `reconcile.bp` in `jhonstart-link`, pure, no host cell), the client
   boundary — `#[client]`, `#[clientProps]` and the four comptime refusals
   around them, `islandId`/`islandAttrOf`/`islandAttr`, `Island`, `clientMount`,
   `islandEntry`, `propsOf`, `serverSlotAttr`/`serverSlot` and the `serverOnly`

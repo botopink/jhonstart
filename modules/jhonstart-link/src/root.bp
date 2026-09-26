@@ -1,0 +1,15 @@
+//// The `jhonstart-link` package — module-tree root.
+////
+//// Client navigation's RENDER-TIME half (front 27), cut out of the jhonstart
+//// core by front 95 (`specs/1.0.10-beta/04-jhonstart/modules.md` § 1): `link`
+//// (the anchor, its props and the prefetch decision) and `reconcile` (the
+//// layout keys and the remount decision of a client transition). Both are
+//// PURE — no host cell of any target — so the member declares the workspace's
+//// two targets and every assertion runs on both rows. The browser half
+//// (`linkMount`, `linkStatus`, the transition driver) is front 68's generated
+//// bundle and is not declared here; `modules.md` § 4 records the target
+//// question it will raise. A consumer writes `import {Link} from
+//// "jhonstart-link";` beside `import {div, a} from "jhonstart";`.
+
+pub mod link;
+pub mod reconcile;
