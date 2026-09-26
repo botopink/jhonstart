@@ -44,13 +44,13 @@ pub fn state<T>(initial: T) -> @Component<ElementBase, State<T>> {
 // `effect` — a side effect run after render. Pure during SSR (a no-op); the
 // client runtime schedules `run` against `deps` on mount. Yields the empty
 // capability (`#()` — nothing to bind).
-pub fn effect(run: fn(), deps: any[]) -> @Component<ElementBase, #()> {
+pub fn effect(run: fn(), deps: unknown[]) -> @Component<ElementBase, #()> {
     return #();
 }
 
 // `memo` — a value memoized across renders. Computed eagerly here (the first
 // render has no previous `deps` to compare against), yielding the computed `T`.
-pub fn memo<T>(compute: fn() -> T, deps: any[]) -> @Component<ElementBase, T> {
+pub fn memo<T>(compute: fn() -> T, deps: unknown[]) -> @Component<ElementBase, T> {
     return compute();
 }
 
