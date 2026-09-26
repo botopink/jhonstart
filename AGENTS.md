@@ -64,12 +64,12 @@ repository/jhonstart/
 │   │   │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │   │   │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
 │   │   │   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
-│   │   │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `decodePairs`, `snapshot`/`fill`
+│   │   │   ├── router.bp      ← COMPILED: the route snapshot (front 26) — `RouterState`, `pairValue`, `snapshot`/`fill`, `navigationFor`/`applySignal` (the envelope's `n`, through `routing`), `resolveRoute` (`routing`'s `matchPath` over the payload's `t`)
 │   │   │   ├── router_runtime.mjs ← HOST (js): the router's store and the History API half of `navigate`
 │   │   │   ├── sidecars/
 │   │   │   │   ├── jhonstart_router.erl ← HOST (BEAM): the same cells over the calling process's dictionary. NOT a `files` entry — `shipErlSidecars` finds it under the package's `src/sidecars/`
 │   │   │   │   └── jhonstart_server.erl ← HOST (BEAM): the request's six cells + `fill/6`, same process dictionary, same non-`files` discovery
-│   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`fillRequest`/`cookies`/`headers`, `renderServerComponent`
+│   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`enterRequest`/`leaveRequest`/`cookies`/`headers`, `renderServerComponent`
 │   │   │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
 │   │   │   ├── link.bp        ← COMPILED (front 27), PURE: `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`. NO host cell — the browser half is front 68's
 │   │   │   ├── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
@@ -263,7 +263,7 @@ rendering a `@Component<ElementBase, Element>` component through `use pathname()
 | The snapshot | `RouterState(path, params, search, pattern, selected)` | a plain record, no behavior. `params`/`search` are `Array<#(string, string)>`, `selected` the layout depth (root layout `0`) |
 | Its accessors | `r.param(n)` · `r.searchParam(n)` · `r.segments()` · `r.segment()` | every one answers a plain `string`/`Array<string>`, `""` when absent or out of range. Never `?string` |
 | The pair decoder | `pairValue(pairs, name)` | the package's ONE pair-list decoder, FIRST match of a duplicated key. Fronts 28 and 32 import it from here rather than growing a copy |
-| The querystring codec | `decodePairs(q)` · `encodePairs(pairs)` | `std/querystring.parse`/`.stringify` spelled here, because that module is dead on the erlang row (`repro/erlang-std-slice-shim/`). `encodePairs` has NO leading `?` — the caller adds it. Front 27's href arithmetic uses these two, not a third copy |
+| The pair codec | std's `encoding.formParse` · `encoding.formStringify` | decision 116 rule 4: percent-aware, the codec rakun uses; the package carries no copy. `formStringify` writes NO leading `?` — the caller adds it |
 | The segment readers | `patternSegments(pattern)` · `segmentAt(segments, i)` | typed-parameter readers. An `xs.at(i).unwrapOr("")` written at a call site reads the element back unwrapped on the erlang row |
 | The build | `snapshot()` | five cells in, the record out. No `?T` unwrap that can fail |
 | **The writer** | `fill(path, params, search, pattern, selected)` | the ONE way route state is installed, and the seam fronts 27/28/29 need. `params`/`search` go in querystring-encoded, exactly as the payload's `m` and `q` carry them. Every field at once — a half-updated snapshot is a component reading the previous route's params against the next route's pattern |
@@ -400,14 +400,12 @@ So the seam is **here** and it is `pub`, which is the conclusion front 26 alread
 reached and wrote down for the route snapshot: a server that reached into
 another library's process dictionary keys would be coupled to them forever.
 `jhonstart_server` / `server_runtime.mjs` are the two halves, cell for cell;
-`fillRequest(method, path, params, query, headers, cookies)` is the one writer
-and the seam front 62's dispatcher calls once per request. If front 62 would
-rather own the module name, it is one line per accessor in `server.bp` and
-nothing else in jhonstart moves — which is the property the README was after.
+`enterRequest(req)` is the one writer and `leaveRequest()` its pair; front 30's
+render calls both, once per render, with the `RequestData` onze handed it.
 
-`fillRequest` is deliberately **not** front 26's `fill` under another name, and
+`enterRequest` is deliberately **not** front 26's `fill` under another name, and
 the two stores stay separate: a route snapshot is re-filled DURING a render (its
-`selected` is the layout depth) while a request is filled once and is constant
+`selected` is the layout depth) while a request is entered once and is constant
 for the whole render. Folding them would make "the request" mutate mid-page.
 
 ### Two things front 28 does NOT provide
@@ -448,7 +446,7 @@ question, not a code one.
 | The request | `RequestData(method, path, params, query, headers, cookies)` | a plain record, no behavior. Every plural field `Array<#(string, string)>`; **no `body` field** — form bodies are front 24's, route-handler bodies front 25's |
 | Its accessors | `r.param(n)` · `r.queryParam(n)` · `r.header(n)` · `r.cookie(n)` | plain `string`, `""` when absent, never raises. All four through front 26's `pairValue`, so a duplicated key means one thing |
 | The build | `request()` | six cells in, the record out. A plain function, not a hook, until front 19 step 2 |
-| **The writer** | `fillRequest(method, path, params, query, headers, cookies)` | the ONE way request state is installed. The four pair-shaped values go in querystring-encoded (`k=v&k=v`), exactly as front 23's payload carries them. Six at once — a half-updated request is a component reading the previous reader's cookie |
+| **The writer pair** | `enterRequest(req)` · `leaveRequest()` | the ONE way request state is installed and removed, called by front 30's render once per render. The four pair lists are stored `encoding.formStringify`-encoded. Between the two `request()`/`cookies()`/`headers()` read it; outside them they RAISE |
 | The shortcuts | `cookies()` · `headers()` | the only two re-exported. `after`, `connection`, `draftMode` and memoization are front 62's, called from there |
 | The render entry | `renderServerComponent(component) -> @Task<string>` | takes an **unstarted thunk** `fn() -> @Task<Element>`, awaits exactly once, renders synchronously afterwards; `renderComponent` takes a `fn() -> @Component<ElementBase, Element>` thunk |
 | The host halves | `src/server_runtime.mjs` · `src/sidecars/jhonstart_server.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, it dies with it, two concurrent renders cannot see each other's cookies |
@@ -545,7 +543,7 @@ server pass exactly as it renders in the browser.
 | The props rule | `#[clientProps]` | on the props RECORD, because `@Decl` does not expose a function's parameters. Whitelist: `string` · `i32` · `f64` · `bool` |
 | The island marker | `islandId(n)` · `islandAttrOf(id)` · `islandAttr(n)` | decision 77: `islandAttrOf` is the ONE occurrence of `"data-onze-i"` in this tree. Front 23 fills `RenderHooks.islandAttr` from `islandAttr`; front 68's entry imports the same function |
 | The island | `Island(id, component, props)` · `clientMount(island, children)` | the placeholder carries the id and NOTHING else; the component name and encoded props go to the payload's `i` row |
-| The payload row | `islandEntry(island)` | `#(id, component, "k=v&k=v")`, encoded with front 26's `encodePairs` — not `std/querystring.stringify`, which is dead on the erlang row |
+| The payload row | `islandEntry(island)` | `#(id, component, "k=v&k=v")`, encoded with std's `encoding.formStringify` (decision 116 rule 4) |
 | The decode | `propsOf(raw)` | the pure half of the front's `propsFor(name)`; `propsOf("")` is `[]` |
 | The hole | `serverSlotAttr()` · `serverSlot(children)` | `data-onze-s="1"` — the server-rendered subtree the client ADOPTS and must not reconstruct |
 | The poison pill | `serverOnly()` | the value is meaningless; its presence in a module's import list is the signal |

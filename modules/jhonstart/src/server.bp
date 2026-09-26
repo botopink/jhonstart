@@ -40,28 +40,19 @@
 //    So the seam is HERE and it is `pub`, which is the conclusion front 26
 //    already reached for the route snapshot and wrote down: a server that
 //    reached into another library's process dictionary keys would be coupled to
-//    them forever. `fillRequest` is the one writer; front 62's dispatcher calls
-//    it once per request with the six strings it already has. If front 62 wants
-//    its own module name to be the cell target instead, that is one line per
-//    accessor in this file and nothing else in jhonstart moves — which is the
-//    property the README was after.
+//    them forever. `enterRequest(req)` is the one writer and `leaveRequest()`
+//    its pair; front 30's render calls both, once per render, with the
+//    `RequestData` onze handed it (decision 114 item 8).
 //
-// 2. The two querystring-encoded values are decoded with front 26's
-//    `decodePairs`, not `std/querystring.parse`.
-//
-//    `libs/std/src/querystring.bp` is dead on the erlang row: reached through
-//    `from "std"` it emits a call to a bare local `slice/3` it never defines,
-//    `erlc` refuses the module and the first `parse` call dies `{error,undef}`.
-//    Re-measured 2026-09-21 against compiler `2e6bb4ac`;
-//    `repro/erlang-std-slice-shim/` is the jhonstart-free package. front 26
-//    spelled the decoder in `router.bp` for exactly this reason and this file
-//    imports it rather than growing a third copy — the same argument
-//    `pairValue` makes about decoders.
-//
+// 2. The four pair-shaped values are stored `encoding.formStringify`-encoded
+//    and read back with `encoding.formParse` — std's percent-aware codec, the
+//    one rakun uses on the server (decision 116 rule 4). A cookie or query
+//    value carrying `%20` reads as a space here exactly as it does in rakun.
+
 // ── `@Task` is EAGER on erlang, and that changes how a page is written ───────
 //
-// `libs/std/src/http.bp` states it: Erlang is eager, a `@Task<T>` resolves to
-// `T`, so the caller's `await` is identity on that
+// `libs/std/src/http.bp:16-18` states it: Erlang is eager, a `@Task<T>`
+// resolves to `T`, so the caller's `await` is identity on that
 // backend (botopink decision 120). Two `@Task` loaders do NOT run in parallel
 // because they are Tasks — they run in the order the body reaches them, and the
 // page costs the SUM of its loaders.
@@ -86,19 +77,20 @@
 //
 // `renderToString` writes `e.value` and every attribute value straight into the
 // output (`element.bp:56`, `:63-65`) and neither escapes. A server component
-// renders attacker-influenced text, so every such value goes through front 01's
-// `escape.html` / `escape.attribute` at the point it enters the tree. This file
-// hand-rolls no escaping and re-exports none: front 01's `libs/std/src/escape.bp`
-// does not exist in compiler `2e6bb4ac` yet, and a stand-in here would be a
-// second answer to "what is an escaped `&`" the day it lands.
+// renders attacker-influenced text, so every such value goes through std's
+// `escape.html` / `escape.attribute` — front 30's `renderNode` calls them for
+// every text node and attribute, and a component that builds a string for
+// markup by hand calls them at the point the value enters the tree. This file
+// hand-rolls no escaping and re-exports none.
 
 import {Element, ElementBase, renderToString} from "element";
-import {pairValue, decodePairs} from "router";
+import {pairValue} from "router";
+import {encoding} from "std";
 
 // ── step 1: the request as a record ─────────────────────────────────────────
 //
 // Six fields, every plural one an `Array<#(string, string)>` — the shape front
-// 26's snapshot uses, the shape `decodePairs` produces and the shape
+// 26's snapshot uses, the shape `encoding.formParse` produces and the shape
 // `Element.attrs` takes, so a value read off the request is handed straight to
 // an attribute with no conversion. No `Dict`: naming `dict.Dict<string, string>`
 // as a type across a module boundary is unexercised anywhere in this tree, and
@@ -177,7 +169,9 @@ declare fn __jhReqHeaders() -> string;
   @External.Erlang("jhonstart_server", "cookies")]
 declare fn __jhReqCookies() -> string;
 
-// The one writer, and the seam front 62's dispatcher calls once per request.
+// The writer pair, and the seam front 30's render calls once per render with
+// the `RequestData` onze handed it (decision 114 item 8). Outside `server.bp`
+// and front 30's `render.bp` nothing in `src/` calls either.
 //
 // Six values in TOGETHER, never one at a time, for the reason front 26's `fill`
 // gives about the route: a half-updated request is a component reading the
@@ -186,15 +180,15 @@ declare fn __jhReqCookies() -> string;
 // Note that this is NOT front 26's `fill` under another name and the two stores
 // stay separate on purpose. A route snapshot is re-filled DURING a render — its
 // `selected` is the layout depth and changes per layout — while a request is
-// filled once and is constant for the whole render. Folding them together would
-// make "the request" mutate mid-page.
+// entered once and is constant for the whole render. Folding them together
+// would make "the request" mutate mid-page.
 //
 // The `-> i32` is the ecosystem's shape for a host cell whose value is not used
 // (`router.bp`'s `__jhRouteFill`, `rakun/src/runtime.bp`'s `rkScan`). It is not
 // a status code and callers ignore it.
-#[@External.Node("./server_runtime.mjs", "fill"),
-  @External.Erlang("jhonstart_server", "fill")]
-declare fn __jhReqFill(
+#[@External.Node("./server_runtime.mjs", "enter"),
+  @External.Erlang("jhonstart_server", "enter")]
+declare fn __jhReqEnter(
     method: string,
     path: string,
     params: string,
@@ -203,27 +197,46 @@ declare fn __jhReqFill(
     cookies: string,
 ) -> i32;
 
-// Install the request for the render that follows. `params`, `query`, `headers`
-// and `cookies` arrive querystring-encoded.
-//
-// Named `fillRequest` and not `fill`: front 26's `router.fill` is already `pub`
-// and both modules are re-exported through the package root, so a consumer's
-// `import { fill } from "jhonstart"` would have two candidates.
-pub fn fillRequest(
-    method: string,
-    path: string,
-    params: string,
-    query: string,
-    headers: string,
-    cookies: string,
-) -> i32 {
-    return __jhReqFill(method, path, params, query, headers, cookies);
+#[@External.Node("./server_runtime.mjs", "leave"),
+  @External.Erlang("jhonstart_server", "leave")]
+declare fn __jhReqLeave() -> i32;
+
+// `1` between an `enterRequest` and its `leaveRequest`, `0` otherwise.
+#[@External.Node("./server_runtime.mjs", "entered"),
+  @External.Erlang("jhonstart_server", "entered")]
+declare fn __jhReqEntered() -> i32;
+
+// Enter the request for the render that follows: the four pair lists go in
+// `encoding.formStringify`-encoded, the form the cells store.
+pub fn enterRequest(req: RequestData) -> i32 {
+    return __jhReqEnter(
+        req.method,
+        req.path,
+        encoding.formStringify(req.params),
+        encoding.formStringify(req.query),
+        encoding.formStringify(req.headers),
+        encoding.formStringify(req.cookies),
+    );
 }
 
-// The request the render reads. No `?T` unwrap that can fail: `decodePairs`
-// answers `[]` for an empty string and every cell answers a total value, so an
-// unfilled request is the empty request rather than a raise — which is what
-// makes a component renderable in a test with no host present.
+// Leave it: the store is emptied, and a `request()` / `cookies()` /
+// `headers()` read afterwards raises — a component that reads the request
+// outside a render is a component reading the previous reader's cookie.
+pub fn leaveRequest() -> i32 {
+    return __jhReqLeave();
+}
+
+fn requireEntered(reader: string) -> i32 {
+    assert __jhReqEntered() == 1, "jhonstart: " + reader + " read outside a render — the request is entered by the render (enterRequest) and left when it ends";
+    return 1;
+}
+
+// The request the render reads. No `?T` unwrap that can fail:
+// `encoding.formParse` answers `[]` for an empty string and every cell answers
+// a total value. Read OUTSIDE a render — before `enterRequest` or after
+// `leaveRequest` — it raises: there is no request to read, and an empty one
+// would be a silent wrong answer. A component that must render with no host
+// takes a `RequestData` as a parameter instead.
 //
 // A hook (decisions 104/128 of 1.0.10-beta): `val r = use request()` in a
 // server component — `fn … -> @Component<ElementBase, Element>`, which may
@@ -231,13 +244,14 @@ pub fn fillRequest(
 // answers the same `@Component` (a Promise on commonJS), so a `@Task` body or a
 // test `await`s it. It cannot fail, so its `T` is not a `@Result`.
 pub fn request() -> @Component<ElementBase, RequestData> {
+    requireEntered("request()");
     return RequestData(
         method: __jhReqMethod(),
         path: __jhReqPath(),
-        params: decodePairs(__jhReqParams()),
-        query: decodePairs(__jhReqQuery()),
-        headers: decodePairs(__jhReqHeaders()),
-        cookies: decodePairs(__jhReqCookies()),
+        params: encoding.formParse(__jhReqParams()),
+        query: encoding.formParse(__jhReqQuery()),
+        headers: encoding.formParse(__jhReqHeaders()),
+        cookies: encoding.formParse(__jhReqCookies()),
     );
 }
 
@@ -247,11 +261,13 @@ pub fn request() -> @Component<ElementBase, RequestData> {
 // there directly — re-declaring them here would be a second place for request
 // scope to be defined.
 pub fn cookies() -> Array<#(string, string)> {
-    return decodePairs(__jhReqCookies());
+    requireEntered("cookies()");
+    return encoding.formParse(__jhReqCookies());
 }
 
 pub fn headers() -> Array<#(string, string)> {
-    return decodePairs(__jhReqHeaders());
+    requireEntered("headers()");
+    return encoding.formParse(__jhReqHeaders());
 }
 
 // ── step 3: the server-component convention ─────────────────────────────────

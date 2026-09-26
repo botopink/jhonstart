@@ -372,36 +372,15 @@ measurement that made rakun's front 22 spell `paramOf(m, name)` and front 23
 `chunkAt(page, i)`. `patternSegments` and `segmentAt` are typed-parameter
 readers for the same reason.
 
-### `decodePairs` — and why it is not `querystring.parse`
+### The pair codec is std's `encoding` (decision 116 rule 4)
 
-```bp
-pub fn decodePairs(query: string) -> Array<#(string, string)>
-```
-
-`std/querystring.parse` is what this front's spec calls for, and it cannot run
-on the front's assigned target. `libs/std/src/querystring.bp:22` writes
-`query.slice(1, query.length)`; reached through `from "std"` that module emits
-a call to a bare local `slice/3` on the erlang row and never defines it, so
-`erlc` refuses the module (`undefined_function {slice,3}`), the test runner's
-sibling loader skips a module that does not compile, and the first
-`querystring.parse` call dies `{error,undef}`. The same `s.slice(a, b)` in a
-project module lowers correctly to an emitted `string_slice/3` — the loss is
-specific to a `libs/std` module compiled as a dependency.
-`repro/erlang-std-slice-shim/` is the jhonstart-free package.
-
-`encodePairs(pairs) -> string` is the inverse, here for the same reason:
-`querystring.stringify` has no `slice` of its own, but it lives in the module
-`stripPrefix` kills, and a module `erlc` refuses takes its whole surface down
-with it. No leading `?` — the caller adds it when composing a URL. Front 27's
-href arithmetic uses these two rather than a third copy.
-
-`decodePairs` is querystring's documented behaviour spelled here: a leading `?`
-is stripped, `""` decodes to `[]` (never `[#("", "")]`), empty chunks are
-dropped, duplicate keys are preserved in order, and a chunk with no `=` decodes
-to an empty value. One divergence, in this one's favour: `a=b=c` keeps `b=c`
-where querystring's `split("=")` keeps only `b` — an input querystring's own
-header records as not round-tripping. When the shim defect closes this becomes
-`querystring.parse` and nothing else moves.
+The two pair-shaped snapshot values (`m`, `q`), the request's four lists and an
+island's props are decoded with std's `encoding.formParse` and written with
+`encoding.formStringify` — the percent-aware form codec rakun uses on the
+server. `q=a%20b` reads back as `a b` on both rows, `encoding.formParse("")` is
+`[]` (never `[#("", "")]`), a field with no `=` is a name with an empty value,
+and `formStringify` writes no leading `?`. The package carries no pair codec of
+its own.
 
 ### The snapshot, the five cells and `fill`
 
@@ -425,8 +404,9 @@ five values:
 
 The two pair-shaped values travel querystring-encoded. No JSON, no record
 serialization, nothing that has to agree between an Erlang term and a JS
-object. `snapshot()` performs no `?T` unwrap that can fail: `decodePairs`
-answers `[]` for an empty string and every cell answers a total value.
+object. `snapshot()` performs no `?T` unwrap that can fail:
+`encoding.formParse` answers `[]` for an empty string and every cell answers a
+total value.
 
 `fill` is the one writer, and it is `pub` **surface**, not an internal. The
 five values go in together — a half-updated snapshot is a component reading the
@@ -543,6 +523,31 @@ A navigation never disturbs the snapshot: `fill` is the only writer of route
 state, and the suite asserts that a `push` leaves the current `path` and
 `params` exactly as they were.
 
+`refresh()` hands the cell the value the bundled library `actions` spells —
+`refreshValue()` (decision 116 rule 2) — so the re-request header value is
+written nowhere in this package.
+
+### The envelope's navigation signal, and the route a URL is
+
+```bp
+pub fn navigationFor(wire: string) -> string   // "" · "not-found" · "replace <location>"
+pub fn applySignal(wire: string) -> i32        // performs it through the navigation cell
+pub fn resolveRoute(table: string, path: string, search: string) -> RouterState
+```
+
+An action or refresh envelope's `n` field is read with `routing`'s
+`navigation.signalFromWire` (decision 116 rule 1): `""` nothing, `"N"` the
+nearest not-found, `"R|307|/login"` a `replace` to `/login`; a malformed `n`
+reads as nothing, so a bad field from the network cannot crash a render. A
+server action's `redirect` is rakun's and a page's is jhonstart's; the router
+reads both through the same codec without importing rakun.
+
+`resolveRoute` rebuilds the snapshot a client navigation needs: the table (the
+payload's `t`, contract 1's wire) is read with `routing`'s `parseTable` and the
+pathname matched with `matchPath` — the function rakun's server matches with.
+The router has no matcher and no table parser of its own. An unmatched pathname
+answers `pattern == ""` and no params.
+
 ## Server components (`server.bp`) — compiled
 
 Promoted from `server.d.bp` (front 28). The declaration file listed three
@@ -567,7 +572,7 @@ pub type RequestData(
 ```
 
 Six fields, every plural one an `Array<#(string, string)>` — the shape the route
-snapshot uses, the shape `decodePairs` produces and the shape `Element.attrs`
+snapshot uses, the shape `encoding.formParse` produces and the shape `Element.attrs`
 takes, so a value read off the request is handed straight to an attribute with
 no conversion. No `Dict`: naming `dict.Dict<string, string>` as a type across a
 module boundary is unexercised anywhere in this tree, and the pair list is what
@@ -598,34 +603,41 @@ there is nothing to look up by name in a single string.
 ### The six cells, and where they point
 
 ```bp
-pub fn fillRequest(method, path, params, query, headers, cookies) -> i32
+pub fn enterRequest(req: RequestData) -> i32
+pub fn leaveRequest() -> i32
 pub fn request() -> @Component<ElementBase, RequestData>
 pub fn cookies() -> Array<#(string, string)>
 pub fn headers() -> Array<#(string, string)>
 ```
 
-`params`, `query`, `headers` and `cookies` travel **querystring-encoded**
-(`k=v&k=v`), the same encoding the route snapshot's `m`/`q` use and the same
-encoding front 23's payload carries. No JSON, no record serialization, nothing
-that has to agree between an Erlang term and a JS object. They are decoded with
-front 26's `decodePairs` — see *`decodePairs` — and why it is not
-`querystring.parse`* above; that std module is dead on the erlang row.
+`enterRequest(req)` is the one writer and `leaveRequest()` its pair. Front 30's
+render calls both, once per render, with the `RequestData` onze handed it
+(decision 114 item 8); outside `server.bp` and `render.bp` nothing in `src/`
+calls either. Between the two, `request()`, `cookies()` and `headers()` read
+the entered request; **outside** them they raise — there is no request to read,
+and an empty one would be a silent wrong answer. A component that must render
+with no host takes a `RequestData` parameter instead.
+
+The four pair lists are stored `k=v&k=v` with std's `encoding.formStringify`
+and read back with `encoding.formParse` (decision 116 rule 4), so a cookie or
+query value carrying `%20` reads as a space here exactly as it does in rakun.
+No JSON, no record serialization, nothing that has to agree between an Erlang
+term and a JS object.
 
 The cells name **`jhonstart_server`** / **`./server_runtime.mjs`**, not front
 62's `rakun_request_context`, and both halves ship with the module
 (`src/sidecars/jhonstart_server.erl`, `src/server_runtime.mjs`) exactly as the
 router's do. Two measurements force it, and `AGENTS.md` § *Why the request cells
 are jhonstart's own* carries them: an erlang-only cell reds the **commonJS
-compile** at its call site, and rakun's member is `targets: ["commonJS"]` so
-`rakun_request_context` has no BEAM row to bind to at all. `fillRequest` is the
-one writer and the seam front 62's dispatcher calls once per request — six
-values at once, never one at a time, because a half-updated request is a
-component reading the previous reader's cookie against this reader's path.
+compile** at its call site, and jhonstart imports no rakun module
+(decision 113). Six values go in at once, never one at a time, because a
+half-updated request is a component reading the previous reader's cookie
+against this reader's path.
 
 It is **not** the router's `fill` under another name and the two stores stay
 separate on purpose: a route snapshot is re-filled DURING a render (its
-`selected` is the layout depth and changes per layout) while a request is filled
-once and is constant for the whole render.
+`selected` is the layout depth and changes per layout) while a request is
+entered once and is constant for the whole render.
 
 `after()`, `connection()`, `draftMode()` and per-request memoization are front
 62's and are called from there directly. `cookies()` and `headers()` are the
@@ -717,9 +729,9 @@ pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
 }
 ```
 
-**`@Task` is EAGER on the erlang row** (decision 120 of botopink 1.0.10-beta):
-a `@Task<T>` resolves to `T` and the caller's `await` is identity on that
-backend. Two `@Task` loaders do
+**`@Task` is EAGER on the erlang row** (decision 120 of botopink 1.0.10-beta;
+`libs/std/src/http.bp:16-18`): a `@Task<T>` resolves to `T` and the caller's
+`await` is identity on that backend. Two `@Task` loaders do
 **not** load in parallel because they are Tasks — they run in the order the
 body reaches them and the page costs the **sum** of its loaders. Porting the
 Next.js pattern shape-for-shape and stopping there produces a page slower than
@@ -998,12 +1010,10 @@ a bare function name used as a value lowers to an unbound erlang variable, and
 the field must then be read into a local before it is called (`val f =
 hooks.islandAttr; f(0)`).
 
-The encoder is front 26's `encodePairs`, not `std/querystring.stringify`: that
-module is dead on the erlang row, which is why front 26 spelled the codec in
-`router.bp` in the first place. It does **not** percent-encode, so a prop value
-containing `&` or `=` does not round-trip — front 26's codec to widen, not a
-second answer to grow here. Nothing about the payload is escaped or built here;
-front 23 collects the rows and escapes the script.
+The encoder is std's `encoding.formStringify` (decision 116 rule 4), so a prop
+value containing `&`, `=` or a space round-trips; `propsOf` decodes with
+`encoding.formParse`. Nothing about the payload is escaped or built here; front
+30's render collects the rows and escapes the script.
 
 ### The hole — `serverSlot`
 

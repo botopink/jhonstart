@@ -49,13 +49,15 @@ import {
     request,
     cookies,
     headers,
-    fillRequest,
+    enterRequest,
+    leaveRequest,
     renderServerComponent,
     renderComponent,
 } from "server";
 import {fill, pathname} from "router";
 import {Element, ElementBase, div, p, h1, ul, li, text, renderToString} from "element";
 import {article} from "elements";
+import {encoding} from "std";
 
 // ── step 1: the record and its four accessors ───────────────────────────────
 
@@ -161,15 +163,38 @@ test "server: the fields are readable beside the methods that never shadow them"
 
 // ── step 2: the six cells and the request builder ───────────────────────────
 
+// The six values as the old flat writer took them — the four pair lists
+// `k=v&k=v`-encoded — built into the record `enterRequest` takes. No parameter
+// is named after an imported function (`cookies`, `headers`): a binding leaks
+// into every later declaration's scope (`repro/local-binding-leaks-to-later-decls/`).
+fn encoded(
+    verb: string,
+    at: string,
+    ps: string,
+    qs: string,
+    hs: string,
+    cs: string,
+) -> RequestData {
+    return RequestData(
+        method: verb,
+        path: at,
+        params: encoding.formParse(ps),
+        query: encoding.formParse(qs),
+        headers: encoding.formParse(hs),
+        cookies: encoding.formParse(cs),
+    );
+}
+
+
 test "server: the six cells round-trip into the record of step 1" {
-    fillRequest(
+    enterRequest(encoded(
         "POST",
         "/blog/hi",
         "slug=hi",
         "sort=desc&page=2",
         "accept=text/html",
         "sid=42&theme=dark",
-    );
+    ));
     val r = await request();
     assert r.method == "POST";
     assert r.path == "/blog/hi";
@@ -181,11 +206,10 @@ test "server: the six cells round-trip into the record of step 1" {
     assert r.cookie("theme") == "dark";
 }
 
-// An unfilled or emptied request is the EMPTY request, not a raise: rendering
-// a component outside a request is how every test in this package renders the
-// server pass, and `decodePairs("")` is `[]` rather than `[#("", "")]`.
+// An entered request with empty lists is the EMPTY request:
+// `encoding.formParse("")` is `[]` rather than `[#("", "")]`.
 test "server: an empty encoding yields the empty list, not one empty pair" {
-    fillRequest("GET", "/", "", "", "", "");
+    enterRequest(encoded("GET", "/", "", "", "", ""));
     val r = await request();
     assert r.params.length == 0;
     assert r.query.length == 0;
@@ -195,12 +219,12 @@ test "server: an empty encoding yields the empty list, not one empty pair" {
     assert r.cookie("sid") == "";
 }
 
-// A fill replaces the WHOLE request, never one field of it — the same rule
+// An enter replaces the WHOLE request, never one field of it — the same rule
 // front 26's `fill` follows, for the same reason: a half-updated request is a
 // component reading the previous reader's cookie against this reader's path.
-test "server: a fill replaces the whole request" {
-    fillRequest("POST", "/a", "id=1", "q=1", "accept=a", "sid=1");
-    fillRequest("GET", "/b", "id=2", "", "", "");
+test "server: an enter replaces the whole request" {
+    enterRequest(encoded("POST", "/a", "id=1", "q=1", "accept=a", "sid=1"));
+    enterRequest(encoded("GET", "/b", "id=2", "", "", ""));
     val r = await request();
     assert r.method == "GET";
     assert r.path == "/b";
@@ -214,7 +238,7 @@ test "server: a fill replaces the whole request" {
 // page that wants only the cookies does not pay for the other four decodes —
 // and cannot disagree with `request().cookie(n)` about what it finds.
 test "server: cookies() and headers() answer the same lists the record carries" {
-    fillRequest("GET", "/x", "", "", "accept=text/html&x=1", "sid=42");
+    enterRequest(encoded("GET", "/x", "", "", "accept=text/html&x=1", "sid=42"));
     assert cookies().length == 1;
     assert headers().length == 2;
     val r = await request();
@@ -337,7 +361,7 @@ fn GreetingPage() -> @Task<Element> {
 }
 
 test "server: a component reads the filled request and renders it" {
-    fillRequest("GET", "/blog/hi", "slug=hi", "", "accept=text/html", "name=ana");
+    enterRequest(encoded("GET", "/blog/hi", "slug=hi", "", "accept=text/html", "name=ana"));
     val out = await renderServerComponent({ -> GreetingPage() });
     assert out ==
         "<div><h1>Hello, ana</h1><p>Post hi</p><p>via text/html</p></div>";
@@ -418,4 +442,39 @@ test "server: a rendered value is NOT escaped — escaping is front 01's, at the
 
 fn SearchEcho(r: RequestData) -> @Task<Element> {
     return div([p([text(r.queryParam("q"), attrs: [])], attrs: [])], attrs: []);
+}
+
+// ── decisions 114 and 116: the writer pair and the percent-aware codec ─────
+
+test "server: request() after enterRequest(req) reconstructs the six fields" {
+    val req = RequestData(
+        method: "POST",
+        path: "/blog/hi",
+        params: [#("slug", "hi")],
+        query: [#("q", "a b")],
+        headers: [#("accept", "text/html")],
+        cookies: [#("sid", "4 2"), #("theme", "dark")],
+    );
+    enterRequest(req);
+    val r = await request();
+    assert r.method == "POST";
+    assert r.path == "/blog/hi";
+    assert r.param("slug") == "hi";
+    assert r.queryParam("q") == "a b";
+    assert r.header("accept") == "text/html";
+    assert r.cookie("sid") == "4 2";
+    assert r.cookie("theme") == "dark";
+    leaveRequest();
+}
+
+// The stored form is std's `encoding.formStringify`, so a value carrying `%20`
+// reads back as a space — the stand-in decoder the package carried before
+// decision 116 answered `a%20b`.
+test "server: a percent-encoded query value reads back decoded" {
+    enterRequest(encoded("GET", "/search", "", "q=a%20b&n=1%2B1", "", "c=x%3Dy"));
+    val r = await request();
+    assert r.queryParam("q") == "a b";
+    assert r.queryParam("n") == "1+1";
+    assert r.cookie("c") == "x=y";
+    leaveRequest();
 }

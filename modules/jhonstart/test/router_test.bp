@@ -14,8 +14,9 @@ import {
     pairValue,
     patternSegments,
     segmentAt,
-    decodePairs,
-    encodePairs,
+    navigationFor,
+    applySignal,
+    resolveRoute,
     fill,
     snapshot,
     router,
@@ -33,6 +34,8 @@ import {
     lastNavigation,
 } from "router";
 import {Element, ElementBase, div, span, text, renderToString} from "element";
+import {encoding} from "std";
+import {refresh.refreshValue} from "actions";
 
 // ── step 1: the record and its accessors ────────────────────────────────────
 
@@ -103,36 +106,43 @@ test "router: segment answers the layout depth, and out of range is empty" {
     assert past.segment() == "";
 }
 
-// ── the pair-list decoder ───────────────────────────────────────────────────
+// ── the pair codec: std's `encoding` (decision 116 rule 4) ──────────────────
+//
+// The package carries no pair codec of its own: the snapshot's `m` and `q` are
+// decoded with `encoding.formParse` and a URL is written back with
+// `encoding.formStringify`. These cells pin the behaviour the router relies on.
 
-test "router: decodePairs splits ampersand-separated pairs in order" {
-    val out = decodePairs("a=1&b=2&c=3");
+test "router: the snapshot codec splits ampersand-separated pairs in order" {
+    val out = encoding.formParse("a=1&b=2&c=3");
     assert out.length == 3;
     assert pairValue(out, "a") == "1";
     assert pairValue(out, "b") == "2";
     assert pairValue(out, "c") == "3";
 }
 
-test "router: decodePairs strips a leading question mark" {
-    val out = decodePairs("?x=42");
-    assert out.length == 1;
-    assert pairValue(out, "x") == "42";
+// The one cell that asserts both directions: `q=a%20b` read through the
+// snapshot is `a b` — the stand-in decoder the package carried before
+// answered `a%20b` — and the form the router writes back into a URL is
+// `q=a%20b` again.
+test "router: a percent-encoded search value is decoded, and written back encoded" {
+    val seeded = fill("/search", "", "q=a%20b", "/search", 0);
+    assert snapshot().searchParam("q") == "a b";
+    assert encoding.formStringify([#("q", "a b")]) == "q=a%20b";
 }
 
 test "router: an empty query decodes to the empty list, not one empty pair" {
-    assert decodePairs("").length == 0;
-    assert decodePairs("?").length == 0;
-    assert decodePairs("&&").length == 0;
+    assert encoding.formParse("").length == 0;
+    assert encoding.formParse("&&").length == 0;
 }
 
 test "router: a chunk with no `=` decodes to an empty value" {
-    val out = decodePairs("flag");
+    val out = encoding.formParse("flag");
     assert out.length == 1;
     assert pairValue(out, "flag") == "";
 }
 
 test "router: an empty value is preserved" {
-    val out = decodePairs("q=&r=1");
+    val out = encoding.formParse("q=&r=1");
     assert out.length == 2;
     assert pairValue(out, "q") == "";
     assert pairValue(out, "r") == "1";
@@ -266,7 +276,7 @@ test "router: the four server no-ops are callable and return" {
     val b = forward();
     assert lastNavigation() == "forward ";
     val c = refresh();
-    assert lastNavigation() == "refresh ";
+    assert lastNavigation() == "refresh " + refreshValue();
     val d = prefetch("/z");
     assert lastNavigation() == "prefetch /z";
 }
@@ -281,18 +291,70 @@ test "router: a navigation does not disturb the snapshot" {
 
 // ── the encoder, and the round trip ─────────────────────────────────────────
 
-test "router: encodePairs is decodePairs reversed, with no leading `?`" {
-    assert encodePairs([#("a", "1"), #("b", "2")]) == "a=1&b=2";
-    assert encodePairs([]) == "";
-    assert encodePairs([#("q", "")]) == "q=";
+test "router: formStringify is formParse reversed, with no leading `?`" {
+    assert encoding.formStringify([#("a", "1"), #("b", "2")]) == "a=1&b=2";
+    assert encoding.formStringify([]) == "";
+    assert encoding.formStringify([#("q", "")]) == "q=";
 }
 
 test "router: a snapshot's search list round-trips through both" {
     val seeded = fill("/p", "", "q=boots&page=2&sort=asc", "/p", 0);
     val r = snapshot();
-    assert encodePairs(r.search) == "q=boots&page=2&sort=asc";
+    assert encoding.formStringify(r.search) == "q=boots&page=2&sort=asc";
     val kept = r.search.filter({ p ->
         p._0 != "sort";
     });
-    assert encodePairs(kept) == "q=boots&page=2";
+    assert encoding.formStringify(kept) == "q=boots&page=2";
+}
+
+// ── decision 116 rule 1: the envelope's `n`, read with `routing` ────────────
+//
+// The four `n` forms of `contracts.md § 5b` pick the navigation the router
+// performs; the grammar is `routing`'s `signalFromWire`, never a copy here.
+
+test "router: the four n forms pick the navigation the router performs" {
+    assert navigationFor("") == "";
+    assert navigationFor("N") == "not-found";
+    assert navigationFor("R|307|/login") == "replace /login";
+    assert navigationFor("R|308|/a|b") == "replace /a|b";
+    assert navigationFor("garbage") == "";
+}
+
+test "router: applying an n performs the navigation through the one cell" {
+    val a = applySignal("R|307|/login");
+    assert lastNavigation() == "replace /login";
+    val b = applySignal("N");
+    assert lastNavigation() == "not-found ";
+    val c = push("/here");
+    val d = applySignal("");
+    assert lastNavigation() == "push /here";
+}
+
+test "router: refresh() carries actions' refreshValue, spelled nowhere here" {
+    val r = refresh();
+    assert lastNavigation() == "refresh " + refreshValue();
+    assert refreshValue() != "";
+}
+
+// ── decision 115: the route a URL is, through `routing`'s matcher ───────────
+
+test "router: resolveRoute matches with routing's matchPath over the payload's t" {
+    val t = "L|/\nP|/blog\nP|/blog/[slug]\nP|/shop/[...rest]";
+    val r = resolveRoute(t, "/blog/hi", "q=a%20b");
+    assert r.pattern == "/blog/[slug]";
+    assert r.param("slug") == "hi";
+    assert r.searchParam("q") == "a b";
+    assert r.segments().length == 2;
+    val s = resolveRoute(t, "/shop/a/b", "");
+    assert s.pattern == "/shop/[...rest]";
+    assert s.param("rest") == "a/b";
+    assert resolveRoute(t, "/blog", "").pattern == "/blog";
+}
+
+test "router: an unmatched pathname resolves to the empty pattern and no params" {
+    val t = "P|/blog/[slug]";
+    val r = resolveRoute(t, "/nowhere", "");
+    assert r.pattern == "";
+    assert r.params.length == 0;
+    assert r.path == "/nowhere";
 }

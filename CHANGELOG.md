@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Fronts 26 and 28 — decisions 115 and 116 in landed code.** The package's
+  stand-in pair codec (`decodePairs` / `encodePairs`, which did not
+  percent-decode) is deleted: the route snapshot, the request and an island's
+  props use std's `encoding.formParse` / `formStringify`, so `q=a%20b` reads
+  `a b` on both rows. `refresh()` carries `actions`' `refreshValue()`;
+  `navigationFor` / `applySignal` read an envelope's `n` with `routing`'s
+  `signalFromWire`; `resolveRoute(table, path, search)` rebuilds the snapshot
+  with `routing`'s `parseTable` / `matchPath`. The request's writer is the pair
+  `enterRequest(req)` / `leaveRequest()` (was `fillRequest(…six strings…)`),
+  and a `request()` / `cookies()` / `headers()` read outside them raises.
+  Core 120 → 127 on commonJS and erlang.
+
 - **Front 24 — effects by return type** (botopink decisions 118–128). The
   return type is the effect and the `#[@use]` / `#[@future]` annotations leave:
   every hook and component keeps its `-> @Component<ElementBase, T>` return and

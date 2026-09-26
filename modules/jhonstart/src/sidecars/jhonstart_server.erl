@@ -12,12 +12,13 @@
 %%
 %% This module parses nothing. The four pair-shaped values arrive already
 %% querystring-encoded (`k=v&k=v`), exactly as front 23's payload carries them,
-%% and `router.bp`'s `decodePairs` is the one decoder on the botopink side.
+%% and std's `encoding.formParse` is the one decoder on the botopink side.
 %%
 %% Why this module and not `rakun_request_context`: rakun's member is
 %% `targets: ["commonJS"]` and has no BEAM row at all, so binding the cells to it
 %% would make every request read `{error,undef}` on the row this front is gated
-%% on. `fill/6` is the seam front 62's dispatcher calls once per request.
+%% on. `enter/6` and `leave/0` are the seam front 30's render calls once per
+%% render.
 %% `server.bp`'s header carries the measurement.
 %%
 %% The module atom may not be `server`: `shipErlSidecars` silently skips an atom
@@ -26,7 +27,7 @@
 -module(jhonstart_server).
 
 -export([method/0, path/0, params/0, query/0, headers/0, cookies/0]).
--export([fill/6]).
+-export([enter/6, leave/0, entered/0]).
 
 -define(METHOD, jhonstart_req_method).
 -define(PATH, jhonstart_req_path).
@@ -34,11 +35,10 @@
 -define(QUERY, jhonstart_req_query).
 -define(HEADERS, jhonstart_req_headers).
 -define(COOKIES, jhonstart_req_cookies).
+-define(ENTERED, jhonstart_req_entered).
 
-%% An unfilled request answers the empty request rather than raising: rendering
-%% a component outside a request is a legitimate thing to do — it is how every
-%% test in this package renders the server pass — and `""` is already the answer
-%% every accessor gives for an absent key.
+%% A cell read outside an entered request answers `""`; `server.bp` checks
+%% `entered/0` first and raises, so an empty answer never reaches a component.
 get_bin(Key) ->
     case get(Key) of
         undefined -> <<"">>;
@@ -60,11 +60,31 @@ cookies() -> get_bin(?COOKIES).
 %% Replace the whole request. Six values at once, never one at a time: a
 %% half-updated request is a component reading the previous reader's cookie
 %% against this reader's path.
-fill(Method, Path, Params, Query, Headers, Cookies) ->
+%% Enter the request for one render — every field at once.
+enter(Method, Path, Params, Query, Headers, Cookies) ->
     put(?METHOD, Method),
     put(?PATH, Path),
     put(?PARAMS, Params),
     put(?QUERY, Query),
     put(?HEADERS, Headers),
     put(?COOKIES, Cookies),
+    put(?ENTERED, 1),
     0.
+
+%% Leave it: the process dictionary is emptied, and `entered/0` answers 0 so a
+%% read after the render ends raises in `server.bp`.
+leave() ->
+    erase(?METHOD),
+    erase(?PATH),
+    erase(?PARAMS),
+    erase(?QUERY),
+    erase(?HEADERS),
+    erase(?COOKIES),
+    erase(?ENTERED),
+    0.
+
+entered() ->
+    case get(?ENTERED) of
+        undefined -> 0;
+        Value -> Value
+    end.
