@@ -4,7 +4,7 @@
 %% so it runs in whatever process loaded the module, and a render reads the
 %% registry from the request's process: the table cannot live in a process
 %% dictionary. It is an ETS table owned by a dedicated process that does
-%% nothing but stay alive (rakun's `rakun_file_router` is the shape), created
+%% nothing but stay alive (the server library's file-router registry is the shape), created
 %% on first use under a registered name so a racing second caller finds it.
 %%
 %% The module atom is `jhonstart_routes`, never `routes`: `shipErlSidecars`

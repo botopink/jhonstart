@@ -315,12 +315,42 @@ fn readAfter() -> @Component<ElementBase, Element> {
     return p([], attrs: []);
 }
 
+fn readRequestOutside() -> @Task<i32> {
+    val r = await request();
+    return r.cookies.length;
+}
+
 test "stream: a component reads the req the render received, and nothing after it ends" {
     val site = app([], []);
     val out = await site.render(inputOf("/blog", [], { -> RequestEcho() }), req(), recorder());
     assert writes().at(0).unwrapOr("").contains("<p>s1</p>");
-    val after = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
-    assert outcomeText(after) == "ok";
+    val outside = await attemptTask({ -> readRequestOutside() });
+    val message = case outside {
+        Ok(n) -> "read " + n.toString();
+        Error(m) -> m;
+    };
+    assert message.contains("request() read outside a render");
+}
+
+fn bundleTag(route: string) -> string {
+    return "<script src=\"/b.js\"></script>";
+}
+
+test "stream: defaultHooks renders a working document with no <script src>; one field replaced keeps the other" {
+    val site = app([], []);
+    setHooks(defaultHooks());
+    val plain = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
+    val doc = writes().at(0).unwrapOr("");
+    assert doc.contains("<script src") == false;
+    assert doc.startsWith("write <!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">");
+    assert doc.endsWith("</body></html>");
+    val base = defaultHooks();
+    setHooks(RenderHooks(headExtra: base.headExtra, bodyExtra: { route -> bundleTag(route) }));
+    val bundled = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
+    val withBundle = writes().at(0).unwrapOr("");
+    assert withBundle.contains("</script><script src=\"/b.js\"></script></body></html>");
+    assert withBundle.contains("<meta charset=\"utf-8\"></head>");
+    setHooks(defaultHooks());
 }
 
 // ── navigation signals before the first chunk ───────────────────────────────

@@ -2,7 +2,7 @@
 // and 117).
 //
 // A folder under `app/` is a URL segment and a file in it gives the segment its
-// UI. The file conventions that answer an `Element` are jhonstart's: rakun
+// UI. The file conventions that answer an `Element` are jhonstart's: the server
 // registers only an opaque `PageRenderer` per route and names none of them.
 // One decorator per file, taking the APP-RELATIVE DIRECTORY of the file it sits
 // in (`@Decl` carries no source location):
@@ -148,7 +148,7 @@ pub fn jhNotFound(seg: string, render: fn() -> Element) -> i32 {
 }
 
 // This registry's records as contract-1 lines (`L`, `T`, `P`, `D`, `S`, `E`,
-// `N`), in registration order — the blob onze copies into rakun's table, so
+// `N`), in registration order — the blob onze copies into the server's table, so
 // the table the server matches and the payload's `t` are one table.
 pub fn uiTable() -> string {
     return __jhRoutesTable();
