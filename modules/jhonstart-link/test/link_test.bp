@@ -40,7 +40,7 @@ import {
     LinkStatus,
     linkStatusOf,
 } from "link";
-import {Element, text, span, renderToString} from "element";
+import {Element, text, span, renderToString} from "jhonstart";
 
 // ── step 1: the props and their five copy helpers ───────────────────────────
 

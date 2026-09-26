@@ -13,8 +13,6 @@
     "elements.bp",
     "client_runtime.bp",
     "server.bp",
-    "link.bp",
-    "reconcile.bp",
     "client.bp"
   ]
 }

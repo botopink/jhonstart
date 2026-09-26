@@ -76,7 +76,7 @@
 //
 // Both gaps are the front's § Language gaps rows.
 
-import {Element, ElementBase} from "element";
+import {Element, ElementBase} from "jhonstart";
 
 // ── step 1: the props, and the constructor that fills Next's defaults ───────
 //
