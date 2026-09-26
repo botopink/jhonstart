@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`jhonstart-dom-test` — front 30's browser half, asserted** (commonJS only):
+  the fill and signal functions `render.mjs` registers and `readPayload`, run
+  against a minimal document installed from the render's own markup. 9/9.
+
 - **The example projects** (`modules.md` § 8, `test-snap-examples.md`):
   `blog-ssr` (erlang), `nav-shell`, `islands`, `forms` (commonJS) and
   `document-shell`, 32 snapshots through `jhonstart-test`, each compared with
