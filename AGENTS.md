@@ -137,10 +137,10 @@ repository/jhonstart/
 │   ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node (targets [commonJS])
 │   ├── jhonstart-markup/   ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang]) — was `examples/jhonstart-html/`, renamed by front 95 because a member name is unique in the workspace and the DSL member took it
 │   ├── jhonstart-todo/     ← MEMBER: builders + hooks + SSR (targets [commonJS])
-│   ├── blog-ssr/           ← MEMBER (`modules.md` § 8, targets [erlang]): `src/repo.bp` fixtures; `src/app/` — `layout` (RootLayout, metadata, viewport), `loading`, `error`, `not_found`, `global_error`, `blog/slug/{page,metadata}` (PostPage with two sequential loaders, postPanel, generateMetadata) — a module name is an identifier, so Next's `not-found` / `[slug]` are `not_found` / `slug`; `test/blog_test.bp` 10 snapshots
+│   ├── blog-ssr/           ← MEMBER (`modules.md` § 8, targets [commonJS, erlang]): `src/repo.bp` fixtures; `src/app/` — `layout` (RootLayout, metadata, viewport), `loading`, `error`, `not_found`, `global_error`, `blog/slug/{page,metadata}` (PostPage with two sequential loaders, postPanel, generateMetadata) — a module name is an identifier, so Next's `not-found` / `[slug]` are `not_found` / `slug`; `test/blog_test.bp` 10 snapshots
 │   ├── nav-shell/          ← MEMBER (targets [commonJS, erlang]): `Sidebar`, `DocsIndex` (prefetch off per row), `CheckoutLink` (LinkStatus); `test/nav_test.bp` 6 snapshots
 │   ├── islands/            ← MEMBER (targets [commonJS, erlang]): `#[client]` LikeButton / ThemeProvider with their `#[clientProps]`, `PostList` / `PostListFrom(posts, first)` numbering islands, `RootLayout(theme, page)` in a server slot; `test/islands_test.bp` 5 snapshots
-│   ├── forms/              ← MEMBER (targets [commonJS]): `createPostForm` / `CreatePostForm`, `likeWidget` / `LikeWidget` (optimistic + form status), `searchForm`; `test/forms_test.bp` 7 snapshots
+│   ├── forms/              ← MEMBER (targets [commonJS, erlang]): `createPostForm` / `CreatePostForm`, `likeWidget` / `LikeWidget` (optimistic + form status), `searchForm`; `test/forms_test.bp` 7 snapshots
 │   └── document-shell/     ← MEMBER (targets [commonJS, erlang]): `documentShell` + `doctype` with constructors, `documentBody` in the `html` DSL, `main.bp` building `<main>` with `el`; `test/shell_test.bp` 4 snapshots
 ├── refusals/               ← NOT members: one project per compile-time refusal of the library, each with the `expect.txt` its `botopink check` must print (stage 4 of the gate, `scripts/check-refusals.sh`)
 │   ├── layout_plain_element/   ← `#[layout]` on `-> Element` (decision 117; the guide's `OldLayout`)
@@ -718,10 +718,10 @@ the umbrella has no row, and `jhonstart-html`, `jhonstart-link`, `jhonstart-test
 | `jhonstart-counter` | ✓ 4/4 | ✓ 4/4 |
 | `jhonstart-markup` | ✓ 7/7 | ✓ 7/7 |
 | `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
-| `blog-ssr` (targets erlang) | ✓ 10/10 | ✓ 10/10 |
+| `blog-ssr` | ✓ 10/10 | ✓ 10/10 |
 | `nav-shell` | ✓ 6/6 | ✓ 6/6 |
 | `islands` | ✓ 5/5 | ✓ 5/5 |
-| `forms` (targets commonJS) | ✓ 7/7 | ✓ 7/7 |
+| `forms` | ✓ 7/7 | ✓ 7/7 |
 | `document-shell` | ✓ 4/4 | ✓ 4/4 |
 
 `botopink test` in each member, summed per module; a row a member's

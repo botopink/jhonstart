@@ -5,7 +5,7 @@
   "src": "src/",
   "entry": "main.bp",
   "target": "commonJS",
-  "targets": ["commonJS"],
+  "targets": ["commonJS", "erlang"],
   "files": ["main.bp", "create_post.bp", "like.bp", "search.bp"],
   "dependencies": {
     "jhonstart": { "workspace": true },

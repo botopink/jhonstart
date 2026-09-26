@@ -6,6 +6,7 @@
   "entry": "main.bp",
   "target": "erlang",
   "targets": [
+    "commonJS",
     "erlang"
   ],
   "files": [
