@@ -2,9 +2,9 @@
 //
 // jhonstart declares the point, awaits it at the three moments CSS has to be
 // written and once more for the plugin's payload contribution, and is its
-// only caller; the `jhonstart-emilia` bridge implements it over emilia's
-// `flush()`. jhonstart never names emilia — nor any plugin, nor any key a
-// plugin may give.
+// only caller; the CSS bridge member of this workspace implements it over
+// its stylesheet's `flush()`. The core names no plugin, no stylesheet library
+// and no key a plugin may give.
 //
 // A plugin is a RECORD OF FUNCTIONS, not the `behavior` the README sketches:
 // an `Array<RenderPlugin>` of two different implementing types does not type

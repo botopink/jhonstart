@@ -15,6 +15,12 @@
     "error_boundary.bp",
     "metadata.bp",
     "elements.bp",
+    "suspense.bp",
+    "globals.bp",
+    "plugin.bp",
+    "routes.bp",
+    "render.bp",
+    "streaming.bp",
     "client_runtime.bp"
   ]
 }

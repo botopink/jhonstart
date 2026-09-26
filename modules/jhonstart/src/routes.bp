@@ -35,9 +35,9 @@
 // The registration is a LAMBDA, never a bare function name: a named function
 // used as a value lowers to an unbound erlang variable.
 //
-// The per-segment record the render composes — `Segment` — lives here too,
+// The per-segment record the render composes — `UiSegment` — lives here too,
 // beside the conventions it collects: `render.bp` imports it, and a
-// `Segment` in `render.bp` would make this module and that one import each
+// `UiSegment` in `render.bp` would make this module and that one import each
 // other.
 
 import {Element, ElementBase} from "element";
@@ -209,14 +209,14 @@ pub fn defaultView(comptime decl: @Decl, seg: string) {
     if (decl.returnType != "Element") decl.fail("#[defaultView] on `" + decl.name + "`: a default view is `fn " + decl.name + "(props: LayoutProps) -> Element`, not `" + decl.returnType + "`");
 }
 
-// ── `Segment` — one segment's conventions, for `compose` ────────────────────
+// ── `UiSegment` — one segment's conventions, for `compose` ────────────────────
 //
 // No optionals: a convention the segment lacks is `has<X> == false` and an
 // inert function. onze builds the chain root-first from `routing`'s
 // `layoutChain` and this registry (`segmentFor(pattern)`); a test builds it
 // with `segment(pattern)` and the `with*` refiners.
 
-pub type Segment(
+pub type UiSegment(
     pattern: string,
     hasLayout: bool,
     layoutView: fn(props: LayoutProps) -> @Component<ElementBase, Element>,
@@ -242,8 +242,8 @@ fn emptyErrorView(info: ErrorInfo) -> Element {
     return emptyTree();
 }
 
-pub fn segment(pattern: string) -> Segment {
-    return Segment(
+pub fn segment(pattern: string) -> UiSegment {
+    return UiSegment(
         pattern: pattern,
         hasLayout: false,
         layoutView: { props -> passThrough(props) },
@@ -258,29 +258,29 @@ pub fn segment(pattern: string) -> Segment {
     );
 }
 
-pub fn withLayout(s: Segment, f: fn(props: LayoutProps) -> @Component<ElementBase, Element>) -> Segment {
-    return Segment(pattern: s.pattern, hasLayout: true, layoutView: f, hasTemplate: s.hasTemplate, templateView: s.templateView, hasError: s.hasError, errorView: s.errorView, hasLoading: s.hasLoading, loadingView: s.loadingView, hasNotFound: s.hasNotFound, notFoundView: s.notFoundView);
+pub fn withLayout(s: UiSegment, f: fn(props: LayoutProps) -> @Component<ElementBase, Element>) -> UiSegment {
+    return UiSegment(pattern: s.pattern, hasLayout: true, layoutView: f, hasTemplate: s.hasTemplate, templateView: s.templateView, hasError: s.hasError, errorView: s.errorView, hasLoading: s.hasLoading, loadingView: s.loadingView, hasNotFound: s.hasNotFound, notFoundView: s.notFoundView);
 }
 
-pub fn withTemplate(s: Segment, f: fn(props: LayoutProps) -> @Component<ElementBase, Element>) -> Segment {
-    return Segment(pattern: s.pattern, hasLayout: s.hasLayout, layoutView: s.layoutView, hasTemplate: true, templateView: f, hasError: s.hasError, errorView: s.errorView, hasLoading: s.hasLoading, loadingView: s.loadingView, hasNotFound: s.hasNotFound, notFoundView: s.notFoundView);
+pub fn withTemplate(s: UiSegment, f: fn(props: LayoutProps) -> @Component<ElementBase, Element>) -> UiSegment {
+    return UiSegment(pattern: s.pattern, hasLayout: s.hasLayout, layoutView: s.layoutView, hasTemplate: true, templateView: f, hasError: s.hasError, errorView: s.errorView, hasLoading: s.hasLoading, loadingView: s.loadingView, hasNotFound: s.hasNotFound, notFoundView: s.notFoundView);
 }
 
-pub fn withError(s: Segment, f: fn(info: ErrorInfo) -> Element) -> Segment {
-    return Segment(pattern: s.pattern, hasLayout: s.hasLayout, layoutView: s.layoutView, hasTemplate: s.hasTemplate, templateView: s.templateView, hasError: true, errorView: f, hasLoading: s.hasLoading, loadingView: s.loadingView, hasNotFound: s.hasNotFound, notFoundView: s.notFoundView);
+pub fn withError(s: UiSegment, f: fn(info: ErrorInfo) -> Element) -> UiSegment {
+    return UiSegment(pattern: s.pattern, hasLayout: s.hasLayout, layoutView: s.layoutView, hasTemplate: s.hasTemplate, templateView: s.templateView, hasError: true, errorView: f, hasLoading: s.hasLoading, loadingView: s.loadingView, hasNotFound: s.hasNotFound, notFoundView: s.notFoundView);
 }
 
-pub fn withLoading(s: Segment, f: fn() -> Element) -> Segment {
-    return Segment(pattern: s.pattern, hasLayout: s.hasLayout, layoutView: s.layoutView, hasTemplate: s.hasTemplate, templateView: s.templateView, hasError: s.hasError, errorView: s.errorView, hasLoading: true, loadingView: f, hasNotFound: s.hasNotFound, notFoundView: s.notFoundView);
+pub fn withLoading(s: UiSegment, f: fn() -> Element) -> UiSegment {
+    return UiSegment(pattern: s.pattern, hasLayout: s.hasLayout, layoutView: s.layoutView, hasTemplate: s.hasTemplate, templateView: s.templateView, hasError: s.hasError, errorView: s.errorView, hasLoading: true, loadingView: f, hasNotFound: s.hasNotFound, notFoundView: s.notFoundView);
 }
 
-pub fn withNotFound(s: Segment, f: fn() -> Element) -> Segment {
-    return Segment(pattern: s.pattern, hasLayout: s.hasLayout, layoutView: s.layoutView, hasTemplate: s.hasTemplate, templateView: s.templateView, hasError: s.hasError, errorView: s.errorView, hasLoading: s.hasLoading, loadingView: s.loadingView, hasNotFound: true, notFoundView: f);
+pub fn withNotFound(s: UiSegment, f: fn() -> Element) -> UiSegment {
+    return UiSegment(pattern: s.pattern, hasLayout: s.hasLayout, layoutView: s.layoutView, hasTemplate: s.hasTemplate, templateView: s.templateView, hasError: s.hasError, errorView: s.errorView, hasLoading: s.hasLoading, loadingView: s.loadingView, hasNotFound: true, notFoundView: f);
 }
 
 // The segment at `pattern` as the registry holds it: every convention
 // registered for that pattern, the rest absent.
-pub fn segmentFor(pattern: string) -> Segment {
+pub fn segmentFor(pattern: string) -> UiSegment {
     var s = segment(pattern);
     val layoutLine = lineFor("L", pattern);
     if (__jhRoutesHas(layoutLine)) s = withLayout(s, __jhRoutesLookup(layoutLine, s.layoutView));

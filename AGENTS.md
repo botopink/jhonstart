@@ -56,7 +56,7 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, client.bp, suspense.bp, streaming.bp, render.bp, plugin.bp, globals.bp, routes.bp, error_boundary.bp, metadata.bp, elements.bp, client_runtime.bp] (front-number order, 94's `elements` last)
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, client.bp, suspense.bp, streaming.bp, render.bp, plugin.bp, globals.bp, routes.bp, error_boundary.bp, metadata.bp, elements.bp, client_runtime.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
 │   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; mod client_runtime;`
@@ -78,7 +78,7 @@ repository/jhonstart/
 │   │   │   ├── streaming.bp   ← COMPILED (front 30): `Chunk`/`resolve`/`fillHtml`, the late-signal markup, `Response` + `guarded`, `PageInput`, `App`/`app` with `render` / `renderStream` (→ `@Task<@Result<void, string>>`), the signal translation and the redirect-target check
 │   │   │   ├── plugin.bp      ← COMPILED (front 30): `RenderPlugin(name, head, chunk, close, payload)` — a record of async functions, called in `app`'s order
 │   │   │   ├── globals.bp     ← COMPILED (front 30): the registry `payload, fill, signal` → `__bp0/1/2` via `globals()`; `readPayload` (std `json.decode`), `registerFill`, `registerSignal`
-│   │   │   ├── routes.bp      ← COMPILED (front 30): `#[page]`/`#[layout]`/`#[template]`/`#[defaultView]`, `PageContext`, `LayoutProps`, the UI registry (`jhPage`… `uiTable()`), `Segment` + `segment`/`with*`/`segmentFor`
+│   │   │   ├── routes.bp      ← COMPILED (front 30): `#[page]`/`#[layout]`/`#[template]`/`#[defaultView]`, `PageContext`, `LayoutProps`, the UI registry (`jhPage`… `uiTable()`), `UiSegment` + `segment`/`with*`/`segmentFor`
 │   │   │   ├── render.mjs     ← HOST (js): per-render state + `eachCompleted`, and the browser half (fill / signal functions, payload text)
 │   │   │   ├── routes.mjs     ← HOST (js): the UI registry
 │   │   │   ├── sidecars/jhonstart_render.erl ← HOST (BEAM): per-render state in the process dictionary, hooks in `persistent_term`, `each_completed/2` (one process per boundary, values handed back in completion order)
@@ -96,6 +96,10 @@ repository/jhonstart/
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │   │       ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `@Task` component and loader conventions (front 28) — both rows
 │   │       └── client_test.bp   ← `botopink test` flat suite: the `#[client]` emit, a whitelisted props record, the island, the hole and the poison pill (front 29) — both rows
+│   ├── jhonstart-emilia/ ← MEMBER (front 30, additive): the bridge — `plugin() -> RenderPlugin` over emilia's `flush()`, contributing the payload's `s`; the ONE member naming both jhonstart and emilia
+│   │   ├── botopink.json  ← name jhonstart-emilia, files [root.bp], dependencies { jhonstart: { workspace: true }, emilia: { path: ../../../emilia/modules/emilia } }
+│   │   ├── src/root.bp    ← `plugin()`, `classesIn(css)`; the flushed names per render in a host cell
+│   │   └── test/bridge_test.bp ← `botopink test`: the styled page's one head `<style>`, a streamed boundary's fill style before its markup, `s`, `close` (front 30) — both rows
 │   ├── jhonstart-html/ ← MEMBER (front 95): the `html """…"""` DSL — what `from "jhonstart-html"` gives a consumer; the core does not depend on it
 │   │   ├── botopink.json  ← name jhonstart-html, src src/, entry root.bp, target commonJS, files [root.bp, html.bp], dependencies { jhonstart: { workspace: true } }
 │   │   ├── src/

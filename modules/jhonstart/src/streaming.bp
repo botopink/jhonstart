@@ -68,7 +68,7 @@ import {
 } from "render";
 import {globals} from "globals";
 import {RenderPlugin, Json} from "plugin";
-import {PageContext, LayoutProps, Segment} from "routes";
+import {PageContext, LayoutProps, UiSegment} from "routes";
 import {Metadata, Viewport, emptyMetadata, emptyViewport, mergeMetadata, mergeViewport, renderHead, renderViewport} from "metadata";
 import {escape} from "std";
 
@@ -131,13 +131,13 @@ declare fn __jhLate() -> string;
 declare fn __jhEachCompleted(tasks: Array<fn() -> @Task<Resolved>>, onDone: fn(index: i32, r: Resolved) -> @Task<i32>) -> @Task<i32>;
 
 fn guardStatus(res: Response, code: i32) -> void {
-    assert __jhWrites() == 0, "jhonstart: render: status(" + code.toString() + ") after the first write";
+    assert __jhWrites() == 0, "render: status(" + code.toString() + ") after the first write";
     val status = res.status;
     status(code);
 }
 
 fn guardHeader(res: Response, name: string, value: string) -> void {
-    assert __jhWrites() == 0, "jhonstart: render: header(\"" + name + "\") after the first write";
+    assert __jhWrites() == 0, "render: header(\"" + name + "\") after the first write";
     val header = res.header;
     header(name, value);
 }
@@ -174,7 +174,7 @@ pub type PageInput(
     query: string,
     table: string,
     actions: Array<#(string, string)>,
-    chain: Array<Segment>,
+    chain: Array<UiSegment>,
     page: fn() -> @Component<ElementBase, Element>,
     metadata: Array<Metadata>,
     viewports: Array<Viewport>,
@@ -216,12 +216,12 @@ fn kindWordOf(out: NavOutcome) -> string {
 }
 
 fn refusedTarget(to: string) -> string {
-    return "jhonstart: render: redirect target `" + to + "` refused - a relative target must be in the route table, an absolute one listed in app(allowedRedirects: [...])";
+    return "render: redirect target `" + to + "` refused - a relative target must be in the route table, an absolute one listed in app(allowedRedirects: [...])";
 }
 
 // ── the resolution of one boundary (in its own process on erlang) ───────────
 
-pub type Resolved(id: string, kind: string, html: string, reason: string)
+pub type Resolved(id: string, kind: string, html: string, reason: string, css: string)
 
 fn defaultNotFound() -> Element {
     return Element(tag: "h1", value: "", children: [Element(tag: "#text", value: "Not found", children: [], attrs: [])], attrs: []);
@@ -232,7 +232,11 @@ fn renderOrFail(tree: Element) -> @Result<string, string> {
     return try out;
 }
 
-fn resolveIn(req: RequestData, route: PageContext, b: Boundary) -> @Task<Resolved> {
+// Resolves one boundary IN THE PROCESS THAT RENDERED IT — its own process on
+// the erlang row — including the plugins' `chunk(id)`: a stylesheet that
+// registers per process (emilia's does) only sees the classes the boundary's
+// render registered from inside that process.
+fn resolveIn(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, b: Boundary) -> @Task<Resolved> {
     enterRequest(req);
     fill(route.pathname, encoding.formStringify(route.params), encoding.formStringify(route.query), route.pattern, 0);
     val child = b.child;
@@ -243,21 +247,23 @@ fn resolveIn(req: RequestData, route: PageContext, b: Boundary) -> @Task<Resolve
     };
     if (failure == notFoundReason()) {
         val nf = __jhTryValue({ -> renderNode(__jhStashedNotFound(defaultNotFound())) });
+        val nfCss = await chunksFrom(plugins, 0, b.id);
         return case nf {
-            Ok(html) -> Resolved(id: b.id, kind: "signal", html: html, reason: failure);
-            Error(message) -> Resolved(id: b.id, kind: "error", html: "", reason: message);
+            Ok(html) -> Resolved(id: b.id, kind: "signal", html: html, reason: failure, css: nfCss);
+            Error(message) -> Resolved(id: b.id, kind: "error", html: "", reason: message, css: "");
         };
     };
-    if (isSignal(failure)) return Resolved(id: b.id, kind: "signal", html: "", reason: failure);
-    if (failure != "") return Resolved(id: b.id, kind: "error", html: "", reason: failure);
+    if (isSignal(failure)) return Resolved(id: b.id, kind: "signal", html: "", reason: failure, css: "");
+    if (failure != "") return Resolved(id: b.id, kind: "error", html: "", reason: failure, css: "");
     val tree = case outcome {
         Ok(t) -> t;
         Error(message) -> defaultNotFound();
     };
     val html = renderOrFail(tree);
+    val css = await chunksFrom(plugins, 0, b.id);
     return case html {
-        Ok(h) -> Resolved(id: b.id, kind: "fill", html: h, reason: "");
-        Error(message) -> Resolved(id: b.id, kind: "error", html: "", reason: message);
+        Ok(h) -> Resolved(id: b.id, kind: "fill", html: h, reason: "", css: css);
+        Error(message) -> Resolved(id: b.id, kind: "error", html: "", reason: message, css: "");
     };
 }
 
@@ -318,7 +324,7 @@ fn closeFrom(ps: Array<RenderPlugin>, i: i32) -> @Task<string> {
     val outcome = await close();
     val failure = case outcome {
         Ok(v) -> "";
-        Error(message) -> "jhonstart: render: plugin `" + p.name + "` failed to close: " + message;
+        Error(message) -> "render: plugin `" + p.name + "` failed to close: " + message;
     };
     if (failure != "") return failure;
     val rest = await closeFrom(ps, i + 1);
@@ -349,10 +355,10 @@ pub fn extrasProblem(extras: Array<#(string, string, string)>) -> string {
     var seen: Array<#(string, string)> = [];
     for (extras) { e ->
         if (problem == "") {
-            if (renderKeys().contains(e._1)) problem = "jhonstart: render: plugin `" + e._0 + "` gave the payload key `" + e._1 + "`, which the render writes itself";
+            if (renderKeys().contains(e._1)) problem = "render: plugin `" + e._0 + "` gave the payload key `" + e._1 + "`, which the render writes itself";
             for (seen) { s ->
                 if (problem == "") {
-                    if (s._1 == e._1) problem = "jhonstart: render: plugins `" + s._0 + "` and `" + e._0 + "` both gave the payload key `" + e._1 + "`";
+                    if (s._1 == e._1) problem = "render: plugins `" + s._0 + "` and `" + e._0 + "` both gave the payload key `" + e._1 + "`";
                 };
             };
             seen.push(#(e._0, e._1));
@@ -496,12 +502,12 @@ fn holeIds(boundaries: Array<Boundary>) -> string[] {
     return boundaries.map({ b -> b.id });
 }
 
-fn thunksOf(req: RequestData, route: PageContext, boundaries: Array<Boundary>) -> Array<fn() -> @Task<Resolved>> {
-    return boundaries.map({ b -> boundaryThunk(req, route, b) });
+fn thunksOf(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, boundaries: Array<Boundary>) -> Array<fn() -> @Task<Resolved>> {
+    return boundaries.map({ b -> boundaryThunk(plugins, req, route, b) });
 }
 
-fn boundaryThunk(req: RequestData, route: PageContext, b: Boundary) -> fn() -> @Task<Resolved> {
-    return { -> resolveIn(req, route, b) };
+fn boundaryThunk(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, b: Boundary) -> fn() -> @Task<Resolved> {
+    return { -> resolveIn(plugins, req, route, b) };
 }
 
 // The late half: after the first write a signal is markup, a failure ends the
@@ -523,9 +529,8 @@ fn onResolved(site: App, input: PageInput, res: Response, r: Resolved) -> @Task<
 }
 
 fn writeFill(site: App, res: Response, r: Resolved) -> @Task<i32> {
-    val css = await chunksFrom(site.plugins, 0, r.id);
     val write = res.write;
-    await write(fillHtml(Chunk(id: r.id, html: r.html), css));
+    await write(fillHtml(Chunk(id: r.id, html: r.html), r.css));
     return 1;
 }
 
@@ -538,9 +543,8 @@ fn writeLateSignal(site: App, input: PageInput, res: Response, r: Resolved) -> @
         await writeRedirect(redirectSignalHtml(out.location));
         return __jhSetLate("signal");
     };
-    val nfCss = await chunksFrom(site.plugins, 0, r.id);
     val writeNotFound = res.write;
-    await writeNotFound(notFoundSignalHtml(nfCss, r.html));
+    await writeNotFound(notFoundSignalHtml(r.css, r.html));
     return __jhSetLate("signal");
 }
 
@@ -581,7 +585,7 @@ fn streamed(site: App, input: PageInput, req: RequestData, route: PageContext, r
     header("content-type", "text/html; charset=utf-8");
     val write = res.write;
     await write(documentStart(mergedHead(input), pluginHead, input.pattern) + shellHtml + "</div>");
-    await __jhEachCompleted(thunksOf(req, route, boundaries), completion(site, input, res));
+    await __jhEachCompleted(thunksOf(site.plugins, req, route, boundaries), completion(site, input, res));
     val failure = lateFailure();
     if (failure != "") {
         val failed = await finish(res, failure);
@@ -594,7 +598,7 @@ fn streamed(site: App, input: PageInput, req: RequestData, route: PageContext, r
 // Every boundary resolves first — a signal among them is still before the
 // first chunk — and the whole document is one write, the fills in shell order.
 fn whole(site: App, input: PageInput, req: RequestData, route: PageContext, res: Response, shellHtml: string, boundaries: Array<Boundary>) -> @Task<@Result<void, string>> {
-    await __jhEachCompleted(thunksOf(req, route, boundaries), { index, r -> collectResolved(r) });
+    await __jhEachCompleted(thunksOf(site.plugins, req, route, boundaries), { index, r -> collectResolved(r) });
     val resolved = takeResolved();
     var failure = "";
     for (resolved) { r ->
@@ -647,19 +651,19 @@ fn takeResolved() -> Array<Resolved> {
     return __jhTakeResolved();
 }
 
-fn resolvedFor(resolved: Array<Resolved>, id: string) -> string {
-    var html = "";
+fn resolvedFor(resolved: Array<Resolved>, id: string) -> Resolved {
+    var found = Resolved(id: id, kind: "fill", html: "", reason: "", css: "");
     for (resolved) { r ->
-        if (r.id == id) html = r.html;
+        if (r.id == id) found = r;
     };
-    return html;
+    return found;
 }
 
 fn fillsInOrder(site: App, boundaries: Array<Boundary>, resolved: Array<Resolved>, i: i32) -> @Task<string> {
     if (i >= boundaries.length) return "";
     val id = holeIds(boundaries).at(i).unwrapOr("");
-    val css = await chunksFrom(site.plugins, 0, id);
-    val mine = fillHtml(Chunk(id: id, html: resolvedFor(resolved, id)), css);
+    val r = resolvedFor(resolved, id);
+    val mine = fillHtml(Chunk(id: id, html: r.html), r.css);
     val rest = await fillsInOrder(site, boundaries, resolved, i + 1);
     return mine + rest;
 }

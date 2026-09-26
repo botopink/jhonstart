@@ -1,0 +1,154 @@
+// `botopink test` flat suite for the `jhonstart-emilia` bridge (front 30
+// Step 9): the one test that renders emilia classes with jhonstart. Both rows.
+
+import {Element, ElementBase, div, p, span, text} from "jhonstart";
+import {Boundary, Suspense, holeId} from "jhonstart";
+import {app, Response, PageInput, RequestData, RenderPlugin} from "jhonstart";
+import {UiSegment, Metadata, Viewport, ErrorInfo, LayoutProps, PageContext} from "jhonstart";
+import {emilia, flush, Token} from "emilia";
+import {plugin, classesIn} from "root";
+
+// ── the recorder (the core suite's, per row) ────────────────────────────────
+
+#[@External.Node("""(globalThis.__jhRec = [], 0)""")]
+#[@External.Erlang("""(fun() -> put(jh_rec, []), 0 end)()""")]
+declare fn recReset() -> i32;
+
+#[@External.Node("""((globalThis.__jhRec = (globalThis.__jhRec || []).concat([$0])), 0)""")]
+#[@External.Erlang("""(fun(__E) -> put(jh_rec, (case get(jh_rec) of undefined -> []; __L -> __L end) ++ [__E]), 0 end)($0)""")]
+declare fn recPush(event: string) -> i32;
+
+#[@External.Node("""(globalThis.__jhRec || [])""")]
+#[@External.Erlang("""(fun() -> case get(jh_rec) of undefined -> []; __L -> __L end end)()""")]
+declare fn recEvents() -> Array<string>;
+
+fn recStatus(code: i32) -> void {
+    recPush("status " + code.toString());
+}
+
+fn recHeader(name: string, value: string) -> void {
+    recPush("header " + name + " " + value);
+}
+
+fn recWrite(chunk: string) -> @Task<void> {
+    recPush(chunk);
+}
+
+fn recClose() -> @Task<void> {
+    recPush("close");
+}
+
+fn recorder() -> Response {
+    recReset();
+    return Response(status: { code -> recStatus(code) }, header: { name, value -> recHeader(name, value) }, write: { chunk -> recWrite(chunk) }, close: { -> recClose() });
+}
+
+fn document() -> string {
+    return recEvents().join("");
+}
+
+fn req() -> RequestData {
+    return RequestData(method: "GET", path: "/", params: [], query: [], headers: [], cookies: []);
+}
+
+fn inputOf(page: fn() -> @Component<ElementBase, Element>) -> PageInput {
+    return PageInput(build: "b", pathname: "/", pattern: "/", params: "", query: "", table: "P|/", actions: [], chain: [], page: page, metadata: [], viewports: []);
+}
+
+fn outcomeText(r: @Result<void, string>) -> string {
+    return case r {
+        Ok(v) -> "ok";
+        Error(message) -> message;
+    };
+}
+
+// ── pages ───────────────────────────────────────────────────────────────────
+
+fn StyledPage() -> @Component<ElementBase, Element> {
+    val card = emilia([.Gap.All.4]);
+    return div([text("card", attrs: [])], attrs: [#("class", card)]);
+}
+
+fn styledAside() -> @Component<ElementBase, Element> {
+    val cls = emilia([.Gap.All.2]);
+    return span([text("aside", attrs: [])], attrs: [#("class", cls)]);
+}
+
+fn StreamedStyledPage() -> @Component<ElementBase, Element> {
+    return div([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> styledAside() }))], attrs: []);
+}
+
+fn PlainPage() -> @Component<ElementBase, Element> {
+    return p([text("plain", attrs: [])], attrs: []);
+}
+
+fn styleCount(doc: string) -> i32 {
+    return doc.split("<style>").length - 1;
+}
+
+// ── the cells ───────────────────────────────────────────────────────────────
+
+test "bridge: a styled page has one <style> in <head>, carrying its class" {
+    val site = app([plugin()], []);
+    val out = await site.render(inputOf({ -> StyledPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    val doc = document();
+    val head = doc.split("</head>").at(0).unwrapOr("");
+    assert styleCount(head) == 1;
+    val cls = emilia([.Gap.All.4]);
+    val drained = await flush();
+    assert head.contains("." + cls);
+    assert doc.contains("class=\"" + cls + "\"");
+}
+
+test "bridge: a streamed boundary's new class is its fill's style, before the markup" {
+    val site = app([plugin()], []);
+    val out = await site.renderStream(inputOf({ -> StreamedStyledPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    val cls = emilia([.Gap.All.2]);
+    val drained = await flush();
+    val doc = document();
+    assert doc.contains("<template data-jh-f=\"h1\"><style>");
+    val fill = doc.split("<template data-jh-f=\"h1\">").at(1).unwrapOr("");
+    assert fill.indexOf("." + cls) < fill.indexOf("<span class=\"" + cls + "\">aside</span>");
+    assert fill.contains("</template><script>__bp1(\"h1\")</script>");
+}
+
+test "bridge: the payload's s lists the flushed classes, and [] when there were none" {
+    val site = app([plugin()], []);
+    val out = await site.render(inputOf({ -> StyledPage() }), req(), recorder());
+    val cls = emilia([.Gap.All.4]);
+    val drained = await flush();
+    assert document().contains("\"s\":[\"" + cls + "\"]");
+    val plain = await site.render(inputOf({ -> PlainPage() }), req(), recorder());
+    assert document().contains("\"s\":[]");
+}
+
+test "bridge: close is Ok after the last chunk and Error for a class registered later" {
+    val bridge = plugin();
+    val head = bridge.head;
+    val first = await head();
+    val close = bridge.close;
+    val clean = await close();
+    assert outcomeText(clean) == "ok";
+    val late = emilia([.Gap.All.8]);
+    val dirty = await close();
+    assert outcomeText(dirty).contains("registered after the last chunk: " + late);
+}
+
+test "bridge: classesIn reads the e_ classes of a flushed document, once each, in order" {
+    assert classesIn(".e_1a2b{gap:1rem}.e_1a2b:hover{}.e_ff{}").join(",") == "e_1a2b,e_ff";
+    assert classesIn("@layer theme{:root{--x:1}}").length == 0;
+}
+
+// The class scheme is contract 4's: `e_` + std's content hash of the encoded
+// sheet. The shared fixture that pins the literal (`emilia/modules/emilia/
+// test/attributes_test.bp`, front 48) does not exist yet; this cell pins the
+// class of one token list on both rows, which is the half this bridge owes.
+test "bridge: one token list is one class on both rows" {
+    val cls = emilia([.Gap.All.4]);
+    val again = emilia([.Gap.All.4]);
+    val drained = await flush();
+    assert cls == again;
+    assert cls.startsWith("e_");
+}

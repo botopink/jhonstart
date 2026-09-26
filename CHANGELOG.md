@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Front 30 — render and streaming.** `render.bp` (the escaping walker over
+  std's `escape`, `compose`, the payload through std's `json` and
+  `escape.scriptJson`, `RenderHooks`), `streaming.bp` (`resolve` / `fillHtml`,
+  `Response` and its guard, `App.render` / `renderStream` →
+  `@Task<@Result<void, string>>`, navigation signals before and after the first
+  chunk, the redirect-target check), `suspense.bp`, `plugin.bp`, `globals.bp`,
+  `routes.bp` (`#[page]` / `#[layout]` / `#[template]` / `#[defaultView]`,
+  `uiTable()`, `UiSegment`) with their host halves, and the new member
+  `modules/jhonstart-emilia` (the bridge — additive). The core's `files` list
+  is now in DEPENDENCY order: a dependent loads the modules in that order, and
+  a module listed before one it imports is `unbound` there. Core 128 → 180 on
+  both rows; `jhonstart-emilia` 6/6 on both.
+
 - **Front 95 — the package cut: `jhonstart-link` member.** Front 27's
   render-time half — `link.bp` and `reconcile.bp`, with `link_test.bp` and
   `reconcile_test.bp` — moves out of the core into `modules/jhonstart-link/`

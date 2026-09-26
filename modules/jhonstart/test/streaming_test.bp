@@ -17,7 +17,7 @@ import {Boundary, Suspense, holeId} from "suspense";
 import {compose, resetRender, registeredBoundaries, renderNode, RenderHooks, setHooks, defaultHooks, attemptTask} from "render";
 import {Response, PageInput, App, app, redirectAllowed, extrasProblem, guarded} from "streaming";
 import {RenderPlugin, Json} from "plugin";
-import {PageContext, LayoutProps, Segment, segment, withLayout, withTemplate, withError, withLoading, withNotFound} from "routes";
+import {PageContext, LayoutProps, UiSegment, segment, withLayout, withTemplate, withError, withLoading, withNotFound} from "routes";
 import {Metadata, Viewport, emptyMetadata} from "metadata";
 import {async} from "std";
 
@@ -83,7 +83,7 @@ fn anonymous() -> RequestData {
 
 val table = "L|/\nP|/blog/[slug]\nP|/login\nP|/blog\nP|/dashboard";
 
-fn inputOf(pattern: string, chain: Array<Segment>, page: fn() -> @Component<ElementBase, Element>) -> PageInput {
+fn inputOf(pattern: string, chain: Array<UiSegment>, page: fn() -> @Component<ElementBase, Element>) -> PageInput {
     return PageInput(
         build: "b1",
         pathname: "/blog/hi",
@@ -193,7 +193,7 @@ fn LayoutView(props: LayoutProps) -> @Component<ElementBase, Element> {
     return section([props.children], attrs: [#("class", "layout")]);
 }
 
-fn fullSegment() -> Segment {
+fn fullSegment() -> UiSegment {
     return withNotFound(withLoading(withError(withTemplate(withLayout(segment("/blog/[slug]"), { props -> LayoutView(props) }), { props -> TemplateView(props) }), { info -> ErrorView(info) }), { -> LoadingView() }), { -> NotFoundView() });
 }
 
@@ -513,11 +513,19 @@ fn pluginEvents() -> string[] {
     return recEvents().filter({ e -> e.startsWith("plugin ") });
 }
 
+// `chunk(id)` runs in the process that resolved the boundary (its own process
+// on erlang, so a per-process stylesheet sees what the boundary registered);
+// its calls are read off the fills it styled, in completion order.
 test "plugin: head once, chunk per boundary in completion order, close once, payload last" {
     val site = app([recording()], []);
     val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
     assert outcomeText(out) == "ok";
-    assert pluginEvents().join("|") == "plugin head|plugin chunk h2|plugin chunk h1|plugin close|plugin payload";
+    assert pluginEvents().filter({ e -> e.startsWith("plugin chunk") == false }).join("|") == "plugin head|plugin close|plugin payload";
+    val w = writes();
+    assert w.at(1).unwrapOr("").contains("<style>.h2{}</style>");
+    assert w.at(2).unwrapOr("").contains("<style>.h1{}</style>");
+    assert allText().indexOf("plugin head") < allText().indexOf("write <!DOCTYPE");
+    assert allText().indexOf("plugin close") > allText().indexOf("data-jh-f=\"h1\"");
 }
 
 test "plugin: head lands in <head>, each chunk first inside its fill, the payload key verbatim" {

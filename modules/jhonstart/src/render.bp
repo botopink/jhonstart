@@ -40,7 +40,7 @@
 // `escape.scriptJson`, so `</script` is unrepresentable inside the block; this
 // file keeps no JSON writer and no escaper of its own (decision 116). `t`, `a`
 // and `b` are written verbatim from the strings onze handed in; plugin keys
-// (`s` is `jhonstart-emilia`'s) are written verbatim under their key.
+// (`s` is the CSS bridge member's) are written verbatim under their key.
 
 import {Element, ElementBase} from "element";
 import {isVoidTag, isRawTextTag} from "elements";
@@ -51,7 +51,7 @@ import {ErrorInfo, infoFor, isSignal, notFoundReason, wrap} from "error_boundary
 import {Boundary, Suspense, holeId} from "suspense";
 import {globals} from "globals";
 import {Json} from "plugin";
-import {PageContext, LayoutProps, Segment, segment} from "routes";
+import {PageContext, LayoutProps, UiSegment, segment} from "routes";
 
 // ── the per-render state (render.mjs / sidecars/jhonstart_render.erl) ───────
 
@@ -186,7 +186,7 @@ fn rawBody(tag: string, children: Children) -> string {
         out = out + c.value;
     };
     val closer = "</" + tag;
-    assert out.toLower().contains(closer) == false, "jhonstart: render: a <" + tag + "> body contains `" + closer + "`, which would close the element early - refused, never escaped";
+    assert out.toLower().contains(closer) == false, "render: a <" + tag + "> body contains `" + closer + "`, which would close the element early - refused, never escaped";
     return out;
 }
 
@@ -257,7 +257,7 @@ pub fn substitute(tree: Element, inner: Element) -> Element {
     return Element(tag: tree.tag, value: tree.value, children: kids, attrs: tree.attrs);
 }
 
-fn segmentOf(chain: Array<Segment>, i: i32) -> Segment {
+fn segmentOf(chain: Array<UiSegment>, i: i32) -> UiSegment {
     var found = segment("");
     var n = 0;
     for (chain) { s ->
@@ -276,7 +276,7 @@ fn enterDepth(route: PageContext, depth: i32) -> i32 {
     return fill(route.pathname, encoding.formStringify(route.params), encoding.formStringify(route.query), route.pattern, depth);
 }
 
-fn layoutOf(seg: Segment, route: PageContext, depth: i32) -> @Component<ElementBase, Element> {
+fn layoutOf(seg: UiSegment, route: PageContext, depth: i32) -> @Component<ElementBase, Element> {
     enterDepth(route, depth);
     if (seg.hasLayout == false) return childrenMarker();
     val view = seg.layoutView;
@@ -284,7 +284,7 @@ fn layoutOf(seg: Segment, route: PageContext, depth: i32) -> @Component<ElementB
     return tree;
 }
 
-fn templateOf(seg: Segment, route: PageContext) -> @Component<ElementBase, Element> {
+fn templateOf(seg: UiSegment, route: PageContext) -> @Component<ElementBase, Element> {
     if (seg.hasTemplate == false) return childrenMarker();
     val view = seg.templateView;
     val tree = await view(propsFor(route));
@@ -293,12 +293,12 @@ fn templateOf(seg: Segment, route: PageContext) -> @Component<ElementBase, Eleme
 }
 
 // The page, composed through `chain`: root-first, layouts before the page.
-pub fn compose(chain: Array<Segment>, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+pub fn compose(chain: Array<UiSegment>, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
     val tree = await composeAt(chain, 0, route, page);
     return tree;
 }
 
-fn composeAt(chain: Array<Segment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn composeAt(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
     if (i >= chain.length) {
         val leaf = await page();
         return leaf;
@@ -310,12 +310,12 @@ fn composeAt(chain: Array<Segment>, i: i32, route: PageContext, page: fn() -> @C
     return substitute(shell, substitute(tmpl, inner));
 }
 
-fn errorId(seg: Segment) -> string {
+fn errorId(seg: UiSegment) -> string {
     return seg.pattern;
 }
 
 // `error > loading > not-found > (the rest)` for segment `i`.
-fn errorLevel(chain: Array<Segment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn errorLevel(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasLoading) {
         val loading = seg.loadingView;
@@ -331,7 +331,7 @@ fn errorLevel(chain: Array<Segment>, i: i32, route: PageContext, page: fn() -> @
 
 // The error boundary of segment `i` around its not-found level. A signal is
 // re-raised; an ordinary failure renders the segment's error view.
-fn caughtBelow(chain: Array<Segment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn caughtBelow(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasError == false) {
         val plain = await notFoundLevel(chain, i, route, page);
@@ -347,7 +347,7 @@ fn caughtBelow(chain: Array<Segment>, i: i32, route: PageContext, page: fn() -> 
     return wrap(errorId(seg), errorTree(seg, outcome));
 }
 
-fn errorTree(seg: Segment, outcome: @Result<Element, string>) -> Element {
+fn errorTree(seg: UiSegment, outcome: @Result<Element, string>) -> Element {
     val view = seg.errorView;
     return case outcome {
         Ok(tree) -> tree;
@@ -357,7 +357,7 @@ fn errorTree(seg: Segment, outcome: @Result<Element, string>) -> Element {
 
 // The not-found level: `data-jh-n` around the rest, and the nearest not-found
 // tree for a not-found signal raised below it.
-fn notFoundLevel(chain: Array<Segment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn notFoundLevel(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasNotFound == false) {
         val plain = await composeAt(chain, i + 1, route, page);
@@ -438,7 +438,7 @@ pub fn writePayload(p: Payload) -> string {
     return escape.scriptJson(json.object(fields));
 }
 
-// The payload script: `<script>window.__bp0 = {…}</script>`.
+// The payload script: `<script>window.<globals().payload> = {…}</script>`.
 pub fn payloadScript(p: Payload) -> string {
     return "<script>window." + globals().payload + " = " + writePayload(p) + "</script>";
 }
