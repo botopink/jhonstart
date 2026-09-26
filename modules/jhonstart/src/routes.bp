@@ -45,11 +45,14 @@ import {pairValue} from "router";
 import {ErrorInfo} from "error_boundary";
 import {segment: {parsePath, patternOf, slotOf}, table: {RouteEntry, writeTable}} from "routing";
 
+// NO `query` FIELD. The query is per-request input, and reading it marks the
+// render dynamic; a public field is a read nothing can intercept, so the only
+// reader is front 26's `searchParams()` hook, which marks (`AGENTS.md` § *The
+// `query` hole, closed*).
 pub type PageContext(
     pathname: string,
     pattern: string,
     params: Array<#(string, string)>,
-    query: Array<#(string, string)>,
     rest: string[],
 )
 

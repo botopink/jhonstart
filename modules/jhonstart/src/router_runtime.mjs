@@ -83,3 +83,23 @@ export function navigate(kind, href) {
 export function lastNavigation() {
   return lastNav;
 }
+
+// The render's DYNAMIC mark: set by the two readers of per-request input
+// (`searchParams()` and front 28's `request()`), read by front 30's payload
+// writer as `d`, cleared when a render starts. On node every render shares
+// this module, so a boundary's mark is the page's mark already.
+let dynamicMark = false;
+
+export function markDynamic() {
+  dynamicMark = true;
+  return 0;
+}
+
+export function dynamic() {
+  return dynamicMark;
+}
+
+export function resetDynamic() {
+  dynamicMark = false;
+  return 0;
+}

@@ -104,7 +104,7 @@ fn chainOf(pattern: string) -> Array<UiSegment> {
 }
 
 fn contextOf(r: RouterState) -> PageContext {
-    return PageContext(pathname: r.path, pattern: r.pattern, params: r.params, query: r.search, rest: []);
+    return PageContext(pathname: r.path, pattern: r.pattern, params: r.params, rest: []);
 }
 
 fn pathPart(to: string) -> string {
@@ -150,7 +150,7 @@ fn navigateTo(site: ClientApp, path: string, search: string, hops: i32) -> @Task
     resetRender();
     val routeState = resolveRoute(site.routes, path, search);
     val ctx = contextOf(routeState);
-    fill(ctx.pathname, encoding.formStringify(ctx.params), encoding.formStringify(ctx.query), ctx.pattern, 0);
+    fill(ctx.pathname, encoding.formStringify(ctx.params), encoding.formStringify(routeState.search), ctx.pattern, 0);
     if (routeState.pattern == "") {
         val missing = mountTree(site.mount, defaultNotFound());
         return try missing;

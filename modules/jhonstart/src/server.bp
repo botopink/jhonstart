@@ -84,7 +84,7 @@
 // hand-rolls no escaping and re-exports none.
 
 import {Element, ElementBase, renderToString} from "element";
-import {pairValue} from "router";
+import {pairValue, markDynamic} from "router";
 import {encoding} from "std";
 
 // ── step 1: the request as a record ─────────────────────────────────────────
@@ -243,8 +243,13 @@ fn requireEntered(reader: string) -> i32 {
 // also `await` because `@Component` extends `@Task`. Called without `use` it
 // answers the same `@Component` (a Promise on commonJS), so a `@Task` body or a
 // test `await`s it. It cannot fail, so its `T` is not a `@Result`.
+//
+// Reading the request marks the render DYNAMIC (router.bp's `markDynamic`):
+// its output depends on this reader's headers, cookies or query, so a cache
+// may not keep it as static.
 pub fn request() -> @Component<ElementBase, RequestData> {
     requireEntered("request()");
+    markDynamic();
     return RequestData(
         method: __jhReqMethod(),
         path: __jhReqPath(),

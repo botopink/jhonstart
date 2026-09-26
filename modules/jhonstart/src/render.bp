@@ -45,7 +45,7 @@
 import {Element, ElementBase} from "element";
 import {isVoidTag, isRawTextTag} from "elements";
 import {escape, json, encoding} from "std";
-import {fill} from "router";
+import {fill, snapshot} from "router";
 import {islandId, islandAttr, Island, clientMount, islandEntry} from "client";
 import {ErrorInfo, infoFor, isSignal, notFoundReason, wrap} from "error_boundary";
 import {Boundary, Suspense, holeId} from "suspense";
@@ -272,8 +272,10 @@ fn propsFor(route: PageContext) -> LayoutProps {
 }
 
 // The route snapshot for the layout at `depth`: front 26's `selected`.
+// The query is the snapshot's own — the render filled it at depth 0 — since
+// `PageContext` carries none.
 fn enterDepth(route: PageContext, depth: i32) -> i32 {
-    return fill(route.pathname, encoding.formStringify(route.params), encoding.formStringify(route.query), route.pattern, depth);
+    return fill(route.pathname, encoding.formStringify(route.params), encoding.formStringify(snapshot().search), route.pattern, depth);
 }
 
 fn layoutOf(seg: UiSegment, route: PageContext, depth: i32) -> @Component<ElementBase, Element> {

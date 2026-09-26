@@ -11,7 +11,7 @@
 import {Element, ElementBase, text, div, p, span, ul, li} from "element";
 import {h2, section, main} from "elements";
 import {RequestData, cookies, request} from "server";
-import {selectedLayoutSegment, pathname} from "router";
+import {selectedLayoutSegment, pathname, searchParams} from "router";
 import {notFound, redirect, ErrorInfo} from "error_boundary";
 import {Boundary, Suspense, holeId} from "suspense";
 import {compose, resetRender, registeredBoundaries, renderNode, RenderHooks, setHooks, defaultHooks, attemptTask, attemptRender, isLangTag} from "render";
@@ -690,4 +690,69 @@ test "chunk writer: notFound() before the first chunk is 404 and the not-found d
     assert events.at(2).unwrapOr("").contains("<h2>No such post</h2>");
     assert events.at(events.length - 1).unwrapOr("") == "close";
     assert countOf("close") == 1;
+}
+
+// ── the DYNAMIC mark: the query and the request are read through a marking
+// hook, and `PageContext` carries no `query` field to read around it ────────
+
+fn SortedPage() -> @Component<ElementBase, Element> {
+    val q = use searchParams();
+    return p([text("rows " + q.length.toString(), attrs: [])], attrs: []);
+}
+
+fn CookiePage() -> @Component<ElementBase, Element> {
+    val r = use request();
+    return p([text("hi " + r.cookie("session"), attrs: [])], attrs: []);
+}
+
+fn sortedChild() -> @Component<ElementBase, Element> {
+    val q = use searchParams();
+    return span([text("sorted " + q.length.toString(), attrs: [])], attrs: []);
+}
+
+fn StreamedSortedPage() -> @Component<ElementBase, Element> {
+    return section([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> sortedChild() }))], attrs: []);
+}
+
+fn lastWrite() -> string {
+    val w = writes();
+    return w.at(w.length - 1).unwrapOr("");
+}
+
+test "dynamic: a page that reads neither the query nor the request is static" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog/[slug]", [], { -> BlogPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert lastWrite().contains("\"d\":false");
+}
+
+test "dynamic: reading the query through searchParams() marks the render" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> SortedPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert lastWrite().contains("\"d\":true");
+}
+
+test "dynamic: reading the request marks the render" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> CookiePage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert allText().contains("hi s1");
+    assert lastWrite().contains("\"d\":true");
+}
+
+test "dynamic: a boundary's read marks the page, from the boundary's own process" {
+    val site = app([], []);
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedSortedPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    assert allText().contains("sorted 0");
+    assert lastWrite().contains("\"d\":true");
+}
+
+test "dynamic: the mark does not leak into the next render" {
+    val site = app([], []);
+    val first = await site.renderStream(inputOf("/blog", [], { -> SortedPage() }), req(), recorder());
+    val second = await site.renderStream(inputOf("/blog/[slug]", [], { -> BlogPage() }), req(), recorder());
+    assert outcomeText(second) == "ok";
+    assert lastWrite().contains("\"d\":false");
 }
