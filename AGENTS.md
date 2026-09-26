@@ -56,10 +56,10 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, client_runtime.bp] (front-number order, 94's `elements` last)
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, client.bp, suspense.bp, streaming.bp, render.bp, plugin.bp, globals.bp, routes.bp, error_boundary.bp, metadata.bp, elements.bp, client_runtime.bp] (front-number order, 94's `elements` last)
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
-│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod error_boundary; pub mod metadata; pub mod elements; mod client_runtime;`
+│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; mod client_runtime;`
 │   │   │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │   │   │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<ElementBase,_>, pure server-pass bodies) + test {} (imports `Element`)
 │   │   │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
@@ -73,11 +73,24 @@ repository/jhonstart/
 │   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`enterRequest`/`leaveRequest`/`cookies`/`headers`, `renderServerComponent`
 │   │   │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
 │   │   │   ├── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
+│   │   │   ├── suspense.bp    ← COMPILED (front 30): `Boundary(id, fallback, child: fn() -> @Component<…>)` (an UNSTARTED thunk), `Suspense` (the `data-jh-h` hole; registers the boundary with the render), `holeId`
+│   │   │   ├── render.bp      ← COMPILED (front 30): `renderNode` (the escaping, void-aware walker over std `escape`), `raw`, `shellHtml`, `mountIsland` (i0, i1 … through front 29's `islandAttr`), `compose` (layout > template > error > loading > not-found > page; layouts run first), `Payload`/`writePayload` (std `json` + `escape.scriptJson`), `RenderHooks`/`setHooks`, the document
+│   │   │   ├── streaming.bp   ← COMPILED (front 30): `Chunk`/`resolve`/`fillHtml`, the late-signal markup, `Response` + `guarded`, `PageInput`, `App`/`app` with `render` / `renderStream` (→ `@Task<@Result<void, string>>`), the signal translation and the redirect-target check
+│   │   │   ├── plugin.bp      ← COMPILED (front 30): `RenderPlugin(name, head, chunk, close, payload)` — a record of async functions, called in `app`'s order
+│   │   │   ├── globals.bp     ← COMPILED (front 30): the registry `payload, fill, signal` → `__bp0/1/2` via `globals()`; `readPayload` (std `json.decode`), `registerFill`, `registerSignal`
+│   │   │   ├── routes.bp      ← COMPILED (front 30): `#[page]`/`#[layout]`/`#[template]`/`#[defaultView]`, `PageContext`, `LayoutProps`, the UI registry (`jhPage`… `uiTable()`), `Segment` + `segment`/`with*`/`segmentFor`
+│   │   │   ├── render.mjs     ← HOST (js): per-render state + `eachCompleted`, and the browser half (fill / signal functions, payload text)
+│   │   │   ├── routes.mjs     ← HOST (js): the UI registry
+│   │   │   ├── sidecars/jhonstart_render.erl ← HOST (BEAM): per-render state in the process dictionary, hooks in `persistent_term`, `each_completed/2` (one process per boundary, values handed back in completion order)
+│   │   │   ├── sidecars/jhonstart_routes.erl ← HOST (BEAM): the UI registry, an ETS table with an owner process
 │   │   │   ├── error_boundary.bp ← COMPILED (front 31): `ErrorInfo`/`ErrorBoundary`, `renderBoundary`/`renderBoundaryChecked`/`catchError`, the digest (std `hash.contentHash`), `notFound`/`redirect` raising `routing`'s `nav:` reasons, `isSignal`
 │   │   │   ├── metadata.bp    ← COMPILED (front 32), PURE: `Metadata`/`OpenGraph`/`TwitterCard`/`Icons`/`Viewport`, the merge rule, `renderHead`/`renderViewport` over std `escape`
 │   │   │   ├── signal_runtime.mjs ← HOST (js): `raise` / `capture` / `captureTask` / `tryValue` / `tryTask` — the one place a raise becomes a `@Result` value
 │   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same cells
 │   │   └── test/
+│   │       ├── render_test.bp ← `botopink test` flat suite: the walker, the hole, the fill, the globals, the payload (front 30) — both rows
+│   │       ├── streaming_test.bp ← `botopink test` flat suite: `render`/`renderStream` over a recording `Response`, composition, signals before and after the first chunk, the plugin order (front 30) — both rows
+│   │       ├── routes_test.bp ← `botopink test` flat suite: the four markers, `uiTable()` through `routing`, the params accessors (front 30) — both rows
 │   │       ├── metadata_test.bp ← `botopink test` flat suite: the merge rule row by row, the head's order and escaping, the viewport (front 32) — both rows
 │   │       ├── error_boundary_test.bp ← `botopink test` flat suite: the catch, the digest, signals passing through, the file conventions (front 31) — both rows
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows

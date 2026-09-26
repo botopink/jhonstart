@@ -11,7 +11,7 @@
 %% crashing component is caught like one that answered `Error`.
 -module(jhonstart_signal).
 
--export([raise/1, capture/1, capture_task/1]).
+-export([raise/1, capture/1, capture_task/1, try_value/1, try_task/1]).
 
 raise(Reason) ->
     erlang:error({jh_signal, Reason}).
@@ -37,3 +37,8 @@ capture_task(Child) ->
         throw:E -> {error, reason_of(E)};
         exit:E -> {error, reason_of(E)}
     end.
+
+%% The generic pair `render.bp` / `streaming.bp` use. `@Task` is eager here,
+%% so both are the same call.
+try_value(F) -> capture_task(F).
+try_task(F) -> capture_task(F).

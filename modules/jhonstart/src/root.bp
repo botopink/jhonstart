@@ -25,6 +25,12 @@ pub mod hooks;
 pub mod router;       // front 26, replacing router.d.bp
 pub mod server;       // front 28, replacing server.d.bp
 pub mod client;       // front 29
+pub mod suspense;     // front 30
+pub mod streaming;    // front 30
+pub mod render;       // front 30
+pub mod plugin;       // front 30
+pub mod globals;      // front 30
+pub mod routes;       // front 30
 pub mod error_boundary; // front 31
 pub mod metadata;     // front 32
 pub mod elements;     // front 94

@@ -44,3 +44,21 @@ export async function captureTask(child) {
     return { error: reasonOf(e) };
   }
 }
+
+// The generic pair `render.bp` / `streaming.bp` use: a plain value answered
+// as `{ ok }` or `{ error: reason }`, and a Promise-valued thunk answered as
+// the thunk's own Promise — the commonJS backend wraps every host cell typed
+// `@Task<@Result<…>>` so that a rejection becomes `{ error: message }` (a
+// `JhSignal`'s message is its reason) and a value `{ ok }`; wrapping here too
+// would answer `{ ok: { error } }`.
+export function tryValue(f) {
+  try {
+    return { ok: f() };
+  } catch (e) {
+    return { error: reasonOf(e) };
+  }
+}
+
+export async function tryTask(f) {
+  return await f();
+}
