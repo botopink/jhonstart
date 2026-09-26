@@ -290,21 +290,10 @@ jhonstart is a *consumer*. What it relies on:
     written and compiled since front 27; what it still lacks is the host
     navigation runtime, which is front 68's bundle and front 60's route-kind
     table, not an attribute slot and not a language gap;
-  - **an imported declared default is not applied.** A trailing default IS
-    filled at the call site for a declaration in the CALLING module (C-04), and
-    is still not filled for an imported one. Measured 2026-09-21 against
-    compiler `2e6bb4ac`, on BOTH rows (it is a checker answer, so every target
-    fails the same way), against jhonstart's own `text`:
-
-    ```text
-    import { text } from "jhonstart";  text("hi")
-    error: 'text' expects 2 argument(s), got 1
-     --> src/gap.bp:4:27
-    ```
-
-    This is why front 27's `Link` takes a `LinkProps` RECORD and not six
-    parameters with five defaults, and why every example in this tree spells
-    `attrs:` at every constructor call.
+  - (closed) an imported declared default is applied at the call site (C-04
+    across a module boundary), and a record has the update form
+    `LinkProps(..p, prefetch: false)`. Front 27's `Link` keeps its `LinkProps`
+    record and the `with*` helpers, now written with the update form.
 
   (The "bare imported template-fn binding" gap that originally lived here
   closed in v0.beta.8 via the generic-loader-binding keystone, with the

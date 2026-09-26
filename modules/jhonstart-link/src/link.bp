@@ -29,16 +29,14 @@
 
 // ── Why the props are a record ──────────────────────────────────────────────
 //
-// The props are a record, `linkProps(href)` fills Next's documented defaults,
-// and overriding one is `withPrefetch(props, false)` — a helper returning a NEW
-// record, since there is no assignment to a `self` field anywhere in this tree
-// and a record has no copy-with-update expression. The call site is
-// `Link(withPrefetch(linkProps(href), false), children)`, still shorter than
-// spelling six arguments at every link. The copy-update gap is the front's
-// § Language gaps row. (Declared defaults on `Link` itself would now work — an
-// imported declaration's trailing default is filled since C-04 crossed the
-// module boundary — but `LinkProps` is the landed surface, and the record is
-// what `with*` composes over.)
+// The props are one record, `linkProps(href)` fills Next's documented
+// defaults, and overriding one is `withPrefetch(props, false)` — a helper
+// returning a NEW record (a record is immutable), written with the update form
+// `LinkProps(..p, prefetch: prefetch)`. The call site is
+// `Link(withPrefetch(linkProps(href), false), children)`: the anchor reads its
+// options from one value, and a consumer that changes several at once writes
+// the update form itself (`val base = linkProps(href);`,
+// `LinkProps(..base, replace: true, scroll: false)`).
 
 import {Element, ElementBase} from "jhonstart";
 
@@ -72,62 +70,26 @@ pub fn linkProps(href: string) -> LinkProps {
     );
 }
 
-// The five copy-with-one-field helpers. Each respells all six fields because
-// the language has no `Record(base, field: value)` expression — the front's
-// § Language gaps row. None of them assigns to a field of its argument.
+// The five copy-with-one-field helpers, each the record update form. None of
+// them assigns to a field of its argument.
 pub fn withPrefetch(p: LinkProps, prefetch: bool) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: prefetch,
-        replace: p.replace,
-        scroll: p.scroll,
-        target: p.target,
-        className: p.className,
-    );
+    return LinkProps(..p, prefetch: prefetch);
 }
 
 pub fn withReplace(p: LinkProps, replace: bool) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: p.prefetch,
-        replace: replace,
-        scroll: p.scroll,
-        target: p.target,
-        className: p.className,
-    );
+    return LinkProps(..p, replace: replace);
 }
 
 pub fn withScroll(p: LinkProps, scroll: bool) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: p.prefetch,
-        replace: p.replace,
-        scroll: scroll,
-        target: p.target,
-        className: p.className,
-    );
+    return LinkProps(..p, scroll: scroll);
 }
 
 pub fn withTarget(p: LinkProps, target: string) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: p.prefetch,
-        replace: p.replace,
-        scroll: p.scroll,
-        target: target,
-        className: p.className,
-    );
+    return LinkProps(..p, target: target);
 }
 
 pub fn withClass(p: LinkProps, className: string) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: p.prefetch,
-        replace: p.replace,
-        scroll: p.scroll,
-        target: p.target,
-        className: className,
-    );
+    return LinkProps(..p, className: className);
 }
 
 // ── step 2: the anchor ──────────────────────────────────────────────────────

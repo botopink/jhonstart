@@ -8,6 +8,10 @@
   payload's `d` reads it instead of a constant `true` — a boundary's mark rides
   back from its own erlang process on `Resolved.dynamic`. `jhonstart` 199 →
   204 on both rows.
+- **`jhonstart-link`'s `with*` helpers use the record update form**
+  (`LinkProps(..p, prefetch: prefetch)`), and the notes that `check` skips
+  decorators and that an imported default is not applied are gone: both hold
+  no longer on the compiler.
 
 - **`jhonstart-dom-test` — front 30's browser half, asserted** (commonJS only):
   the fill and signal functions `render.mjs` registers and `readPayload`, run
