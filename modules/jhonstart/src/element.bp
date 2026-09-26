@@ -5,8 +5,9 @@
 // `implement @Context<ElementBase>`, so a component is
 // `fn … -> @Component<ElementBase, Element>` and a hook
 // `fn … -> @Component<ElementBase, T>` — the return is the effect (decision 118),
-// there is no annotation. A phantom — never constructed.
-pub type ElementBase(root: bool)
+// there is no annotation. A phantom — never constructed — so it is the empty
+// record (decision 138), spelled as the effects guide § 4.1 spells it.
+pub type ElementBase()
 
 pub type Element(
     tag: string,

@@ -1,19 +1,21 @@
-// jhonstart/globals — the three browser globals the HTML names by text
-// (front 30, decisions 113, 115 and 117).
+// jhonstart/globals — the browser globals two builds must agree on without
+// exchanging anything (front 30, decisions 113, 115 and 117; front 29).
 //
-// Only a value the HTML names by text is a global, and there are three: the
-// payload variable, the fill function a fill's `<script>` calls, and the
-// signal function a late navigation signal's `<script>` calls. Each gets an
-// indexed alias `__bp<N>` from this registry, `N` counting in DECLARATION
-// ORDER below, so the server build and the client build agree without
-// exchanging anything. No alias is spelled by hand anywhere else: adding a
-// global is one registry entry.
+// A global is a value the HTML names by text, or a table the client entry and
+// the core's hydrate point share across two builds, and there are four: the
+// payload variable, the fill function a fill's `<script>` calls, the signal
+// function a late navigation signal's `<script>` calls, and the island starter
+// table `registerStarter` fills and `hydrate()` reads (front 29; onze front
+// 68's entry writes no `__` name of its own). Each gets an indexed alias
+// `__bp<N>` from this registry, `N` counting in DECLARATION ORDER below. No
+// alias is spelled by hand anywhere else: adding a global is one registry
+// entry, appended, so the earlier numbers never move.
 //
-// The three are the fields of one module-level `pub val globals` — read as
-// `globals.payload`, `globals.fill`, `globals.signal`, the README's spelling.
-// One record rather than three flat `pub val`s named `payload` / `fill` /
-// `signal`, which would shadow front 26's `fill` in a consumer's flat
-// `import {…} from "jhonstart"`.
+// The four are the fields of one module-level `pub val globals` — read as
+// `globals.payload`, `globals.fill`, `globals.signal`, `globals.starters`.
+// One record rather than flat `pub val`s named `payload` / `fill` / …, which
+// would shadow front 26's `fill` in a consumer's flat `import {…} from
+// "jhonstart"`.
 
 // The browser half is three cells over `render.mjs`, called only by onze front
 // 68's generated entry: the payload script's JSON text (decoded here with
@@ -24,7 +26,7 @@
 
 import {json: {Json, decode}} from "std";
 
-val registry = ["payload", "fill", "signal"];
+val registry = ["payload", "fill", "signal", "starters"];
 
 // `"__bp"` + the name's index in the registry. An unknown name fails.
 pub fn alias(name: string) -> string {
@@ -34,13 +36,13 @@ pub fn alias(name: string) -> string {
         if (entry == name) found = i;
         i = i + 1;
     };
-    assert found >= 0, "jhonstart: globals: `" + name + "` is not a registered global - the registry is payload, fill, signal";
+    assert found >= 0, "jhonstart: globals: `" + name + "` is not a registered global - the registry is payload, fill, signal, starters";
     return "__bp" + found.toString();
 }
 
-pub type Globals(payload: string, fill: string, signal: string)
+pub type Globals(payload: string, fill: string, signal: string, starters: string)
 
-pub val globals = Globals(payload: alias("payload"), fill: alias("fill"), signal: alias("signal"));
+pub val globals = Globals(payload: alias("payload"), fill: alias("fill"), signal: alias("signal"), starters: alias("starters"));
 
 // The payload script's JSON text: everything after `window.<name> = ` in the
 // last payload script, `""` when there is none (and always `""` on the server).

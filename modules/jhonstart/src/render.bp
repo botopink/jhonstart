@@ -445,13 +445,25 @@ pub fn payloadScript(p: Payload) -> string {
 
 // ── the document ────────────────────────────────────────────────────────────
 
+// A language tag `app(lang: …)` accepts: letters, digits and `-`, starting
+// with a letter (`en`, `pt-BR`, `zh-Hant-TW`). Anything else is refused by
+// `app`, so the attribute never carries markup.
+pub fn isLangTag(tag: string) -> bool {
+    val chars = tag.split("");
+    val letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    val allowed = letters + "0123456789-";
+    val first = chars.at(0).unwrapOr("");
+    val startsWithLetter = first != "" && letters.contains(first);
+    return startsWithLetter && chars.all({ c -> allowed.contains(c) });
+}
+
 // Everything up to and including the root's opening tag: the doctype, the
-// head (front 32's tags, the plugins' `head`, `RenderHooks.headExtra`), and
-// `<div data-jh-root="">`.
-pub fn documentStart(head: string, pluginHead: string, route: string) -> string {
+// `<html lang>` the app was built with, the head (front 32's tags, the
+// plugins' `head`, `RenderHooks.headExtra`), and `<div data-jh-root="">`.
+pub fn documentStart(lang: string, head: string, pluginHead: string, route: string) -> string {
     val hooks = currentHooks();
     val headExtra = hooks.headExtra;
-    return "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">" + head + pluginHead + headExtra(route) + "</head><body><div data-jh-root=\"\">";
+    return "<!DOCTYPE html><html lang=\"" + escape.attribute(lang) + "\"><head><meta charset=\"utf-8\">" + head + pluginHead + headExtra(route) + "</head><body><div data-jh-root=\"\">";
 }
 
 // Everything after the fills: the payload script, `RenderHooks.bodyExtra`, and
@@ -464,6 +476,6 @@ pub fn documentEnd(p: Payload, route: string) -> string {
 
 // A whole document in one string: `documentStart`, the composed tree, the
 // root's close, `fills`, `documentEnd`.
-pub fn document(head: string, pluginHead: string, body: string, fills: string, p: Payload) -> string {
-    return documentStart(head, pluginHead, p.pattern) + body + "</div>" + fills + documentEnd(p, p.pattern);
+pub fn document(lang: string, head: string, pluginHead: string, body: string, fills: string, p: Payload) -> string {
+    return documentStart(lang, head, pluginHead, p.pattern) + body + "</div>" + fills + documentEnd(p, p.pattern);
 }

@@ -1,0 +1,31 @@
+// islands — `test-snap-examples.md` § `examples/islands/`.
+
+import {Element, Island, clientMount, serverSlot, islandEntry, renderToString} from "jhonstart";
+import {LikeProps, LikeButton, likeIsland, __jhClient_LikeButton} from "like_button";
+import {ThemeProps, ThemeProvider, themeIsland, __jhClient_ThemeProvider} from "theme";
+import {Post, PostList, PostListFrom, RootLayout} from "page";
+import {assertHtml, assertHtmlLines, assertClientBundleEntry} from "jhonstart-test";
+import {testing.snapshots.assertText} from "std";
+
+test "islands: both markers are emitted" {
+    try assertText(@src(), __jhClient_LikeButton() + " " + __jhClient_ThemeProvider());
+}
+
+test "islands: one island per post numbered in render order" {
+    val posts = [Post(id: "p1", title: "One", likes: 3), Post(id: "p2", title: "Two", likes: 0)];
+    try assertHtmlLines(@src(), PostList(posts));
+}
+
+test "islands: the payload rows for the list" {
+    val islands = [likeIsland("i0", LikeProps(postId: "p1", likes: 3)), likeIsland("i1", LikeProps(postId: "p2", likes: 0))];
+    try assertClientBundleEntry(@src(), islands);
+}
+
+test "islands: the client component's own render is what hydration produces" {
+    try assertHtml(@src(), LikeButton(LikeProps(postId: "p1", likes: 3)));
+}
+
+test "islands: the theme provider wraps the whole server tree in a slot" {
+    val page = PostListFrom([Post(id: "p1", title: "One", likes: 3)], 1);
+    try assertHtml(@src(), RootLayout("dark", page));
+}

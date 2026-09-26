@@ -59,6 +59,7 @@ import {
     renderKeys,
     documentStart,
     documentEnd,
+    isLangTag,
     __jhStateReset,
     __jhTakeBoundaries,
     __jhIslands,
@@ -180,8 +181,11 @@ pub type PageInput(
     viewports: Array<Viewport>,
 )
 
-pub fn app(plugins: Array<RenderPlugin>, allowedRedirects: string[] = []) -> App {
-    return App(plugins: plugins, allowedRedirects: allowedRedirects);
+// `lang` is the document's `<html lang>`, written once by every render of this
+// app; a value that is not a language tag (`isLangTag`) is refused here.
+pub fn app(plugins: Array<RenderPlugin>, allowedRedirects: string[] = [], lang: string = "en") -> App {
+    assert isLangTag(lang), "jhonstart: app(lang: \"" + lang + "\") is not a language tag - letters, digits and '-', starting with a letter";
+    return App(plugins: plugins, allowedRedirects: allowedRedirects, lang: lang);
 }
 
 // ── the redirect-target check ───────────────────────────────────────────────
@@ -233,9 +237,9 @@ fn renderOrFail(tree: Element) -> @Result<string, string> {
 }
 
 // Resolves one boundary IN THE PROCESS THAT RENDERED IT — its own process on
-// the erlang row — including the plugins' `chunk(id)`: a stylesheet that
-// registers per process (emilia's does) only sees the classes the boundary's
-// render registered from inside that process.
+// the erlang row — including the plugins' `chunk(id)`: a stylesheet library
+// that registers per process only sees the classes the boundary's render
+// registered from inside that process.
 fn resolveIn(plugins: Array<RenderPlugin>, req: RequestData, route: PageContext, b: Boundary) -> @Task<Resolved> {
     enterRequest(req);
     fill(route.pathname, encoding.formStringify(route.params), encoding.formStringify(route.query), route.pattern, 0);
@@ -449,7 +453,7 @@ fn early(site: App, input: PageInput, res: Response, reason: string) -> @Task<@R
         Error(message) -> "";
     };
     val pluginHead = await headsFrom(site.plugins, 0);
-    val doc = documentStart(mergedHead(input), pluginHead, input.pattern) + bodyHtml + "</div>" + documentEnd(payloadOf(input, [], []), input.pattern);
+    val doc = documentStart(site.lang, mergedHead(input), pluginHead, input.pattern) + bodyHtml + "</div>" + documentEnd(payloadOf(input, [], []), input.pattern);
     val write = res.write;
     await write(doc);
     val closed = await finish(res, "");
@@ -580,7 +584,7 @@ fn streamed(site: App, input: PageInput, req: RequestData, route: PageContext, r
     val header = res.header;
     header("content-type", "text/html; charset=utf-8");
     val write = res.write;
-    await write(documentStart(mergedHead(input), pluginHead, input.pattern) + shellHtml + "</div>");
+    await write(documentStart(site.lang, mergedHead(input), pluginHead, input.pattern) + shellHtml + "</div>");
     await __jhEachCompleted(thunksOf(site.plugins, req, route, boundaries), completion(site, input, res));
     val failure = lateFailure();
     if (failure != "") {
@@ -624,7 +628,7 @@ fn whole(site: App, input: PageInput, req: RequestData, route: PageContext, res:
     status(200);
     val header = res.header;
     header("content-type", "text/html; charset=utf-8");
-    val doc = documentStart(mergedHead(input), pluginHead, input.pattern) + shellHtml + "</div>" + fills + documentEnd(payloadOf(input, [], extras), input.pattern);
+    val doc = documentStart(site.lang, mergedHead(input), pluginHead, input.pattern) + shellHtml + "</div>" + fills + documentEnd(payloadOf(input, [], extras), input.pattern);
     val write = res.write;
     await write(doc);
     val done = await finish(res, "");
@@ -670,7 +674,7 @@ fn fillsInOrder(site: App, boundaries: Array<Boundary>, resolved: Array<Resolved
 // function whose first parameter is named `self` loses it
 // (`repro/self-param-free-fn/`).
 
-pub type App(plugins: Array<RenderPlugin>, allowedRedirects: string[]) {
+pub type App(plugins: Array<RenderPlugin>, allowedRedirects: string[], lang: string) {
     // The non-streaming form: every boundary resolves before anything is
     // written, and the whole document goes to `res.write` once.
     pub fn render(self: Self, input: PageInput, req: RequestData, res: Response) -> @Task<@Result<void, string>> {

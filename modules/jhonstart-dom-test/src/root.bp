@@ -1,0 +1,33 @@
+//// The `jhonstart-dom-test` package — the browser half of front 30's render,
+//// run against a minimal document on node (`fake_dom.mjs`).
+////
+//// The core's `render.mjs` fill and signal functions and its payload reader
+//// act on `document`, `history` and `location`, which exist only in a
+//// browser; the core member runs on both rows and its erlang twins answer the
+//// empty value, so these cells are asserted here, on commonJS only
+//// (`specs/1.0.10-beta/decisions-pending.md` 30-g). A document is installed
+//// from the markup the render wrote, the registered function is called by its
+//// registry name, and the document is read back serialized.
+
+#[@External.Node("./fake_dom.mjs", "install")]
+pub declare fn installDocument(html: string) -> i32;
+
+#[@External.Node("./fake_dom.mjs", "markup")]
+pub declare fn documentMarkup() -> string;
+
+#[@External.Node("./fake_dom.mjs", "recorded")]
+pub declare fn recordedNavigation() -> string;
+
+// Calls `globalThis[name](arg)` (no argument when `arg` is `""`), as a fill's
+// or a signal's `<script>` does.
+#[@External.Node("./fake_dom.mjs", "call")]
+pub declare fn callGlobal(name: string, arg: string) -> string;
+
+#[@External.Node("./fake_dom.mjs", "uninstall")]
+pub declare fn uninstallDocument() -> i32;
+
+test "jhonstart-dom-test: a document round-trips through the minimal DOM" {
+    installDocument("<div data-jh-root=\"\"><p class=\"a\">x &amp; y</p><input value=\"v\"></div>");
+    assert documentMarkup() == "<div data-jh-root=\"\"><p class=\"a\">x &amp; y</p><input value=\"v\"></div>";
+    uninstallDocument();
+}

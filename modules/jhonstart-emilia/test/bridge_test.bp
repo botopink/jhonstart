@@ -5,7 +5,10 @@ import {Element, ElementBase, div, p, span, text} from "jhonstart";
 import {Boundary, Suspense, holeId} from "jhonstart";
 import {app, Response, PageInput, RequestData, RenderPlugin} from "jhonstart";
 import {UiSegment, Metadata, Viewport, ErrorInfo, LayoutProps, PageContext} from "jhonstart";
-import {emilia, flush, Token} from "emilia";
+import {emilia, flush, Token, defaultTheme, className, cls, clsWith, styled, styledWith, mergeClass} from "emilia";
+import {renderNode, withAttrs, attrValue, classAttr, bracketPair} from "jhonstart";
+import { html } from "jhonstart-html";
+import {io.fs.walk, io.fs.readText} from "std";
 import {plugin, classesIn} from "root";
 
 // ── the recorder (the core suite's, per row) ────────────────────────────────
@@ -141,14 +144,78 @@ test "bridge: classesIn reads the e_ classes of a flushed document, once each, i
     assert classesIn("@layer theme{:root{--x:1}}").length == 0;
 }
 
-// The class scheme is contract 4's: `e_` + std's content hash of the encoded
-// sheet. The shared fixture that pins the literal (`emilia/modules/emilia/
-// test/attributes_test.bp`, front 48) does not exist yet; this cell pins the
-// class of one token list on both rows, which is the half this bridge owes.
+// ── front 48's rendered cells — contract 4 on markup ────────────────────────
+//
+// The shared fixture (`contracts.md § 4`): emilia's front-48 suite pins the
+// class of `cardTokens()` under `defaultTheme()` as `e_39b87d03` without HTML;
+// the cells below assert the same literal on a rendered document, and the
+// builders, the `html` DSL, `withAttrs` / `attrValue` and the static-first
+// merge over it.
+
+fn cardTokens() -> Token[] {
+    val hovered: Token[] = [.Bg.Color.Gray.__100];
+    val card: Token[] = [.Bg.White, .Pad.All.__4, .Text.Bold, Token.Hover(hovered)];
+    return card;
+}
+
+fn CardPage() -> @Component<ElementBase, Element> {
+    return div([text("card")], attrs: [styled(cardTokens(), defaultTheme())]);
+}
+
+test "bridge: the contract-4 literal on a rendered document" {
+    val site = app([plugin()], []);
+    val out = await site.render(inputOf({ -> CardPage() }), req(), recorder());
+    assert outcomeText(out) == "ok";
+    val doc = document();
+    assert className(cardTokens(), defaultTheme()) == "e_39b87d03";
+    assert doc.contains("<div class=\"e_39b87d03\">card</div>");
+    val head = doc.split("</head>").at(0).unwrapOr("");
+    assert head.contains(".e_39b87d03{");
+    assert head.contains(".e_39b87d03:hover{");
+    assert doc.contains("\"s\":[\"e_39b87d03\"]");
+}
+
+test "bridge: the builders and the html DSL render the class slot byte for byte the same" {
+    val c = cls(cardTokens(), defaultTheme());
+    val built = div([p([text("hi")])], attrs: [styled(cardTokens(), defaultTheme())]);
+    val dsl = html """<div [class]={c}><p>hi</p></div>""";
+    val drained = await flush();
+    assert renderNode(built) == "<div class=\"e_39b87d03\"><p>hi</p></div>";
+    assert renderNode(dsl) == renderNode(built);
+    assert attrValue(built.attrs, "class") == "e_39b87d03";
+    assert attrValue(dsl.attrs, "class") == "e_39b87d03";
+    val tagged = withAttrs([#("id", "card")], [classAttr(c)]);
+    assert attrValue(tagged, "class") == "e_39b87d03";
+    assert renderNode(div([], attrs: tagged)) == "<div id=\"card\" class=\"e_39b87d03\"></div>";
+}
+
+test "bridge: a static and an emilia class render static first, one space, in array order" {
+    val pair = styledWith("card", cardTokens(), defaultTheme());
+    val drained = await flush();
+    assert pair._1 == mergeClass("card", "e_39b87d03");
+    val el = div([], attrs: [#("id", "x"), pair, #("role", "note")]);
+    assert renderNode(el) == "<div id=\"x\" class=\"card e_39b87d03\" role=\"note\"></div>";
+    assert clsWith("card rounded", cardTokens(), defaultTheme()) == "card rounded e_39b87d03";
+}
+
 test "bridge: one token list is one class on both rows" {
     val cls = emilia([.Gap.All.4]);
     val again = emilia([.Gap.All.4]);
     val drained = await flush();
     assert cls == again;
     assert cls.startsWith("e_");
+}
+
+// Decision 113: the core knows the plugin contract and no styling library.
+// Every file under the core's `src/` is read, and none names emilia.
+test "bridge: no file of the core's src names emilia" {
+    val root = "../jhonstart/src";
+    val files = walk(root).unwrapOr([]);
+    assert files.length > 10;
+    var naming: string[] = [];
+    for (files) { f ->
+        val body = readText(root + "/" + f).unwrapOr("");
+        if (body.toLower().contains("emilia")) naming.push(f);
+    };
+    assert naming.length == 0, "the core names emilia in: " + naming.join(", ");
 }

@@ -87,7 +87,13 @@ import {
     serverOnly,
     hydrate,
     propsFor,
+    registerStarter,
+    registerRouteStarters,
+    registeredStarters,
+    registeredRouteStarters,
 } from "client";
+import {globals} from "globals";
+import {attemptRender} from "render";
 import {Element, div, h1, p, ul, li, text, renderToString} from "element";
 import {button, h2, section} from "elements";
 import {state} from "hooks";
@@ -363,4 +369,49 @@ test "client: hydrate is idempotent — a second call starts nothing new" {
     val first = hydrate();
     val second = hydrate();
     assert first == second;
+}
+
+// ── the island starter table — `globals.starters` ───────────────────────────
+
+fn startNothing(raw: string, commit: fn(html: string) -> i32) -> i32 {
+    return commit("<b>" + raw + "</b>");
+}
+
+fn loadNothing() -> @Task<i32> {
+    return 0;
+}
+
+test "client: registerStarter fills the registry's table, in registration order" {
+    val before = registeredStarters().length;
+    registerStarter("StarterA", { raw, commit -> startNothing(raw, commit) });
+    registerStarter("StarterB", { raw, commit -> startNothing(raw, commit) });
+    val names = registeredStarters();
+    assert names.length == before + 2;
+    assert names.contains("StarterA");
+    assert names.at(names.length - 1).unwrapOr("") == "StarterB";
+}
+
+test "client: a second starter for one component fails, naming it" {
+    registerStarter("StarterTwice", { raw, commit -> startNothing(raw, commit) });
+    val out = attemptRender({ -> registerStarter("StarterTwice", { raw, commit -> startNothing(raw, commit) }) });
+    val message = case out {
+        Ok(n) -> "";
+        Error(m) -> m;
+    };
+    assert message.contains("a starter for `StarterTwice` is already registered");
+}
+
+test "client: registerRouteStarters keeps one loader per route pattern" {
+    registerRouteStarters("/blog/[slug]", { -> loadNothing() });
+    assert registeredRouteStarters().contains("/blog/[slug]");
+    val out = attemptRender({ -> registerRouteStarters("/blog/[slug]", { -> loadNothing() }) });
+    val message = case out {
+        Ok(n) -> "";
+        Error(m) -> m;
+    };
+    assert message.contains("a starter loader for route `/blog/[slug]` is already registered");
+}
+
+test "client: the starter table is the registry's fourth global" {
+    assert globals.starters == "__bp3";
 }

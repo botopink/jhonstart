@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- **`jhonstart-dom-test` — front 30's browser half, asserted** (commonJS only):
+  the fill and signal functions `render.mjs` registers and `readPayload`, run
+  against a minimal document installed from the render's own markup. 9/9.
+
+- **The example projects** (`modules.md` § 8, `test-snap-examples.md`):
+  `blog-ssr`, `nav-shell`, `islands`, `forms` and `document-shell` (every
+  one green on both rows, so every one declares both), 32 snapshots through `jhonstart-test`, each compared with
+  the spec's literal. The aspirational `examples/jhonstart-app` sketch is
+  removed — `blog-ssr` is what it described.
+
+- **`jhonstart-test` — the helpers** (`modules.md` § 5, `test-snap.md` § 0.2):
+  `harness.bp` (fixtures, `renderToStream`, `simulateNavigation`, the recording
+  `Response` with `renderRecorded` / `renderStreamCollect`) and one
+  `assert_<subject>.bp` per front, each `assert<Subject>` over std's
+  `snapshots.assertAs` with a pure `<subject>Text` twin. `helpers_test.bp`
+  asserts every twin against the spec's literal and records seven snapshots.
+  1 → 21 on both rows.
+
+- **What onze owed from jhonstart** (fronts 29 and 30): the island starter
+  table is the registry's fourth global, `globals.starters` (`__bp3`), filled by
+  `registerStarter(name, start)` (one per component) and
+  `registerRouteStarters(pattern, load)` (one loader per route, called once by
+  `hydrate()` for the payload's matched pattern — the bundle splits by route);
+  onze's entry writes no `__jhIslandStarters` of its own. `app(…, lang:)` sets
+  the document's `<html lang>` (`"en"` when not given; a value that is not a
+  language tag is refused) where `lang="pt-BR"` was a literal. The render over
+  rakun's `ChunkWriter` (contract 5d) is asserted with a record spelled field for
+  field and adapted as onze does: a page, a pre-first-chunk redirect and a
+  pre-first-chunk `notFound()`. Core 190 → 199 on both rows.
+
 - **Front 67 — forms**, the new member `modules/jhonstart-forms` (additive):
   contract 3's form markup (`formAttrs`, `hiddenActionField`), the transport
   (`submitForm`, `invokeAction`, `formMount`) over six dual-target cells, the
