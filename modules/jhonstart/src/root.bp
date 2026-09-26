@@ -26,4 +26,5 @@ pub mod router;       // front 26, replacing router.d.bp
 pub mod elements;     // front 94
 pub mod server;       // front 28, replacing server.d.bp
 pub mod client;       // front 29
+pub mod html_attrs;   // front 48: the attribute array's shape and order
 mod client_runtime;

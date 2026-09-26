@@ -13,6 +13,7 @@
     "elements.bp",
     "client_runtime.bp",
     "server.bp",
-    "client.bp"
+    "client.bp",
+    "html_attrs.bp"
   ]
 }

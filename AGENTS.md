@@ -56,10 +56,10 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, elements.bp, client_runtime.bp, server.bp, client.bp]
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, elements.bp, client_runtime.bp, server.bp, client.bp, html_attrs.bp]
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
-│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod elements; pub mod server; pub mod client; mod client_runtime;`
+│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod elements; pub mod server; pub mod client; pub mod html_attrs; mod client_runtime;`
 │   │   │   ├── element.bp     ← COMPILED CORE: type Element + builders (Children) + renderToString + test {}
 │   │   │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<ElementBase,_>, pure server-pass bodies) + test {} (imports `Element`)
 │   │   │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
@@ -72,6 +72,7 @@ repository/jhonstart/
 │   │   │   │   └── jhonstart_server.erl ← HOST (BEAM): the request's six cells + `fill/6`, same process dictionary, same non-`files` discovery
 │   │   │   ├── server.bp      ← COMPILED: the request (front 28) — `RequestData` + four accessors, `request`/`fillRequest`/`cookies`/`headers`, `renderServerComponent`
 │   │   │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
+│   │   │   ├── html_attrs.bp  ← COMPILED (front 48 of the CSS track), PURE: `classAttr` (the `class` pair spelled once), `withAttrs` (append, base first — `renderToString` writes attrs in array order), `attrValue` (the last pair of a name, `""` when absent). Imports only `element` and names no styling library: the styling side hands over a `#(string, string)` pair and merges its own class names
 │   │   │   └── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-onze-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
 │   │   └── test/
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
