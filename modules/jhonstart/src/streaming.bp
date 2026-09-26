@@ -511,12 +511,8 @@ fn boundaryThunk(plugins: Array<RenderPlugin>, req: RequestData, route: PageCont
 }
 
 // The late half: after the first write a signal is markup, a failure ends the
-// stream, and nothing after either is written. Every branch RETURNS a value
-// (`-> @Task<i32>`, not `@Task<void>`): a bare `return;` inside an `if` block
-// of a `@Task<void>` body does not leave the function on the erlang row, and
-// an `if` block that awaits without returning is lowered on commonJS into an
-// arrow that is not `async` (`SyntaxError: await is only valid in async
-// functions`).
+// stream, and nothing after either is written. Every branch returns what it
+// wrote (`-> @Task<i32>`), the value `completion`'s callback type answers.
 fn onResolved(site: App, input: PageInput, res: Response, r: Resolved) -> @Task<i32> {
     if (__jhLate() != "") return 0;
     if (r.kind == "fill") {

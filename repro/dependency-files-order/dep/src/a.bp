@@ -1,3 +1,0 @@
-pub fn base() -> i32 {
-    return 1;
-}

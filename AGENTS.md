@@ -743,8 +743,9 @@ involved.
    which is why that example was green while these two were not. Fixed here.
    This was never test-only: `botopink run --target erlang` failed identically,
    and `botopink build --target erlang` exited 0 only because a build
-   transpiles without ever invoking `erlc`. The missing diagnostic is routed to
-   botopink-lang in [`repro/README.md`](repro/README.md).
+   transpiles without ever invoking `erlc`. The checker now refuses the bare
+   spelling itself — `unbound variable 'print' — printing is the builtin
+   `@print`` (botopink-lang `reject/bare_print_call`).
 
 2. **`function set/2 undefined`** — `jhonstart-counter` only, and **not ours**.
    `c.set(5)` on a `State<T>` — `set` is a `fn(next: T)` field (G1) — lowers
