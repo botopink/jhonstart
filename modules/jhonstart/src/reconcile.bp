@@ -17,8 +17,8 @@
 //      target's from the payload the prefetcher already has — or fetch it,
 //      with front 60's route-kind flag deciding whether a fetch was needed
 //      at all                                              ← NOT here
-//   4. adopt `data-onze-s` slots as-is (front 29's rule) and re-anchor
-//      `data-onze-e` boundaries (front 31's), because both are keyed to the
+//   4. adopt `data-jh-s` slots as-is (front 29's rule) and re-anchor
+//      `data-jh-e` boundaries (front 31's), because both are keyed to the
 //      response and not to the layout                      ← NOT here
 //
 // ── Why `reconcile(current, target)` is not in this file ────────────────────

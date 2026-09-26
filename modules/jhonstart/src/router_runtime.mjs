@@ -1,8 +1,8 @@
 // jhonstart — the router's host half on the js row (front 26).
 //
 // The route snapshot is one of the three things that CROSSES: the server fills
-// it before the render, and the client rebuilds it from front 23's `__onze`
-// payload on hydration and on every client-side transition. `router.bp` reads
+// it before the render, and the client rebuilds it from front 30's payload (`globals.payload`)
+// on hydration and on every client-side transition. `router.bp` reads
 // it through five cells; this module is what those cells are on node and in
 // the browser, and `src/sidecars/jhonstart_router.erl` is the same five on the
 // BEAM over the process dictionary.

@@ -73,7 +73,7 @@ repository/jhonstart/
 │   │   │   ├── server_runtime.mjs ← HOST (js): the request store, the twin of `jhonstart_server.erl` cell for cell
 │   │   │   ├── link.bp        ← COMPILED (front 27), PURE: `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`. NO host cell — the browser half is front 68's
 │   │   │   ├── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
-│   │   │   └── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-onze-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
+│   │   │   └── client.bp      ← COMPILED (front 29), PURE: `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`. NO host cell — the hydrate point and the graph walk are front 68's
 │   │   └── test/
 │   │       ├── router_test.bp   ← `botopink test` flat suite: the route snapshot, its accessors and the pair decoder (front 26) — both rows
 │   │       ├── server_test.bp   ← `botopink test` flat suite: the request record, the six cells, the `@Task` component and loader conventions (front 28) — both rows
@@ -477,7 +477,7 @@ it renders in the browser.
 | What | Where | Shape |
 |---|---|---|
 | The props | `LinkProps(href, prefetch, replace, scroll, target, className)` | a plain record. `linkProps(href)` fills Next's defaults; `withPrefetch`/`withReplace`/`withScroll`/`withTarget`/`withClass` each return a NEW record with one field changed |
-| The anchor | `Link(props, children) -> Element` | `<a href=… data-onze-l="1">`, plus one attribute per prop that DIFFERS from its default. `target` and `class` are real attributes, the other three are `data-onze-*` |
+| The anchor | `Link(props, children) -> Element` | `<a href=… data-jh-l="1">`, plus one attribute per prop that DIFFERS from its default. `target` and `class` are real attributes, the other three are `data-jh-*` |
 | The prefetch decision | `prefetchMode(kind, hasLoading, requested) -> string` | `"full"` / `"partial"` / `"skip"`, Next's § 8 table verbatim. BOTH inputs are front 60's; jhonstart computes neither |
 | The layout key | `layoutKey(segments, depth)` | `"/" + segments.take(depth).join("/")`. `segments` is front 26's `RouterState.segments()`, so the client's key and the server's are the same string |
 | The remount decision | `layoutKeys(segments)` · `sharedDepth(current, target)` | root-first keys including the root; the common-prefix length. `[0, keep)` stays mounted, `[keep, n]` is replaced. Never `0` — the root layout is never remounted |
@@ -485,18 +485,18 @@ it renders in the browser.
 
 **No arbitrary-attribute parameter.** `Link` has no pass-through `attrs` list —
 only `target` and `className`, through `LinkProps`. An anchor that accepts any
-attribute is an anchor that can be handed its own `data-onze-l`, and that marker
+attribute is an anchor that can be handed its own `data-jh-l`, and that marker
 is what the browser half queries on.
 
 ### What fronts 60 · 67 · 68 have to bring, and why none of it is stubbed here
 
 | Missing | Owner | Note |
 |---|---|---|
-| `__onzeLinkMount()` | 68 | delegated click interception + an intersection observer over `[data-onze-l]`. The generated entry calls it ONCE, after hydrating the islands, alongside front 67's `__jhFormMount()`. Front 29 owns the per-island hydrate point, not the entry, and does not call this |
-| `__onzeLinkPrefetch(href, mode)` | 68 | warms the client route cache; `mode` is `prefetchMode`'s answer |
-| `__onzeLinkStatus()` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | 68 | the hook is then `return linkStatusOf(__onzeLinkStatus());` and nothing else in `link.bp` moves |
-| `__onzeLinkRouteKind(href)` | 60 | reads the route-kind table front 60 emits into the bundle |
-| `reconcile(current, target)` | 68 (+ 60) | the transition driver: front 68's DOM primitives for the two ranges, front 60's flag for whether the payload had to be fetched, front 29's `data-onze-s` adoption and front 31's `data-onze-e` re-anchoring |
+| `__jhLinkMount()` | 68 | delegated click interception + an intersection observer over `[data-jh-l]`. The generated entry calls it ONCE, after hydrating the islands, alongside front 67's `__jhFormMount()`. Front 29 owns the per-island hydrate point, not the entry, and does not call this |
+| `__jhLinkPrefetch(href, mode)` | 68 | warms the client route cache; `mode` is `prefetchMode`'s answer |
+| `__jhLinkStatus()` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | 68 | the hook is then `return linkStatusOf(__jhLinkStatus());` and nothing else in `link.bp` moves |
+| `__jhLinkRouteKind(href)` | 60 | reads the route-kind table front 60 emits into the bundle |
+| `reconcile(current, target)` | 68 (+ 60) | the transition driver: front 68's DOM primitives for the two ranges, front 60's flag for whether the payload had to be fetched, front 29's `data-jh-s` adoption and front 31's `data-jh-e` re-anchoring |
 
 Two measurements make declaring them today wrong rather than merely early, and
 they point in opposite directions:
@@ -541,11 +541,11 @@ server pass exactly as it renders in the browser.
 |---|---|---|
 | The marker | `#[client]` | a `@Decl`-first comptime fn. Emits `pub fn __jhClient_<Name>() -> string` — a PURE function, never a call into a host registry, because an `@emit` fires on every target and a Node-only call would break the erlang server render |
 | The props rule | `#[clientProps]` | on the props RECORD, because `@Decl` does not expose a function's parameters. Whitelist: `string` · `i32` · `f64` · `bool` |
-| The island marker | `islandId(n)` · `islandAttrOf(id)` · `islandAttr(n)` | decision 77: `islandAttrOf` is the ONE occurrence of `"data-onze-i"` in this tree. Front 23 fills `RenderHooks.islandAttr` from `islandAttr`; front 68's entry imports the same function |
+| The island marker | `islandId(n)` · `islandAttrOf(id)` · `islandAttr(n)` | decision 77: `islandAttrOf` is the ONE occurrence of `"data-jh-i"` in this tree. Front 23 fills `RenderHooks.islandAttr` from `islandAttr`; front 68's entry imports the same function |
 | The island | `Island(id, component, props)` · `clientMount(island, children)` | the placeholder carries the id and NOTHING else; the component name and encoded props go to the payload's `i` row |
 | The payload row | `islandEntry(island)` | `#(id, component, "k=v&k=v")`, encoded with std's `encoding.formStringify` (decision 116 rule 4) |
 | The decode | `propsOf(raw)` | the pure half of the front's `propsFor(name)`; `propsOf("")` is `[]` |
-| The hole | `serverSlotAttr()` · `serverSlot(children)` | `data-onze-s="1"` — the server-rendered subtree the client ADOPTS and must not reconstruct |
+| The hole | `serverSlotAttr()` · `serverSlot(children)` | `data-jh-s="1"` — the server-rendered subtree the client ADOPTS and must not reconstruct |
 | The poison pill | `serverOnly()` | the value is meaningless; its presence in a module's import list is the signal |
 
 **What is enforced today** — four comptime refusals, no flag that turns them off
@@ -594,8 +594,8 @@ ELEMENT TYPE on `Field`".
 
 | Missing | Owner | Note |
 |---|---|---|
-| `hydrate()` — the PER-ISLAND hydrate point: walks `[data-onze-i]`, decodes that island's props from the payload's `i` row, starts the component | 68 | it is not the bundle entry and it mounts no links and no forms; front 68's generated entry calls it, then front 27's `__onzeLinkMount()` and front 67's `__jhFormMount()` once each |
-| `islandProps(name)` / `__onzeClientPropsRaw(name)` and the `propsFor(name)` wrapper | 68 | `propsFor` is then `return propsOf(__onzeClientPropsRaw(name));` and nothing else in `client.bp` moves |
+| `hydrate()` — the PER-ISLAND hydrate point: walks `[data-jh-i]`, decodes that island's props from the payload's `i` row, starts the component | 68 | it is not the bundle entry and it mounts no links and no forms; front 68's generated entry calls it, then front 27's `__jhLinkMount()` and front 67's `__jhFormMount()` once each |
+| `islandProps(name)` / `__jhClientPropsRaw(name)` and the `propsFor(name)` wrapper | 68 | `propsFor` is then `return propsOf(__jhClientPropsRaw(name));` and nothing else in `client.bp` moves |
 | every "may not" rule above | 68 | the walk over the client module graph |
 
 Same two measurements front 27 records, re-measured for this file: a **called**

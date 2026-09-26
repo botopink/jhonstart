@@ -15,9 +15,9 @@
 // ── What this file does NOT assert, and why ─────────────────────────────────
 //
 // The front's § Step 4 acceptance asks for `linkStatus()` idle, and
-// `__onzeLinkMount()` idempotent. Neither is assertable: the four browser
+// `__jhLinkMount()` idempotent. Neither is assertable: the four browser
 // cells are not declared (their host module is the bundle **front 68**
-// generates and does not exist), and `__onzeLinkRouteKind`'s answer comes from
+// generates and does not exist), and `__jhLinkRouteKind`'s answer comes from
 // **front 60**'s route-kind table, which does not exist either. `link.bp`'s
 // header carries the measurement that makes a called node-only cell red the
 // erlang build of this member, which is why nothing here is stubbed to get a
@@ -102,36 +102,36 @@ test "link: the common anchor is href plus the marker, in that order" {
     val el = Link(linkProps("/about"), [text("About", attrs: [])]);
     assert el.tag == "a";
     assert el.attrs.length == 2;
-    assert renderToString(el) == "<a href=\"/about\" data-onze-l=\"1\">About</a>";
+    assert renderToString(el) == "<a href=\"/about\" data-jh-l=\"1\">About</a>";
 }
 
-test "link: prefetch false adds data-onze-prefetch=\"0\" and nothing else" {
+test "link: prefetch false adds data-jh-prefetch=\"0\" and nothing else" {
     val el = Link(withPrefetch(linkProps("/blog"), false), [text("Blog", attrs: [])]);
     assert el.attrs.length == 3;
     val html = renderToString(el);
-    assert html.contains("data-onze-prefetch=\"0\"");
-    assert html.contains("data-onze-replace") == false;
-    assert html.contains("data-onze-scroll") == false;
-    assert html == "<a href=\"/blog\" data-onze-l=\"1\" data-onze-prefetch=\"0\">Blog</a>";
+    assert html.contains("data-jh-prefetch=\"0\"");
+    assert html.contains("data-jh-replace") == false;
+    assert html.contains("data-jh-scroll") == false;
+    assert html == "<a href=\"/blog\" data-jh-l=\"1\" data-jh-prefetch=\"0\">Blog</a>";
 }
 
-test "link: replace true adds data-onze-replace=\"1\"" {
+test "link: replace true adds data-jh-replace=\"1\"" {
     val el = Link(withReplace(linkProps("/blog"), true), [text("Blog", attrs: [])]);
     assert el.attrs.length == 3;
-    assert renderToString(el).contains("data-onze-replace=\"1\"");
+    assert renderToString(el).contains("data-jh-replace=\"1\"");
 }
 
-test "link: scroll false adds data-onze-scroll=\"0\"" {
+test "link: scroll false adds data-jh-scroll=\"0\"" {
     val el = Link(withScroll(linkProps("/blog"), false), [text("Blog", attrs: [])]);
     assert el.attrs.length == 3;
-    assert renderToString(el).contains("data-onze-scroll=\"0\"");
+    assert renderToString(el).contains("data-jh-scroll=\"0\"");
 }
 
 test "link: target emits a REAL target attribute, not a data- one" {
     val el = Link(withTarget(linkProps("/ext"), "_blank"), [text("Ext", attrs: [])]);
     val html = renderToString(el);
     assert html.contains(" target=\"_blank\"");
-    assert html.contains("data-onze-target") == false;
+    assert html.contains("data-jh-target") == false;
 }
 
 test "link: className emits a REAL class attribute" {
@@ -150,12 +150,12 @@ test "link: a default-valued prop emits NO attribute" {
 test "link: every overridden prop at once, in the table's order" {
     val p = withClass(withTarget(withScroll(withReplace(withPrefetch(linkProps("/all"), false), true), false), "_blank"), "nav");
     assert renderToString(Link(p, [text("All", attrs: [])]))
-        == "<a href=\"/all\" data-onze-l=\"1\" data-onze-prefetch=\"0\" data-onze-replace=\"1\" data-onze-scroll=\"0\" target=\"_blank\" class=\"nav\">All</a>";
+        == "<a href=\"/all\" data-jh-l=\"1\" data-jh-prefetch=\"0\" data-jh-replace=\"1\" data-jh-scroll=\"0\" target=\"_blank\" class=\"nav\">All</a>";
 }
 
 test "link: children are an arbitrary tree, not only text" {
     val el = Link(linkProps("/p"), [span([text("a", attrs: [])], attrs: []), text("b", attrs: [])]);
-    assert renderToString(el) == "<a href=\"/p\" data-onze-l=\"1\"><span>a</span>b</a>";
+    assert renderToString(el) == "<a href=\"/p\" data-jh-l=\"1\"><span>a</span>b</a>";
 }
 
 // A nav bar is what the front is for, and it is the shape a consumer writes.
@@ -172,7 +172,7 @@ test "link: a component built out of Links renders the server pass" {
     val e = NavBar();
     assert e.children.length == 2;
     assert renderToString(e)
-        == "<span><a href=\"/\" data-onze-l=\"1\">Home</a><a href=\"/blog\" data-onze-l=\"1\" data-onze-prefetch=\"0\">Blog</a></span>";
+        == "<span><a href=\"/\" data-jh-l=\"1\">Home</a><a href=\"/blog\" data-jh-l=\"1\" data-jh-prefetch=\"0\">Blog</a></span>";
 }
 
 // ── step 3: the prefetch table, one assertion per row ───────────────────────

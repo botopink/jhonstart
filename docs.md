@@ -412,7 +412,7 @@ total value.
 five values go in together — a half-updated snapshot is a component reading the
 previous route's params against the next route's pattern. A server adapter
 calls it once per request; a client transition calls it with the values the
-`__onze` payload carried, then re-renders. Nothing here is reactive: the router
+payload (`globals.payload`) carried, then re-renders. Nothing here is reactive: the router
 is a snapshot, not a subscription.
 
 Both halves ship with the package:
@@ -757,7 +757,7 @@ stand-in here would be a second answer to "what is an escaped `&`" the day it
 lands. `test/server_test.bp` pins the unescaped answer so the change is a red
 cell rather than a silent difference.
 
-The `__onze` payload is front 23's to build and to escape. Nothing from
+The payload (`globals.payload`) is front 23's to build and to escape. Nothing from
 `server.bp` crosses to the client: a value read from a header or a cookie must
 not be reachable from an island's props, and the check that it is not is front
 68's build-time graph walk.
@@ -815,19 +815,19 @@ links does not carry five redundant pairs on each of them.
 | Prop | Attribute | Emitted when |
 |---|---|---|
 | `href` | `href="…"` | always |
-| — | `data-onze-l="1"` | always — the marker the runtime queries for |
-| `prefetch` | `data-onze-prefetch="0"` | only when `false` |
-| `replace` | `data-onze-replace="1"` | only when `true` |
-| `scroll` | `data-onze-scroll="0"` | only when `false` |
+| — | `data-jh-l="1"` | always — the marker the runtime queries for |
+| `prefetch` | `data-jh-prefetch="0"` | only when `false` |
+| `replace` | `data-jh-replace="1"` | only when `true` |
+| `scroll` | `data-jh-scroll="0"` | only when `false` |
 | `target` | `target="…"` | only when non-empty |
 | `className` | `class="…"` | only when non-empty |
 
 ```text
 renderToString(Link(linkProps("/about"), [text("About", attrs: [])]))
-  == "<a href=\"/about\" data-onze-l=\"1\">About</a>"
+  == "<a href=\"/about\" data-jh-l=\"1\">About</a>"
 ```
 
-`data-onze-` is the milestone's marker family; this front owns the link markers
+`data-jh-` is the milestone's marker family; this front owns the link markers
 inside it and adds no other vocabulary.
 
 ### The prefetch decision
@@ -876,10 +876,10 @@ and one hook are missing, all of them blocked on fronts that have not started:
 
 | Missing | Needs |
 |---|---|
-| `__onzeLinkMount()` — delegated click interception + an intersection observer over `[data-onze-l]` | front 68's generated client bundle (the module the cell binds to), which calls it once after hydrating the islands |
-| `__onzeLinkPrefetch(href, mode)` — warms the client route cache | the same bundle |
-| `__onzeLinkStatus() -> string` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__onzeLinkStatus());` |
-| `__onzeLinkRouteKind(href) -> string` | **front 60**'s route-kind table, emitted into that bundle |
+| `__jhLinkMount()` — delegated click interception + an intersection observer over `[data-jh-l]` | front 68's generated client bundle (the module the cell binds to), which calls it once after hydrating the islands |
+| `__jhLinkPrefetch(href, mode)` — warms the client route cache | the same bundle |
+| `__jhLinkStatus() -> string` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__jhLinkStatus());` |
+| `__jhLinkRouteKind(href) -> string` | **front 60**'s route-kind table, emitted into that bundle |
 | `reconcile(current, target)` — the transition driver | front 68's DOM primitives (mount/unmount), plus front 60's flag for whether the target payload had to be fetched |
 
 Two measurements make stubbing them the wrong move rather than a shortcut:
@@ -919,7 +919,7 @@ component** (here), and **front 68 walks the module graph** (not here).
 pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
     return button([text(c.value.toString() + " likes", attrs: [])], attrs: [
-        #("data-onze-on-click", "LikeButton:like"),
+        #("data-jh-on-click", "LikeButton:like"),
     ]);
 }
 ```
@@ -985,17 +985,17 @@ in render order, and front 68 can walk it.
 | Function | Shape |
 |---|---|
 | `islandId(ordinal)` | `0` → `"i0"` — what an ordinal is written as |
-| `islandAttrOf(id)` | `#("data-onze-i", id)` — **the only occurrence of the attribute name in this tree** |
-| `islandAttr(ordinal)` | `0` → `#("data-onze-i", "i0")` — decision 77's export |
+| `islandAttrOf(id)` | `#("data-jh-i", id)` — **the only occurrence of the attribute name in this tree** |
+| `islandAttr(ordinal)` | `0` → `#("data-jh-i", "i0")` — decision 77's export |
 | `Island(id, component, props)` | one island; `props` is `Array<#(string, string)>` |
-| `clientMount(island, children)` | the placeholder: `<div data-onze-i="i0">…children…</div>` |
+| `clientMount(island, children)` | the placeholder: `<div data-jh-i="i0">…children…</div>` |
 | `islandEntry(island)` | the payload row `#(id, component, "k=v&k=v")` |
 | `propsOf(raw)` | the inverse decode; `propsOf("")` is `[]` |
 
 ```text
 renderToString(clientMount(Island(id: "i0", component: "Counter",
                                   props: [#("start", "3")]), []))
-  == "<div data-onze-i=\"i0\"></div>"
+  == "<div data-jh-i=\"i0\"></div>"
 
 islandEntry(Island(id: "i0", component: "Counter", props: [#("start", "3")]))
   == #("i0", "Counter", "start=3")
@@ -1021,17 +1021,17 @@ A client component may wrap server-rendered children: the Context Provider
 pattern puts a `'use client'` provider in the root layout with the entire server
 tree inside it. The provider is client code; its children are not.
 
-So the payload has a **hole**: inside `data-onze-i`, the subtree is server markup
+So the payload has a **hole**: inside `data-jh-i`, the subtree is server markup
 the client must adopt as-is and must not re-render — re-rendering it would need
 the server's data and the server's secrets. jhonstart marks the hole explicitly.
 
 ```text
-renderToString(serverSlot([])) == "<div data-onze-s=\"1\"></div>"
+renderToString(serverSlot([])) == "<div data-jh-s=\"1\"></div>"
 ```
 
 Three rules follow, and **front 68** enforces all three:
 
-1. a `data-onze-s` subtree is adopted by the client reconciler, never
+1. a `data-jh-s` subtree is adopted by the client reconciler, never
    reconstructed;
 2. a server component may be a *child* of a client component and never a *prop*
    of one — which is why `Element` is off the whitelist;
@@ -1092,8 +1092,8 @@ All three are module-**graph** predicates and there is no graph here.
 
 | Missing | Needs |
 |---|---|
-| `hydrate()` — walks every `[data-onze-i]`, decodes that island's props from the payload's `i` row and starts the component | front 68's generated module `jhonstart/client-runtime`, which the cell would bind to. It is the **per-island** hydrate point, not the bundle entry: front 68 generates the entry, which calls `hydrate()` and then front 27's link mount and front 67's form mount once each |
-| `__onzeClientPropsRaw(name)` and the `propsFor(name)` wrapper over it | the same module. `propsFor` is then `return propsOf(__onzeClientPropsRaw(name));` and nothing else moves |
+| `hydrate()` — walks every `[data-jh-i]`, decodes that island's props from the payload's `i` row and starts the component | front 68's generated module `jhonstart/client-runtime`, which the cell would bind to. It is the **per-island** hydrate point, not the bundle entry: front 68 generates the entry, which calls `hydrate()` and then front 27's link mount and front 67's form mount once each |
+| `__jhClientPropsRaw(name)` and the `propsFor(name)` wrapper over it | the same module. `propsFor` is then `return propsOf(__jhClientPropsRaw(name));` and nothing else moves |
 | every "may not" rule above | front 68's walk over the client module graph |
 
 Neither cell is declared and neither is stubbed, for the two measurements
@@ -1150,8 +1150,8 @@ Neither cell is declared and neither is stubbed, for the two measurements
     `src/link.bp`, compiled and pure — see *Client navigation*;
   - the **browser half** of client navigation. `link.bp` and `reconcile.bp`
     ship the render-time half; the four `#[@External.Node]` cells
-    (`__onzeLinkMount`, `__onzeLinkPrefetch`, `__onzeLinkStatus`,
-    `__onzeLinkRouteKind`), the `linkStatus()` hook and the transition driver
+    (`__jhLinkMount`, `__jhLinkPrefetch`, `__jhLinkStatus`,
+    `__jhLinkRouteKind`), the `linkStatus()` hook and the transition driver
     `reconcile(current, target)` wait on front 68's generated bundle and front
     60's route-kind table, and are not stubbed;
   - the **build-time half** of the client boundary. `client.bp` ships the

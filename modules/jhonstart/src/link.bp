@@ -18,8 +18,8 @@
 // ── What is NOT here, and why it is not stubbed ─────────────────────────────
 //
 // The front's § Step 4 asks for four `#[@External.Node]` cells —
-// `__onzeLinkMount()`, `__onzeLinkPrefetch(href, mode)`, `__onzeLinkStatus()`
-// and `__onzeLinkRouteKind(href)` — bound to the module
+// `__jhLinkMount()`, `__jhLinkPrefetch(href, mode)`, `__jhLinkStatus()`
+// and `__jhLinkRouteKind(href)` — bound to the module
 // `"jhonstart/client-runtime"`, plus `linkStatus() -> @Component<Element,
 // LinkStatus>` reading the third. **None of them is declared here**, and the
 // reason is a dependency that has not started rather than a preference:
@@ -29,7 +29,7 @@
 //     `require` of a module that is never written — a host stub returning an
 //     answer nobody can check, which is exactly the shape the front's own
 //     § Problem says cannot be faked.
-//   - `__onzeLinkRouteKind` reads the route-kind table **front 60** emits into
+//   - `__jhLinkRouteKind` reads the route-kind table **front 60** emits into
 //     that bundle. Front 60 has not started either, so there is no table to
 //     read and no second place to compute one: § Prefetch strategy is explicit
 //     that both of `prefetchMode`'s inputs come from front 60.
@@ -52,7 +52,7 @@
 // is pure: `prefetchMode` is the decision § 8 *Prefetching* specifies, and
 // `linkStatusOf` is the one line that turns the in-flight href into the record
 // a link renders a spinner from. `linkStatus()` is then
-// `return linkStatusOf(__onzeLinkStatus());` and nothing else in this file
+// `return linkStatusOf(__jhLinkStatus());` and nothing else in this file
 // moves.
 //
 // ── Why the props are a record ──────────────────────────────────────────────
@@ -84,7 +84,7 @@ import {Element, ElementBase} from "element";
 // booleans with Next's documented defaults; `target` and `className` are the
 // only two arbitrary attributes a link may set, and they are FIELDS rather
 // than a pass-through `attrs` list on purpose — an anchor that accepts any
-// attribute is an anchor that can be handed its own `data-onze-l`, and the
+// attribute is an anchor that can be handed its own `data-jh-l`, and the
 // browser half queries on exactly that marker.
 pub type LinkProps(
     href: string,
@@ -170,24 +170,24 @@ pub fn withClass(p: LinkProps, className: string) -> LinkProps {
 //
 // The props travel to the browser as `data-` attributes ON THE ANCHOR. There
 // is no second channel and no registry the server has to serialize: the
-// runtime half queries `[data-onze-l]` and reads the rest off the element it
+// runtime half queries `[data-jh-l]` and reads the rest off the element it
 // found.
 //
 // An attribute is emitted only when it DIFFERS from the default, so the common
-// link is `<a href="/blog" data-onze-l="1">Blog</a>` and a page with two
+// link is `<a href="/blog" data-jh-l="1">Blog</a>` and a page with two
 // hundred links does not carry five redundant pairs on each of them.
 //
 //   | prop        | attribute                | emitted when          |
 //   |-------------|--------------------------|-----------------------|
 //   | `href`      | `href="…"`               | always                |
-//   | —           | `data-onze-l="1"`        | always — the marker   |
-//   | `prefetch`  | `data-onze-prefetch="0"` | only when `false`     |
-//   | `replace`   | `data-onze-replace="1"`  | only when `true`      |
-//   | `scroll`    | `data-onze-scroll="0"`   | only when `false`     |
+//   | —           | `data-jh-l="1"`        | always — the marker   |
+//   | `prefetch`  | `data-jh-prefetch="0"` | only when `false`     |
+//   | `replace`   | `data-jh-replace="1"`  | only when `true`      |
+//   | `scroll`    | `data-jh-scroll="0"`   | only when `false`     |
 //   | `target`    | `target="…"`             | only when non-empty   |
 //   | `className` | `class="…"`              | only when non-empty   |
 //
-// `data-onze-` is the milestone's marker family (`contracts.md § 2`); this
+// `data-jh-` is the milestone's marker family (`contracts.md § 2`); this
 // front owns the link markers inside it and adds no other vocabulary.
 //
 // A plain `-> Element`: `Link` activates no hook, so it is an ordinary function
@@ -197,16 +197,16 @@ pub fn withClass(p: LinkProps, className: string) -> LinkProps {
 pub fn Link(props: LinkProps, children: Children) -> Element {
     var pairs: Array<#(string, string)> = [
         #("href", props.href),
-        #("data-onze-l", "1"),
+        #("data-jh-l", "1"),
     ];
     if (props.prefetch == false) {
-        pairs = pairs.append([#("data-onze-prefetch", "0")]);
+        pairs = pairs.append([#("data-jh-prefetch", "0")]);
     };
     if (props.replace) {
-        pairs = pairs.append([#("data-onze-replace", "1")]);
+        pairs = pairs.append([#("data-jh-replace", "1")]);
     };
     if (props.scroll == false) {
-        pairs = pairs.append([#("data-onze-scroll", "0")]);
+        pairs = pairs.append([#("data-jh-scroll", "0")]);
     };
     if (props.target != "") {
         pairs = pairs.append([#("target", props.target)]);
@@ -268,10 +268,10 @@ pub fn layoutKey(segments: Array<string>, depth: i32) -> string {
 // and this is the whole derivation from it.
 //
 // `linkStatus() -> @Component<ElementBase, LinkStatus>` is the hook the front asks
-// for and it is NOT here: it would call `__onzeLinkStatus()`, a node-only cell
+// for and it is NOT here: it would call `__jhLinkStatus()`, a node-only cell
 // whose module front 68 generates, and a called node-only cell reds the erlang
 // build of this member (see this file's header). When that module lands the
-// hook is three lines — the cell, and `return linkStatusOf(__onzeLinkStatus());`
+// hook is three lines — the cell, and `return linkStatusOf(__jhLinkStatus());`
 // — and this record and this function do not change.
 pub type LinkStatus(pending: bool, href: string)
 

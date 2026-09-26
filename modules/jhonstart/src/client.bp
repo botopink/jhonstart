@@ -5,7 +5,7 @@
 // so the boundary is built out of what annotation processing already gives: a
 // `@Decl`-first comptime function and `@emit`. `#[client]` marks a component,
 // `#[clientProps]` marks the record its props travel in, and the server render
-// contributes an ISLAND — `<div data-onze-i="i0">` — whose component name and
+// contributes an ISLAND — `<div data-jh-i="i0">` — whose component name and
 // encoded props live in front 23's payload rather than on the element.
 //
 // ── What is ENFORCED here, and what is NOT ──────────────────────────────────
@@ -55,7 +55,7 @@
 // The front's § Step 4 asks for three host cells —
 // `#[@External.Node("jhonstart/client-runtime", "hydrate")] hydrate()`,
 // `#[@External.Node("jhonstart/client-runtime", "islandProps")]
-// __onzeClientPropsRaw(name)` and the `propsFor(name)` wrapper over the second.
+// __jhClientPropsRaw(name)` and the `propsFor(name)` wrapper over the second.
 // **None of them is declared here**, for the two reasons front 27's `link.bp`
 // records for its own four cells, re-measured for this file against compiler
 // `2e6bb4ac` on 2026-09-21:
@@ -83,8 +83,8 @@
 // What the browser half needs from this file when front 68's module lands is
 // here and is pure: `propsOf(raw)` is the whole decode `propsFor` performs, so
 // `propsFor` is then two lines — the cell, and
-// `return propsOf(__onzeClientPropsRaw(name));` — and nothing else moves.
-// `hydrate()` is per-island: it walks every `[data-onze-i]`, decodes that
+// `return propsOf(__jhClientPropsRaw(name));` — and nothing else moves.
+// `hydrate()` is per-island: it walks every `[data-jh-i]`, decodes that
 // island's props from the payload's `i` row and starts the component. It is
 // NOT the bundle entry and it mounts no links and no forms; front 68 generates
 // the entry that calls it and then front 27's link mount and front 67's form
@@ -184,7 +184,7 @@ pub fn clientProps(comptime decl: @Decl) {
 
 // ── step 3: the island, and the ONE place its marker is spelled ─────────────
 //
-// `contracts.md § 2` pins the marker: `<div data-onze-i="i0">`. The component
+// `contracts.md § 2` pins the marker: `<div data-jh-i="i0">`. The component
 // name and the encoded props do NOT live on the element — they live in the
 // payload's `i` array as `[id, component, props]`, which is how the client
 // finds the island without parsing attributes off the DOM, and what makes the
@@ -192,7 +192,7 @@ pub fn clientProps(comptime decl: @Decl) {
 // and front 68 walks it.
 //
 // **Decision 77: one definition, passed in, never two that must agree.** The
-// string `"data-onze-i"` occurs ONCE in this tree, in `islandAttrOf` below.
+// string `"data-jh-i"` occurs ONCE in this tree, in `islandAttrOf` below.
 // Everything else routes through it:
 //
 //   | caller  | calls                        | for |
@@ -218,11 +218,11 @@ pub fn islandId(ordinal: i32) -> string {
 
 // The one occurrence of the attribute name in this tree.
 pub fn islandAttrOf(id: string) -> #(string, string) {
-    return #("data-onze-i", id);
+    return #("data-jh-i", id);
 }
 
 // Decision 77's export: the marker pair for an ordinal. `islandAttr(0)` is
-// `#("data-onze-i", "i0")`.
+// `#("data-jh-i", "i0")`.
 pub fn islandAttr(ordinal: i32) -> #(string, string) {
     return islandAttrOf(islandId(ordinal));
 }
@@ -282,14 +282,14 @@ pub fn propsOf(raw: string) -> Array<#(string, string)> {
 // pattern puts a `'use client'` provider in the root layout with the entire
 // server tree inside it. The provider is client code; its children are not.
 //
-// So the payload has a HOLE: inside `data-onze-i`, the subtree is server markup
+// So the payload has a HOLE: inside `data-jh-i`, the subtree is server markup
 // the client must ADOPT as-is and must not re-render — re-rendering it would
 // need the server's data and the server's secrets. jhonstart marks the hole
 // explicitly rather than leaving it implicit.
 //
 // The three rules that follow, and that front 68 enforces — none of them here:
 //
-//   1. A `data-onze-s` subtree is adopted by the client reconciler, never
+//   1. A `data-jh-s` subtree is adopted by the client reconciler, never
 //      reconstructed.
 //   2. A server component may be a CHILD of a client component. It may never be
 //      a PROP of one — which is why `Element` is off the whitelist above.
@@ -297,9 +297,9 @@ pub fn propsOf(raw: string) -> Array<#(string, string)> {
 //      and `headers()` are `server.bp`'s and reaching them from a `#[client]`
 //      module is a BUILD failure, not a runtime one.
 //
-// Same decision-77 treatment as the island: `"data-onze-s"` occurs once.
+// Same decision-77 treatment as the island: `"data-jh-s"` occurs once.
 pub fn serverSlotAttr() -> #(string, string) {
-    return #("data-onze-s", "1");
+    return #("data-jh-s", "1");
 }
 
 pub fn serverSlot(children: Children) -> Element {

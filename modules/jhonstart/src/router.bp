@@ -166,7 +166,7 @@ pub declare fn __jhRouteSelected() -> i32;
 // no BEAM row at all, and a server that reached into another library's process
 // dictionary keys would be coupled to them forever. So the seam is HERE and it
 // is `pub`: front 28's server adapter calls it once per request, and fronts 27
-// and 29 call it with the values the `__onze` payload carried on every client
+// and 29 call it with the values the payload (`globals.payload`) carried on every client
 // transition. It is also what makes `snapshot()` assertable — the front's own
 // test plan asks for "`snapshot()` over a stubbed host module", and a stub you
 // cannot seed is a stub you cannot assert.

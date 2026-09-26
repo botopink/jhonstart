@@ -112,8 +112,8 @@ pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     return button([
             text(c.value.toString() + " likes", attrs: []),
         ], attrs: [
-            #("data-onze-on-click", "LikeButton:like"),
-            #("data-onze-post", props.postId),
+            #("data-jh-on-click", "LikeButton:like"),
+            #("data-jh-post", props.postId),
         ]);
 }
 
@@ -127,6 +127,18 @@ pub type ThemeProps(theme: string)
 pub fn ThemeProvider(props: ThemeProps, children: Children) -> @Component<ElementBase, Element> {
     val current = use state(props.theme);
     return div(children, attrs: [#("class", "theme-" + current.value)]);
+}
+
+// A client component that activates nothing returns bare `Element`
+// (decision 104) and is marked the same way.
+#[client]
+pub fn StaticBadge(props: ThemeProps) -> Element {
+    return div([text(props.theme, attrs: [])], attrs: [#("class", "badge")]);
+}
+
+test "client: the marker fires on a plain -> Element component too" {
+    assert __jhClient_StaticBadge() == "StaticBadge";
+    assert renderToString(StaticBadge(ThemeProps(theme: "dark"))) == "<div class=\"badge\">dark</div>";
 }
 
 test "client: the marker emits a pure fn returning the component's name" {
@@ -145,7 +157,7 @@ test "client: the emitted marker is a VALUE, not a call into a host registry" {
 
 test "client: the decorated component is unchanged and still renders" {
     assert renderToString(await LikeButton(LikeProps(postId: "7", likes: 3)))
-        == "<button data-onze-on-click=\"LikeButton:like\" data-onze-post=\"7\">3 likes</button>";
+        == "<button data-jh-on-click=\"LikeButton:like\" data-jh-post=\"7\">3 likes</button>";
 }
 
 // ── step 2: `#[clientProps]` — a whitelisted record is applied and compiles ─
@@ -181,7 +193,7 @@ test "client: islandId is the ordinal's spelling and nothing else" {
 
 test "client: islandAttr is the marker pair for an ordinal — decision 77" {
     val pair = islandAttr(0);
-    assert pair._0 == "data-onze-i";
+    assert pair._0 == "data-jh-i";
     assert pair._1 == "i0";
     assert islandAttr(3)._1 == "i3";
 }
@@ -198,7 +210,7 @@ test "client: the placeholder carries the id only — the name and props are pay
     val el = clientMount(Island(id: "i0", component: "Counter", props: [#("start", "3")]), []);
     assert el.tag == "div";
     assert el.attrs.length == 1;
-    assert renderToString(el) == "<div data-onze-i=\"i0\"></div>";
+    assert renderToString(el) == "<div data-jh-i=\"i0\"></div>";
 }
 
 test "client: children render inside the placeholder, unmodified" {
@@ -206,7 +218,7 @@ test "client: children render inside the placeholder, unmodified" {
         Island(id: "i1", component: "ThemeProvider", props: []),
         [h1([text("Hello", attrs: [])], attrs: []), text("!", attrs: [])],
     );
-    assert renderToString(el) == "<div data-onze-i=\"i1\"><h1>Hello</h1>!</div>";
+    assert renderToString(el) == "<div data-jh-i=\"i1\"><h1>Hello</h1>!</div>";
 }
 
 test "client: islandEntry is the payload's i row — id, component, encoded props" {
@@ -228,21 +240,21 @@ test "client: an island with no props encodes to the empty string" {
     assert islandEntry(Island(id: "i9", component: "Now", props: []))._2 == "";
 }
 
-// ── step 3b: the hole — `data-onze-s` ───────────────────────────────────────
+// ── step 3b: the hole — `data-jh-s` ───────────────────────────────────────
 
-test "client: serverSlot emits data-onze-s=\"1\" and nothing else" {
+test "client: serverSlot emits data-jh-s=\"1\" and nothing else" {
     val el = serverSlot([]);
     assert el.attrs.length == 1;
-    assert serverSlotAttr()._0 == "data-onze-s";
+    assert serverSlotAttr()._0 == "data-jh-s";
     assert serverSlotAttr()._1 == "1";
-    assert renderToString(el) == "<div data-onze-s=\"1\"></div>";
+    assert renderToString(el) == "<div data-jh-s=\"1\"></div>";
 }
 
 test "client: the server subtree is carried through the slot untouched" {
     val markup = renderToString(serverSlot([
             section([p([text("4 tickets open", attrs: [])], attrs: [])], attrs: [#("class", "dashboard")]),
         ]));
-    assert markup == "<div data-onze-s=\"1\"><section class=\"dashboard\"><p>4 tickets open</p></section></div>";
+    assert markup == "<div data-jh-s=\"1\"><section class=\"dashboard\"><p>4 tickets open</p></section></div>";
 }
 
 // The Context-Provider shape: a client provider wrapping a server-rendered
@@ -263,8 +275,8 @@ fn RootLayout(theme: string, page: Element) -> Element {
 
 test "client: the layout nests a server slot inside the island" {
     val markup = renderToString(RootLayout("dark", Dashboard("Ana", 4)));
-    assert markup.contains("data-onze-i=\"i0\"");
-    assert markup.contains("data-onze-s=\"1\"");
+    assert markup.contains("data-jh-i=\"i0\"");
+    assert markup.contains("data-jh-s=\"1\"");
     assert markup.contains("<h1>Hello, Ana</h1>");
     // The component name is NOT in the markup — it is in the payload's `i` row.
     assert markup.contains("ThemeProvider") == false;
@@ -302,16 +314,16 @@ fn PostList() -> Element {
 test "client: a server component emits the island, not the component" {
     val markup = renderToString(postRow(0, "On BEAM rendering", "7", 3));
     assert markup.contains("<h2>On BEAM rendering</h2>");
-    assert markup.contains("data-onze-i=\"i0\"");
+    assert markup.contains("data-jh-i=\"i0\"");
     // The handler attribute belongs to the component's own markup, which the
     // server never renders for an island.
-    assert markup.contains("data-onze-on-click") == false;
+    assert markup.contains("data-jh-on-click") == false;
 }
 
 test "client: the list renders one island per post, numbered in render order" {
     val markup = renderToString(PostList());
-    assert markup.contains("data-onze-i=\"i0\"");
-    assert markup.contains("data-onze-i=\"i1\"");
+    assert markup.contains("data-jh-i=\"i0\"");
+    assert markup.contains("data-jh-i=\"i1\"");
     assert markup.contains("LikeButton") == false;
 }
 

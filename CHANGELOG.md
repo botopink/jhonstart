@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Fronts 27 and 29 — decision 113's spellings.** Every marker jhonstart
+  writes carries the `data-jh-` prefix: the link's `data-jh-l` /
+  `data-jh-prefetch` / `data-jh-replace` / `data-jh-scroll`, the island's
+  `data-jh-i`, the hole's `data-jh-s`, the handler's `data-jh-on-click`; the
+  browser cells front 68 brings are named `__jhLink*` / `__jhClientPropsRaw`.
+  No `data-onze-` string is left under `modules/*/src/`. One new cell: a
+  `#[client]` on a plain `-> Element` component. Core 127 → 128 on both rows.
+
 - **Fronts 26 and 28 — decisions 115 and 116 in landed code.** The package's
   stand-in pair codec (`decodePairs` / `encodePairs`, which did not
   percent-decode) is deleted: the route snapshot, the request and an island's

@@ -19,8 +19,8 @@
 //// navigation: the anchor, its props, the prefetch decision and the remount
 //// decision. Both are PURE — no host cell of any target — so they render and
 //// assert on both rows. The browser half they are the input to
-//// (`__onzeLinkMount`, `__onzeLinkPrefetch`, `__onzeLinkStatus`,
-//// `__onzeLinkRouteKind`, and the transition driver) lives in front 68's
+//// (`__jhLinkMount`, `__jhLinkPrefetch`, `__jhLinkStatus`,
+//// `__jhLinkRouteKind`, and the transition driver) lives in front 68's
 //// generated bundle and is not declared here until that module exists; see
 //// `link.bp`'s header.
 
