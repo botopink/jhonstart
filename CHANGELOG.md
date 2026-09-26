@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Front 31 — error boundaries** (`error_boundary.bp`). A boundary's child is a
+  `@Result` thunk called exactly once through `__jhCapture`, the one host cell
+  that turns a raise into a value (`signal_runtime.mjs` /
+  `sidecars/jhonstart_signal.erl`); an ordinary failure renders the fallback
+  with a message-free `ErrorInfo` whose digest is std's `contentHash`, a
+  signal is re-raised (`renderBoundary`) or answered `Error(reason)`
+  (`renderBoundaryChecked`). `notFound()` / `redirect(url)` raise `routing`'s
+  `nav:` reasons. `root.bp` and `files` now list the modules in front-number order
+  (26, 27, 28, 29, 31, then 94's `elements` last — front 94's rule). Core 128 → 147 on both
+  rows.
+
 - **Fronts 27 and 29 — decision 113's spellings.** Every marker jhonstart
   writes carries the `data-jh-` prefix: the link's `data-jh-l` /
   `data-jh-prefetch` / `data-jh-replace` / `data-jh-scroll`, the island's

@@ -27,9 +27,10 @@
 pub mod element;
 pub mod hooks;
 pub mod router;       // front 26, replacing router.d.bp
-pub mod elements;     // front 94
-pub mod server;       // front 28, replacing server.d.bp
 pub mod link;         // front 27
 pub mod reconcile;    // front 27
+pub mod server;       // front 28, replacing server.d.bp
 pub mod client;       // front 29
+pub mod error_boundary; // front 31
+pub mod elements;     // front 94
 mod client_runtime;
