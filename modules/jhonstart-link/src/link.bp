@@ -29,24 +29,14 @@
 
 // ── Why the props are a record ──────────────────────────────────────────────
 //
-// `Link(href, children, prefetch = true, replace = false, scroll = true)` is
-// the signature anyone would write, and it does not work for a CONSUMER.
-// A trailing declared default IS filled at the call site since C-04 — for a
-// declaration in the calling module. It is still not filled for an IMPORTED
-// one, and `Link` is imported by construction:
-//
-//     import { greet } from "helper";  greet("w")
-//     error: 'greet' expects 2 argument(s), got 1
-//
-// It is a checker answer, so every target fails the same way. So the props are
-// a record, `linkProps(href)` fills Next's documented defaults, and overriding
-// one is `withPrefetch(props, false)` — a helper returning a NEW record, since
-// there is no assignment to a `self` field anywhere in this tree and a record
-// has no copy-with-update expression. The call site is
-// `Link(withPrefetch(linkProps(href), false), children)`, which is the honest
-// cost of the gap and still shorter than spelling six arguments at every link.
-//
-// Both gaps are the front's § Language gaps rows.
+// The props are one record, `linkProps(href)` fills Next's documented
+// defaults, and overriding one is `withPrefetch(props, false)` — a helper
+// returning a NEW record (a record is immutable), written with the update form
+// `LinkProps(..p, prefetch: prefetch)`. The call site is
+// `Link(withPrefetch(linkProps(href), false), children)`: the anchor reads its
+// options from one value, and a consumer that changes several at once writes
+// the update form itself (`val base = linkProps(href);`,
+// `LinkProps(..base, replace: true, scroll: false)`).
 
 import {Element, ElementBase} from "jhonstart";
 
@@ -80,62 +70,26 @@ pub fn linkProps(href: string) -> LinkProps {
     );
 }
 
-// The five copy-with-one-field helpers. Each respells all six fields because
-// the language has no `Record(base, field: value)` expression — the front's
-// second § Language gaps row. None of them assigns to a field of its argument.
+// The five copy-with-one-field helpers, each the record update form. None of
+// them assigns to a field of its argument.
 pub fn withPrefetch(p: LinkProps, prefetch: bool) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: prefetch,
-        replace: p.replace,
-        scroll: p.scroll,
-        target: p.target,
-        className: p.className,
-    );
+    return LinkProps(..p, prefetch: prefetch);
 }
 
 pub fn withReplace(p: LinkProps, replace: bool) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: p.prefetch,
-        replace: replace,
-        scroll: p.scroll,
-        target: p.target,
-        className: p.className,
-    );
+    return LinkProps(..p, replace: replace);
 }
 
 pub fn withScroll(p: LinkProps, scroll: bool) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: p.prefetch,
-        replace: p.replace,
-        scroll: scroll,
-        target: p.target,
-        className: p.className,
-    );
+    return LinkProps(..p, scroll: scroll);
 }
 
 pub fn withTarget(p: LinkProps, target: string) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: p.prefetch,
-        replace: p.replace,
-        scroll: p.scroll,
-        target: target,
-        className: p.className,
-    );
+    return LinkProps(..p, target: target);
 }
 
 pub fn withClass(p: LinkProps, className: string) -> LinkProps {
-    return LinkProps(
-        href: p.href,
-        prefetch: p.prefetch,
-        replace: p.replace,
-        scroll: p.scroll,
-        target: p.target,
-        className: className,
-    );
+    return LinkProps(..p, className: className);
 }
 
 // ── step 2: the anchor ──────────────────────────────────────────────────────

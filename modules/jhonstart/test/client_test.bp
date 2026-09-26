@@ -19,13 +19,7 @@
 //
 // ── What this file does NOT assert, and why ─────────────────────────────────
 //
-// 1. **`botopink check` sees `__jhClient_<Name>` as unbound.** `check` skips
-//    decorator invocation entirely, so the emitted names do not exist for it.
-//    The gate for this file is `botopink test`, never `botopink check` — the
-//    front's third § Language gaps row. Not assertable: a suite cannot assert
-//    what another driver does.
-//
-// 2. **Every wrong-placement case is a COMPILE failure, not a value.** A
+// 1. **Every wrong-placement case is a COMPILE failure, not a value.** A
 //    rejected decorator does not return anything a runtime `assert` can read,
 //    so the four refusals are recorded here as comments naming the exact
 //    message, the way `rakun/test/di_test.bp` does. Measured against compiler
@@ -45,7 +39,7 @@
 //
 //    The compile-failure coverage itself lives in the compiler's own suites.
 //
-// 3. **`hydrate()` idempotent, and `propsFor(name)` over the real cell.** The
+// 2. **`hydrate()` idempotent, and `propsFor(name)` over the real cell.** The
 //    front's § Step 4 asks for both and neither is assertable: the two host
 //    cells are not declared, because their module `"jhonstart/client-runtime"`
 //    is the bundle **front 68** generates and does not exist, and because a
@@ -54,7 +48,7 @@
 //    cell. What IS assertable is the pure decode `propsFor` performs —
 //    `propsOf` — and it is asserted below, empty case included.
 //
-// 4. **That a secret does not cross the boundary.** Nothing in this front
+// 3. **That a secret does not cross the boundary.** Nothing in this front
 //    checks it; see `client.bp`'s § *What is ENFORCED here, and what is NOT*.
 //    The check is front 68's walk over the client module graph.
 //

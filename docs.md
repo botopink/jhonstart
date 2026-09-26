@@ -243,8 +243,8 @@ void set is *exported* rather than applied here: the renderer that ships reads
 
 **A void element cannot be authored inside `html """…"""`.** The DSL lowers a
 self-closing tag to a one-positional-argument call and flushes it after the
-token loop rather than at its position, so `<div><img/></div>` would be both
-an arity error (a declared default is not applied) and misplaced. Build void
+token loop rather than at its position, so `<div><img/></div>` renders
+`<div></div><img></img>` — the image lands after its parent. Build void
 elements with the constructor and interpolate the result. `<html>` in markup
 is doubly unavailable: the tag would resolve to the DSL's own `html`.
 
@@ -798,22 +798,11 @@ own member, `jhonstart-link` — a consumer writes
 
 ### The props are a record, and why
 
-`Link(href, children, prefetch = true, replace = false, scroll = true)` is the
-signature anyone would write, and it does not work for a consumer. A trailing
-declared default is filled at the call site for a declaration in the **calling
-module**; it is still not filled for an **imported** one, and `Link` is imported
-by construction. Measured against compiler `2e6bb4ac`, on both rows, against
-jhonstart's own `text`:
-
-```text
-import { text } from "jhonstart";  text("hi")
-error: 'text' expects 2 argument(s), got 1
-```
-
-So the props are a record and `linkProps(href)` fills Next's documented
-defaults. Overriding one is a `with*` helper that returns a **new** record —
-there is no assignment to a `self` field anywhere in this tree, and a record has
-no copy-with-update expression.
+The props are one record and `linkProps(href)` fills Next's documented
+defaults: the anchor reads its options from one value. Overriding one is a
+`with*` helper that returns a **new** record (a record is immutable), written
+with the update form `LinkProps(..p, prefetch: prefetch)`; a consumer that
+changes several at once writes the update form itself.
 
 | Function | Shape |
 |---|---|

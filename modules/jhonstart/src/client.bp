@@ -97,9 +97,8 @@ import {globals} from "globals";
 // `"@Component<ElementBase, Element>"`, and a data-loading server component as
 // `"@Task<Element>"`. That is what makes check 2 reject a server component.
 //
-// `botopink check` skips decorator invocation entirely, so `__jhClient_<Name>`
-// reads as an UNBOUND NAME under `check`. The gate is `botopink test`, never
-// `check`. It is the front's third § Language gaps row.
+// `botopink check` runs the decorator like `build` and `test` do, so
+// `__jhClient_<Name>` is bound under `check` too.
 pub fn client(comptime decl: @Decl) {
     @emit("pub fn __jhClient_" + decl.name + "() -> string { return \"" + decl.name + "\"; }");
     if (decl.kind != DeclKind.Fn) decl.fail("#[client] must annotate a function");

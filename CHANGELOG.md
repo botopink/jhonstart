@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`jhonstart-link`'s `with*` helpers use the record update form**
+  (`LinkProps(..p, prefetch: prefetch)`), and the notes that `check` skips
+  decorators and that an imported default is not applied are gone: both hold
+  no longer on the compiler.
+
 - **`jhonstart-dom-test` — front 30's browser half, asserted** (commonJS only):
   the fill and signal functions `render.mjs` registers and `readPayload`, run
   against a minimal document installed from the render's own markup. 9/9.
