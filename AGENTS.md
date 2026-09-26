@@ -683,13 +683,23 @@ the umbrella has no row, and `jhonstart-html`, `jhonstart-link`, `jhonstart-test
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 85/85 | ✓ 85/85 |
+| `jhonstart` | ✓ 187/187 | ✓ 187/187 |
 | `jhonstart-html` (member) | ✓ 5/5 | ✓ 5/5 |
-| `jhonstart-link` (member) | ✓ 35/35 | ✓ 35/35 |
+| `jhonstart-link` (member) | ✓ 38/38 | ✓ 38/38 |
+| `jhonstart-emilia` (member) | ✓ 6/6 | ✓ 6/6 |
+| `jhonstart-forms` (member) | ✓ 15/15 | ✓ 15/15 |
 | `jhonstart-test` | ✓ 1/1 | ✓ 1/1 |
 | `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
 | `jhonstart-markup` | ✓ 7/7 | ✓ 7/7 |
 | `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
+
+Measured 2026-09-26 against botopink-lang `f011850c` (`botopink test` in each
+member, summed per module). Track C's second wave took the core from 85 to 187:
+fronts 26/28's codec and writer cells (+7), front 29 (+3), front 31's
+`error_boundary_test.bp` (19), front 32's `metadata_test.bp` (16), front 30's
+`render_test.bp` (22), `streaming_test.bp` (23) and `routes_test.bp` (8), and
+front 26's `client_app_test.bp` (4); `jhonstart-link` gained front 27's three
+browser-cell tests.
 
 Front 95 moved `html_test.bp` (2) and `elements_test.bp` (3) with the DSL into
 `jhonstart-html`, so the core reads 120 where it read 125 (measured 2026-09-25
