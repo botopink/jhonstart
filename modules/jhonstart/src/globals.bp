@@ -9,14 +9,12 @@
 // exchanging anything. No alias is spelled by hand anywhere else: adding a
 // global is one registry entry.
 //
-// The three are read through `globals()` — a function answering a record, not
-// the module-level `pub val`s the README sketches. A `pub val` of a user
-// record type imported from a sibling module is undefined on commonJS and an
-// unbound variable on erlang (measured 2026-09-26, compiler `248d0896`; the
-// `language-gaps.md` row "`pub val` of a user record type is unexercised"),
-// and three flat `pub val`s named `payload` / `fill` / `signal` would shadow
-// front 26's `fill` in a consumer's flat `import {…} from "jhonstart"`.
-//
+// The three are the fields of one module-level `pub val globals` — read as
+// `globals.payload`, `globals.fill`, `globals.signal`, the README's spelling.
+// One record rather than three flat `pub val`s named `payload` / `fill` /
+// `signal`, which would shadow front 26's `fill` in a consumer's flat
+// `import {…} from "jhonstart"`.
+
 // The browser half is three cells over `render.mjs`, called only by onze front
 // 68's generated entry: the payload script's JSON text (decoded here with
 // std's `json.decode`, decision 117 rule 7), and the registration of the fill
@@ -42,9 +40,7 @@ pub fn alias(name: string) -> string {
 
 pub type Globals(payload: string, fill: string, signal: string)
 
-pub fn globals() -> Globals {
-    return Globals(payload: alias("payload"), fill: alias("fill"), signal: alias("signal"));
-}
+pub val globals = Globals(payload: alias("payload"), fill: alias("fill"), signal: alias("signal"));
 
 // The payload script's JSON text: everything after `window.<name> = ` in the
 // last payload script, `""` when there is none (and always `""` on the server).
@@ -52,13 +48,13 @@ pub fn globals() -> Globals {
   @External.Erlang("jhonstart_render", "payload_text")]
 declare fn __jhPayloadText(name: string) -> string;
 
-// Registers the fill function under `name` (`globals().fill`), with the holes
+// Registers the fill function under `name` (`globals.fill`), with the holes
 // still open when the shell flushed (the payload's `h`).
 #[@External.Node("./render.mjs", "registerFill"),
   @External.Erlang("jhonstart_render", "register_fill")]
 declare fn __jhRegisterFill(name: string, holes: string[]) -> i32;
 
-// Registers the signal function under `name` (`globals().signal`), checking a
+// Registers the signal function under `name` (`globals.signal`), checking a
 // late redirect against the same `allowedRedirects` list `app(…)` got.
 #[@External.Node("./render.mjs", "registerSignal"),
   @External.Erlang("jhonstart_render", "register_signal")]

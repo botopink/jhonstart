@@ -333,11 +333,11 @@ declare fn __jhClientPropsRaw(payloadName: string, name: string) -> string;
 
 // Starts every island not yet started; answers how many have started in all.
 pub fn hydrate() -> i32 {
-    return __jhHydrate(globals().payload);
+    return __jhHydrate(globals.payload);
 }
 
 // The props the payload's `i` row carries for `name`, decoded; `[]` when the
 // component has none.
 pub fn propsFor(name: string) -> Array<#(string, string)> {
-    return propsOf(__jhClientPropsRaw(globals().payload, name));
+    return propsOf(__jhClientPropsRaw(globals.payload, name));
 }

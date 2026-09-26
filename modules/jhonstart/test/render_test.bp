@@ -145,9 +145,9 @@ test "render: a fill's CSS goes first inside the template, with no marker" {
 // ── step 7: the globals registry ────────────────────────────────────────────
 
 test "render: the three globals come from the registry's declaration order" {
-    assert globals().payload == "__bp0";
-    assert globals().fill == "__bp1";
-    assert globals().signal == "__bp2";
+    assert globals.payload == "__bp0";
+    assert globals.fill == "__bp1";
+    assert globals.signal == "__bp2";
     assert alias("fill") == "__bp1";
 }
 

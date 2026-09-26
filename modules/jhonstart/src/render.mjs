@@ -14,7 +14,7 @@
 //
 // 2. THE BROWSER HALF, called only by onze front 68's generated entry: the
 //    payload script's text (`payloadText`), the fill function registered under
-//    `globals().fill` and the signal function under `globals().signal`. No
+//    `globals.fill` and the signal function under `globals.signal`. No
 //    global name is spelled here — the entry passes the names the registry
 //    derived.
 

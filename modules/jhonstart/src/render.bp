@@ -35,7 +35,7 @@
 // ── The payload — contract 2 ────────────────────────────────────────────────
 //
 // One executable script, last in `<body>` before `RenderHooks.bodyExtra`,
-// assigning `globals().payload`. The JSON is written with std's `json.quote` /
+// assigning `globals.payload`. The JSON is written with std's `json.quote` /
 // `json.array` / `json.object` and the finished text passes through
 // `escape.scriptJson`, so `</script` is unrepresentable inside the block; this
 // file keeps no JSON writer and no escaper of its own (decision 116). `t`, `a`
@@ -438,9 +438,9 @@ pub fn writePayload(p: Payload) -> string {
     return escape.scriptJson(json.object(fields));
 }
 
-// The payload script: `<script>window.<globals().payload> = {…}</script>`.
+// The payload script: `<script>window.<globals.payload> = {…}</script>`.
 pub fn payloadScript(p: Payload) -> string {
-    return "<script>window." + globals().payload + " = " + writePayload(p) + "</script>";
+    return "<script>window." + globals.payload + " = " + writePayload(p) + "</script>";
 }
 
 // ── the document ────────────────────────────────────────────────────────────

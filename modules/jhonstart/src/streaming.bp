@@ -88,17 +88,17 @@ pub fn resolve(b: Boundary) -> @Task<Chunk> {
 // FIRST inside the template, with no marker of its own, so a fill's style and
 // markup enter the document together.
 pub fn fillHtml(c: Chunk, css: string) -> string {
-    return "<template data-jh-f=\"" + c.id + "\">" + css + c.html + "</template><script>" + globals().fill + "(\"" + c.id + "\")</script>";
+    return "<template data-jh-f=\"" + c.id + "\">" + css + c.html + "</template><script>" + globals.fill + "(\"" + c.id + "\")</script>";
 }
 
 // The late-signal markup (contract 2's `data-jh-g`), each followed by the call
-// of `globals().signal`.
+// of `globals.signal`.
 pub fn redirectSignalHtml(to: string) -> string {
-    return "<template data-jh-g=\"redirect\" data-jh-to=\"" + escape.attribute(to) + "\"></template><script>" + globals().signal + "()</script>";
+    return "<template data-jh-g=\"redirect\" data-jh-to=\"" + escape.attribute(to) + "\"></template><script>" + globals.signal + "()</script>";
 }
 
 pub fn notFoundSignalHtml(css: string, html: string) -> string {
-    return "<template data-jh-g=\"not-found\">" + css + html + "</template><script>" + globals().signal + "()</script>";
+    return "<template data-jh-g=\"not-found\">" + css + html + "</template><script>" + globals.signal + "()</script>";
 }
 
 // ── the response ────────────────────────────────────────────────────────────

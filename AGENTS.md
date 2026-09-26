@@ -80,7 +80,7 @@ repository/jhonstart/
 │   │   │   ├── render.bp      ← COMPILED (front 30): `renderNode` (the escaping, void-aware walker over std `escape`), `raw`, `shellHtml`, `mountIsland` (i0, i1 … through front 29's `islandAttr`), `compose` (layout > template > error > loading > not-found > page; layouts run first), `Payload`/`writePayload` (std `json` + `escape.scriptJson`), `RenderHooks`/`setHooks`, the document
 │   │   │   ├── streaming.bp   ← COMPILED (front 30): `Chunk`/`resolve`/`fillHtml`, the late-signal markup, `Response` + `guarded`, `PageInput`, `App`/`app` with `render` / `renderStream` (→ `@Task<@Result<void, string>>`), the signal translation and the redirect-target check
 │   │   │   ├── plugin.bp      ← COMPILED (front 30): `RenderPlugin(name, head, chunk, close, payload)` — a record of async functions, called in `app`'s order
-│   │   │   ├── globals.bp     ← COMPILED (front 30): the registry `payload, fill, signal` → `__bp0/1/2` via `globals()`; `readPayload` (std `json.decode`), `registerFill`, `registerSignal`
+│   │   │   ├── globals.bp     ← COMPILED (front 30): the registry `payload, fill, signal` → `__bp0/1/2`, the fields of `pub val globals`; `readPayload` (std `json.decode`), `registerFill`, `registerSignal`
 │   │   │   ├── routes.bp      ← COMPILED (front 30): `#[page]`/`#[layout]`/`#[template]`/`#[defaultView]`, `PageContext`, `LayoutProps`, the UI registry (`jhPage`… `uiTable()`), `UiSegment` + `segment`/`with*`/`segmentFor`
 │   │   │   ├── render.mjs     ← HOST (js): per-render state + `eachCompleted`, and the browser half (fill / signal functions, payload text)
 │   │   │   ├── routes.mjs     ← HOST (js): the UI registry

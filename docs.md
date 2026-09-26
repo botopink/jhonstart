@@ -1235,7 +1235,7 @@ One `<script>window.__bp0 = {…}</script>`, last in `<body>` before
 (`mountIsland`, through front 29's `islandEntry`).
 
 The three browser globals are aliases from `globals.bp`'s registry —
-`globals().payload == "__bp0"`, `.fill == "__bp1"`, `.signal == "__bp2"` — and
+`globals.payload == "__bp0"`, `.fill == "__bp1"`, `.signal == "__bp2"`, the fields of one module-level `pub val globals` — and
 no other file spells them. `readPayload(name)` decodes the payload text with
 std's `json.decode`; `registerFill` / `registerSignal` install `render.mjs`'s
 fill and signal functions (called only by onze front 68's entry).
