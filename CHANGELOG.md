@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **Front 67 — forms**, the new member `modules/jhonstart-forms` (additive):
+  contract 3's form markup (`formAttrs`, `hiddenActionField`), the transport
+  (`submitForm`, `invokeAction`, `formMount`) over six dual-target cells, the
+  `actionState` / `formStatus` / `optimistic` hooks with their quiet server
+  pass, `applyOptimistic`, and the GET search form. `ActionState`,
+  `parseActionState` and `writeRpcBody` are imported from the bundled
+  `actions`; the wire names come from onze through `setWireNames`. 15/15 on
+  both rows.
+
 - **Front 29 Step 4 — the hydrate point.** `hydrate()` (idempotent: walks
   `[data-jh-i]`, starts each island's registered component with its payload
   row, binds `[data-jh-reset]`) and `propsFor(name)` over two dual-target cells

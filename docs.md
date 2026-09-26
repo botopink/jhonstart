@@ -1253,6 +1253,34 @@ first inside its fill; `close` at the end — an `Error` fails the render;
 `payload` once, last — a render key or a key two plugins give fails the render,
 naming them. The `jhonstart-emilia` member is the one plugin in this workspace.
 
+## Forms (`jhonstart-forms`) — compiled
+
+Front 67, `import {…} from "jhonstart-forms"`. A form is bound to front 24's
+action id (a string — this front echoes it and never constructs one) and its
+markup is contract 3's exactly, so it submits before the bundle arrives:
+
+```bp
+val binding = formAction("a_9f2c1b7e", "/blog/new", actionField);
+actionForm(binding, [input([], attrs: [#("name", "title")]), button([text("Save", attrs: [])], attrs: [])])
+// <form method="post" action="/blog/new" data-jh-a="a_9f2c1b7e"><input type="hidden" name="<actionField>" value="a_9f2c1b7e">…
+```
+
+| Function | What |
+|---|---|
+| `formAction(id, pathname, actionField)` · `formAttrs` · `hiddenActionField` · `actionForm` | the binding and contract 3's markup; an id not starting with `a_`, or holding `/`, a space or a quote, is refused |
+| `submitForm(binding, fields)` · `invokeAction(id, args, actionHeader)` | the POST / the JSON-RPC call; the answer read by `actions`' `parseActionState`; a redirect in `n` is the router's `push`; `ok: false` is DATA, returned as the state |
+| `formMount(actionHeader)` | one delegated submit listener over `[data-jh-a]`, called once by onze front 68's entry |
+| `actionState(id, initial)` | the hook — `#(state, binding, pending)`, read positionally; server pass: `initial`, `false` |
+| `formStatus()` · `formStatusOf(id)` | idle on the server pass and outside any form, never an error |
+| `optimistic(base, apply)` · `applyOptimistic(base, actions, apply)` | server pass `#(base, no-op)`; the fold is pure |
+| `searchFormProps` · `searchFormAttrs` · `searchHref` · `prefetchSearch` | § 25's GET `<Form>`: `method="get"`, `data-jh-sf="1"`, never `data-jh-a` |
+| `setWireNames(actionField, actionHeader)` | onze installs the two wire names once; this member spells neither |
+
+`formStatus` and `optimistic` are specified from upstream React
+(<https://react.dev/reference/react-dom/hooks/useFormStatus>,
+<https://react.dev/reference/react/useOptimistic>), not from `NEXTJS-DOCS.md`,
+which does not carry them.
+
 ## Error boundaries (`error_boundary.bp`) — compiled
 
 Front 31. A boundary is a recovery point: its child is a **thunk** answering

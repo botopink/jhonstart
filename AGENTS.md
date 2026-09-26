@@ -103,6 +103,10 @@ repository/jhonstart/
 │   │   ├── botopink.json  ← name jhonstart-emilia, files [root.bp], dependencies { jhonstart: { workspace: true }, emilia: { path: ../../../emilia/modules/emilia } }
 │   │   ├── src/root.bp    ← `plugin()`, `classesIn(css)`; the flushed names per render in a host cell
 │   │   └── test/bridge_test.bp ← `botopink test`: the styled page's one head `<style>`, a streamed boundary's fill style before its markup, `s`, `close` (front 30) — both rows
+│   ├── jhonstart-forms/ ← MEMBER (front 67, additive): a form bound to a server action — `formAction`/`formAttrs`/`hiddenActionField`/`actionForm`, `submitForm`/`invokeAction`/`formMount`, the `actionState`/`formStatus`/`optimistic` hooks, `applyOptimistic`, the GET search form (`searchFormAttrs`, `searchHref`, `prefetchSearch`); the envelope, the state grammar and the RPC body are the bundled library `actions`'. Wire names come from `setWireNames(field, header)` (onze, at boot) — no literal here
+│   │   ├── botopink.json  ← name jhonstart-forms, files [root.bp, form.bp], dependencies { jhonstart, jhonstart-link: { workspace: true } }
+│   │   ├── src/{root.bp, form.bp, form_runtime.mjs, sidecars/jhonstart_forms.erl} ← the six browser cells, dual-target (the erlang twin answers the server's quiet truth and records the call for the test)
+│   │   └── test/form_test.bp ← `botopink test`: the binding's markup, the body handed to the cell and the state read back, the hooks' server pass, the search form (front 67) — both rows
 │   ├── jhonstart-html/ ← MEMBER (front 95): the `html """…"""` DSL — what `from "jhonstart-html"` gives a consumer; the core does not depend on it
 │   │   ├── botopink.json  ← name jhonstart-html, src src/, entry root.bp, target commonJS, files [root.bp, html.bp], dependencies { jhonstart: { workspace: true } }
 │   │   ├── src/
