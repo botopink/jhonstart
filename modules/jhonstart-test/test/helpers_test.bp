@@ -6,7 +6,7 @@ import {Element, ElementBase, div, p, h1, h2, ul, li, a, nav, span, section, hea
 import {RouterState, Island, clientMount, Boundary, Suspense, holeId, ErrorInfo, catchError, notFound, redirect} from "jhonstart";
 import {emptyMetadata, app, PageInput} from "jhonstart";
 import {envelope.parseActionState} from "actions";
-import {fixtureRouter, fixtureRequest, fixturePageOver, stubEnvelope, renderToStream, simulateNavigation, renderRecorded, renderStreamCollect, assertText} from "harness";
+import {fixtureRouter, fixtureRequest, fixturePageOver, stubEnvelope, renderToStream, simulateNavigation, renderRecorded, renderStreamCollect} from "harness";
 import {htmlText, htmlLinesText, tagPerLine, assertHtml} from "assert_html";
 import {routeText, activeLinkText, assertRoute} from "assert_route";
 import {navigationText, assertNavigation} from "assert_link";

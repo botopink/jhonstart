@@ -136,7 +136,11 @@ repository/jhonstart/
 │   ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node (targets [commonJS])
 │   ├── jhonstart-markup/   ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang]) — was `examples/jhonstart-html/`, renamed by front 95 because a member name is unique in the workspace and the DSL member took it
 │   ├── jhonstart-todo/     ← MEMBER: builders + hooks + SSR (targets [commonJS])
-│   └── jhonstart-app/      ← NOT a member: no botopink.json, so the `examples/*` glob skips it (by design)
+│   ├── blog-ssr/           ← MEMBER (`modules.md` § 8, targets [erlang]): `src/repo.bp` fixtures; `src/app/` — `layout` (RootLayout, metadata, viewport), `loading`, `error`, `not_found`, `global_error`, `blog/slug/{page,metadata}` (PostPage with two sequential loaders, postPanel, generateMetadata) — a module name is an identifier, so Next's `not-found` / `[slug]` are `not_found` / `slug`; `test/blog_test.bp` 10 snapshots
+│   ├── nav-shell/          ← MEMBER (targets [commonJS, erlang]): `Sidebar`, `DocsIndex` (prefetch off per row), `CheckoutLink` (LinkStatus); `test/nav_test.bp` 6 snapshots
+│   ├── islands/            ← MEMBER (targets [commonJS, erlang]): `#[client]` LikeButton / ThemeProvider with their `#[clientProps]`, `PostList` / `PostListFrom(posts, first)` numbering islands, `RootLayout(theme, page)` in a server slot; `test/islands_test.bp` 5 snapshots
+│   ├── forms/              ← MEMBER (targets [commonJS]): `createPostForm` / `CreatePostForm`, `likeWidget` / `LikeWidget` (optimistic + form status), `searchForm`; `test/forms_test.bp` 7 snapshots
+│   └── document-shell/     ← MEMBER (targets [commonJS, erlang]): `documentShell` + `doctype` with constructors, `documentBody` in the `html` DSL, `main.bp` building `<main>` with `el`; `test/shell_test.bp` 4 snapshots
 ├── refusals/               ← NOT members: one project per compile-time refusal of the library, each with the `expect.txt` its `botopink check` must print (stage 4 of the gate, `scripts/check-refusals.sh`)
 │   ├── layout_plain_element/   ← `#[layout]` on `-> Element` (decision 117; the guide's `OldLayout`)
 │   ├── page_plain_element/     ← `#[page]` on `-> Element`
@@ -163,11 +167,12 @@ The other members `specs/1.0.10-beta/04-jhonstart/modules.md` § 1 plans —
 `jhonstart-forms` (67) and the `jhonstart-emilia` bridge (30, decision 113) —
 are created by those fronts, not here.
 
-`examples/jhonstart-app/` has no manifest on purpose: the `examples/*` glob
-takes only a child holding a `botopink.json`, silently — a directory that wants
-to be a member declares itself. `jhonstart-app` is the aspirational app-layer
-sketch (file routing, `[id]` segments) and does not parse today, so it is
-neither a runner row nor a gate row. Do not give it a manifest until it builds.
+The five example projects of `specs/1.0.10-beta/04-jhonstart/modules.md` § 8
+(`blog-ssr`, `nav-shell`, `islands`, `forms`, `document-shell`) each test
+through `jhonstart-test`'s helpers into their own `test/__snapshots__/`, every
+snapshot compared with `test-snap-examples.md`'s literal before it was accepted.
+A tree holding untrusted text is snapshotted through front 30's `renderNode`
+(the one escaping point), not the frozen `renderToString`.
 
 `refusals/` is outside both globs too: each subdirectory is a project that
 must NOT compile — a decorator's `decl.fail`, which no `test { }` block can
@@ -835,15 +840,18 @@ roots to some other checkout.
 that builds, or a listed path that no longer exists, fails the gate too.
 When a fix makes an example build, delete its line in the same commit. The list may be absent,
 empty or hold only `#` comments — each means no example is allowed to fail.
-No example is listed today; `examples/jhonstart-app` has no `botopink.json` and
-is not built (it is the gated aspirational app-layer example). The other three
-build **and run**:
+No example is listed today; every example builds **and runs**:
 
 | example | `botopink run` output |
 |---|---|
 | `jhonstart-counter` | `<div><p>count: 0</p><span>non-negative</span></div>` |
 | `jhonstart-markup` | `<div><p>hello, world</p></div>` |
 | `jhonstart-todo` | `<div><span>todos: 2</span><ul><li>buy milk</li><li>write docs</li></ul></div>` |
+| `blog-ssr` (erlang) | the root layout around the `hello` post, through `renderNode` |
+| `nav-shell` | the sidebar with `Guides` active |
+| `islands` | the post list inside the theme provider's slot, islands `i0`–`i2` |
+| `forms` | the empty create-post form, then the search form |
+| `document-shell` | `<!doctype html><html lang="en">…<main><p>entry</p></main>…</html>` |
 
 Last, the gate `botopink check`s every `refusals/*/` project
 (`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): a case passes
@@ -851,10 +859,10 @@ when the check FAILS and its output holds every line of the case's
 `expect.txt`. A case that compiles, or that is refused with another message or
 at another location, fails the gate.
 
-The examples pass `attrs` explicitly to the element builders (`text("x", [])`,
-`div([…], [])`): the `attrs = []` default added by the bracket-prop commit is
-not applied by the compiler yet (botopink-lang 1.0.4-beta 06 N1), so a
-one-argument call does not type-check.
+An element builder's `attrs` defaults to `[]`, and the default travels with the
+imported function (botopink C-04 across a module boundary): `text("x")`,
+`div([…])` type-check from any package; the v0 examples still spell
+`attrs:` where they were written that way.
 
 `examples/jhonstart-counter/client.mjs` runs the **built** counter under the
 client runtime on node (`botopink build && node client.mjs`): it seeds

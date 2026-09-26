@@ -35,9 +35,11 @@ decision 75 of 1.0.10-beta): it compiles nothing and ships nothing. The library 
 [`modules/jhonstart-link/`](modules/jhonstart-link/) (`from "jhonstart-link"`: `Link` and the remount decision),
 [`modules/jhonstart-test/`](modules/jhonstart-test/) (the test-helper member: `assert<Subject>` snapshot
 helpers, fixtures and the render harness) and the runnable examples [`examples/jhonstart-counter/`](examples/jhonstart-counter/),
-[`examples/jhonstart-markup/`](examples/jhonstart-markup/) and
-[`examples/jhonstart-todo/`](examples/jhonstart-todo/), each depending on the core with
-`{ "jhonstart": { "workspace": true } }`. `botopink test` runs inside a member, never at the root.
+[`examples/jhonstart-markup/`](examples/jhonstart-markup/),
+[`examples/jhonstart-todo/`](examples/jhonstart-todo/), [`examples/blog-ssr/`](examples/blog-ssr/),
+[`examples/nav-shell/`](examples/nav-shell/), [`examples/islands/`](examples/islands/),
+[`examples/forms/`](examples/forms/) and [`examples/document-shell/`](examples/document-shell/),
+each depending on its members with `{ "<member>": { "workspace": true } }`. `botopink test` runs inside a member, never at the root.
 
 ## Quick example
 

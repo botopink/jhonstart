@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The example projects** (`modules.md` § 8, `test-snap-examples.md`):
+  `blog-ssr` (erlang), `nav-shell`, `islands`, `forms` (commonJS) and
+  `document-shell`, 32 snapshots through `jhonstart-test`, each compared with
+  the spec's literal. The aspirational `examples/jhonstart-app` sketch is
+  removed — `blog-ssr` is what it described.
+
 - **`jhonstart-test` — the helpers** (`modules.md` § 5, `test-snap.md` § 0.2):
   `harness.bp` (fixtures, `renderToStream`, `simulateNavigation`, the recording
   `Response` with `renderRecorded` / `renderStreamCollect`) and one
