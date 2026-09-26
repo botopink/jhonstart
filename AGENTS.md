@@ -130,7 +130,7 @@ repository/jhonstart/
 │   └── jhonstart-test/ ← MEMBER (front 95; the helpers of `specs/1.0.10-beta/04-jhonstart/modules.md` § 5): `assert<Subject>(loc, …)` over std's `snapshots.assertAs`, each with a pure `<subject>Text` twin, plus fixtures and the render harness
 │       ├── botopink.json  ← name jhonstart-test, files [root.bp, harness.bp, assert_*.bp], dependencies { jhonstart, jhonstart-link, jhonstart-forms: { workspace: true } }
 │       ├── src/root.bp    ← `pub mod` per helper file + one inline `test` proving the core resolves
-│       ├── src/harness.bp ← `assertText`, `fixtureRouter`, `fixtureRequest(method, path, lists = "")`, `fixturePageOver`, `stubEnvelope` (actions' `writeEnvelope`), `renderToStream` (declaration order), `Navigation` + `simulateNavigation(current, target)`, `recordingResponse` / `RecordedResponse` / `renderRecorded` / `renderStreamCollect` (inline recording cells: `put`/`get`, a `globalThis` entry)
+│       ├── src/harness.bp ← `fixtureRouter`, `fixtureRequest(method, path, lists = "")`, `fixturePageOver`, `stubEnvelope` (actions' `writeEnvelope`), `renderToStream` (declaration order), `Navigation` + `simulateNavigation(current, target)`, `recordingResponse` / `RecordedResponse` / `renderRecorded` / `renderStreamCollect` (inline recording cells: `put`/`get`, a `globalThis` entry)
 │       ├── src/assert_{html,route,link,server,island,stream,render,error_boundary,metadata,form}.bp ← `assertHtml`/`assertHtmlLines`, `assertRoute`/`assertActiveLink`, `assertLink`/`assertNavigation`, `assertRequest`, `assertClientBundleEntry`, `assertStream`, `assertDocument`/`assertResponse`/`assertPayload` (+ `jsonMembers`), `assertErrorBoundary`, `assertMetadata`/`assertViewport`, `assertForm`/`assertActionState`/`assertOptimistic` — texts per `test-snap.md` § 0.2
 │       └── test/helpers_test.bp + test/__snapshots__/ ← every twin against `test-snap.md`'s literal, and one accepted snapshot per helper family — both rows
 ├── examples/
@@ -708,18 +708,27 @@ the umbrella has no row, and `jhonstart-html`, `jhonstart-link`, `jhonstart-test
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 187/187 | ✓ 187/187 |
+| `jhonstart` | ✓ 199/199 | ✓ 199/199 |
 | `jhonstart-html` (member) | ✓ 5/5 | ✓ 5/5 |
 | `jhonstart-link` (member) | ✓ 38/38 | ✓ 38/38 |
-| `jhonstart-emilia` (member) | ✓ 6/6 | ✓ 6/6 |
+| `jhonstart-emilia` (member) | ✓ 9/9 | ✓ 9/9 |
 | `jhonstart-forms` (member) | ✓ 15/15 | ✓ 15/15 |
-| `jhonstart-test` | ✓ 1/1 | ✓ 1/1 |
-| `jhonstart-counter` | ✓ 4/4 | ✗ does not compile (`set/2 undefined`) |
+| `jhonstart-test` | ✓ 21/21 | ✓ 21/21 |
+| `jhonstart-dom-test` (commonJS only) | ✓ 9/9 | — not a target |
+| `jhonstart-counter` | ✓ 4/4 | ✓ 4/4 |
 | `jhonstart-markup` | ✓ 7/7 | ✓ 7/7 |
 | `jhonstart-todo` | ✓ 3/3 | ✓ 3/3 |
+| `blog-ssr` (targets erlang) | ✓ 10/10 | ✓ 10/10 |
+| `nav-shell` | ✓ 6/6 | ✓ 6/6 |
+| `islands` | ✓ 5/5 | ✓ 5/5 |
+| `forms` (targets commonJS) | ✓ 7/7 | ✓ 7/7 |
+| `document-shell` | ✓ 4/4 | ✓ 4/4 |
 
-Measured 2026-09-26 against botopink-lang `f011850c` (`botopink test` in each
-member, summed per module). Track C's second wave took the core from 85 to 187:
+`botopink test` in each member, summed per module; a row a member's
+`targets` leaves out is run here all the same and counted, except
+`jhonstart-dom-test`'s erlang row, which cannot compile (its cells are node-only).
+The core's 190 → 199: the starter table (+4), `app(lang:)` (+2) and the
+contract-5d `ChunkWriter` literals (+3). Track C's second wave took the core from 85 to 187:
 fronts 26/28's codec and writer cells (+7), front 29 (+3), front 31's
 `error_boundary_test.bp` (19), front 32's `metadata_test.bp` (16), front 30's
 `render_test.bp` (22), `streaming_test.bp` (23) and `routes_test.bp` (8), and
