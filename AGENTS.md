@@ -146,7 +146,6 @@ repository/jhonstart/
 │   ├── layout_plain_element/   ← `#[layout]` on `-> Element` (decision 117; the guide's `OldLayout`)
 │   ├── page_plain_element/     ← `#[page]` on `-> Element`
 │   └── template_task_element/  ← `#[template]` on `-> @Task<Element>`
-└── repro/                  ← NOT members: jhonstart-free packages handed back to botopink-lang, one per open compiler defect (see repro/README.md)
 ```
 
 `modules/jhonstart-test/` is the `<lib>-test` member
@@ -182,11 +181,10 @@ hold — depending on the core by `{ "path": "../../modules/jhonstart" }`. Its
 and its ` --> src/main.bp:<line>:<col>` location. A new refusal of the library
 adds a directory here in the commit that adds the `decl.fail`.
 
-`repro/` is outside both globs, so nothing builds or runs it: each subdirectory
-is a self-contained package with **no jhonstart in it**, written to hand a
-compiler defect back to its owning front as a measurement rather than a
-description. A directory is deleted in the commit that lands the fix. See
-[`repro/README.md`](repro/README.md).
+A compiler defect this library hits is handed to its owning front as a
+`tests/language` cell filed to `01-compiler/12-language-tests`, or as a cell in
+the member that hits it — never as a tree the gate does not run (1.0.10's four
+jhonstart-free reproductions are closed in the compiler and deleted).
 
 ## Module tree (`root.bp`)
 
@@ -645,17 +643,17 @@ calls a starter) — a called node-only cell reds the erlang build of the core
 (27-a). What stays front 68's: every "may not" rule above (the walk over the
 client module graph).
 
-### One naming rule, and the checker defect behind it
+### One naming rule, and the checker defect that was behind it
 
-**No local may be named after an imported builder.** A local `val` leaks into
-the module scope the checker sees for every top-level declaration that appears
-AFTER its body — so `val p = LikeProps(…)` in a `test {}` reds a `@Component`
-component declared further down with `error: type mismatch: expected Element,
-got LikeProps`, at a call site that is correct, with no line or column. Measured
-on both rows against `2e6bb4ac`; twelve jhonstart-free lines in
-[`repro/local-binding-leaks-to-later-decls/`](repro/local-binding-leaks-to-later-decls/).
-`p`, `a`, `li`, `text`, `form`, `link`, `title` and `body` are all exported tag
-constructors, so this is one declaration order away from any file in this tree.
+**No local is named after an imported builder** (`p`, `a`, `li`, `text`,
+`form`, `link`, `title` and `body` are all exported tag constructors). The rule
+was forced: a local `val` leaked into the module scope the checker saw for
+every top-level declaration after its body, so `val p = LikeProps(…)` in a
+`test {}` redded a `@Component` component declared further down with `type
+mismatch: expected Element, got LikeProps`. The checker now ends a local with
+its body (`unbound variable 'v' — `v` is a local of `holder`, and a local ends
+with its body`; measured 2026-09-26 with the compiler pinned for front 101), so
+the rule is a reading convention, and the files that state it say so.
 
 ## CI
 

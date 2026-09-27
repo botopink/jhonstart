@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`repro/` is gone** (front 101): its four jhonstart-free reproductions are
+  closed in the compiler — `erlang-imported-fn-field` green on both targets,
+  `local-binding-leaks-to-later-decls` and `self-param-free-fn` now refused
+  (`unbound variable`, `self-param-outside-type`), `erlang-std-slice-shim` no
+  longer compiles against the current `querystring` — and its README said each
+  is deleted when its fix lands. A defect is handed on as a cell the gate runs.
+
 - **The repository's own gate is hard** (front 101, gate-i and gate-j): the
   pre-commit hook fails when no compiler is found (with the way out) instead
   of warning and skipping; a staged `*.snap.new` / `*.snap.md.new` is refused

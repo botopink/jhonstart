@@ -55,12 +55,12 @@
 // ── One naming rule this file follows, and the defect behind it ─────────────
 //
 // No local below is named `p`, `li`, `text` or any other imported builder —
-// `val like = LikeProps(…)`, never `val p = LikeProps(…)`. That is not style:
-// **a local `val` leaks into the module scope the checker sees for every
-// top-level declaration that appears AFTER its body.** Measured against
-// compiler `2e6bb4ac`, on both rows, twelve lines with no jhonstart in them;
-// the repro is [`repro/local-binding-leaks-to-later-decls/`](../../../repro/local-binding-leaks-to-later-decls/).
-// With `val p = LikeProps(…)` in a `test {}` above it, `Dashboard`'s
+// `val like = LikeProps(…)`, never `val p = LikeProps(…)`. The rule was
+// forced when it was written: a local `val` leaked into the module scope the
+// checker saw for every top-level declaration that appears AFTER its body
+// (closed in the compiler — a local now ends with its body; the jhonstart-free
+// repro went with the fix). Back then, with `val p = LikeProps(…)` in a
+// `test {}` above it, `Dashboard`'s
 // `p([text(…)], attrs: [])` further down reds the whole module with
 // `error: type mismatch: expected Element, got LikeProps` — and with no line
 // or column, at a call site that is correct. Nothing here works around it in

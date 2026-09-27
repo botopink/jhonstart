@@ -165,8 +165,9 @@ test "server: the fields are readable beside the methods that never shadow them"
 
 // The six values as the old flat writer took them — the four pair lists
 // `k=v&k=v`-encoded — built into the record `enterRequest` takes. No parameter
-// is named after an imported function (`cookies`, `headers`): a binding leaks
-// into every later declaration's scope (`repro/local-binding-leaks-to-later-decls/`).
+// is named after an imported function (`cookies`, `headers`) — a reading
+// convention; the checker defect that forced it (a binding leaking into every
+// later declaration's scope) is closed.
 fn encoded(
     verb: string,
     at: string,

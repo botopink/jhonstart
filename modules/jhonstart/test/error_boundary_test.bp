@@ -5,9 +5,9 @@
 // RUNS on the commonJS row, because the catch goes through one host cell
 // (`__jhCapture`) that ships both halves.
 //
-// No local below is named after an imported builder (`p`, `text`, `body`, …):
-// a binding leaks into every later declaration's scope
-// (`repro/local-binding-leaks-to-later-decls/`).
+// No local below is named after an imported builder (`p`, `text`, `body`, …)
+// — a reading convention; the checker defect that forced it (a binding leaking
+// into every later declaration's scope) is closed.
 
 import {
     ErrorInfo,

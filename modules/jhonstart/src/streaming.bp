@@ -684,9 +684,9 @@ fn fillsInOrder(site: App, boundaries: Array<Boundary>, resolved: Array<Resolved
 
 // ── the app ─────────────────────────────────────────────────────────────────
 //
-// The free functions above take the app as `site`, never `self`: a free
-// function whose first parameter is named `self` loses it
-// (`repro/self-param-free-fn/`).
+// The free functions above take the app as `site`, never `self`: `self`
+// names a method's receiver, and the checker refuses it on a free function
+// (`self-param-outside-type`).
 
 pub type App(plugins: Array<RenderPlugin>, allowedRedirects: string[], lang: string) {
     // The non-streaming form: every boundary resolves before anything is
