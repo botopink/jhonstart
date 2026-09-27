@@ -814,6 +814,13 @@ fails the gate (gate-i). Every example builds **and runs**:
 | `forms` | the empty create-post form, then the search form |
 | `document-shell` | `<!doctype html><html lang="en">…<main><p>entry</p></main>…</html>` |
 
+`modules/jhonstart/**` and `modules/jhonstart-link/**` are `botopink format`
+clean (PK-5) but for `modules/jhonstart-link/src/link.bp`: the formatter turns
+its record-update spreads `LinkProps(..p, …)` into `LinkProps(..: p, …)`, which
+the parser refuses, so that file is not run through `botopink format` until the
+printer is fixed (`112-gate-format`). A new `.bp` file in either tree is
+formatted before it is committed.
+
 Last, the gate `botopink check`s every `refusals/*/` project
 (`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): a case passes
 when the check FAILS and its output holds every line of the case's

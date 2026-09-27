@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **PK-5: `modules/jhonstart` and `modules/jhonstart-link` are `botopink format`
+  clean** (front 101) — one reformat-only commit, 28 files, every cell at its
+  count — except `modules/jhonstart-link/src/link.bp`: the formatter rewrites
+  its record-update spreads `LinkProps(..p, …)` to `LinkProps(..: p, …)`, which
+  the parser refuses, so that file waits on the printer (`112-gate-format`).
+
 - **`repro/` is gone** (front 101): its four jhonstart-free reproductions are
   closed in the compiler — `erlang-imported-fn-field` green on both targets,
   `local-binding-leaks-to-later-decls` and `self-param-free-fn` now refused
