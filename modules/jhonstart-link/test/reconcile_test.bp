@@ -61,7 +61,8 @@ test "reconcile: two routes under /docs reuse root AND the docs layout" {
 
 test "reconcile: routes under different sections keep only the root layout" {
     assert sharedDepth(layoutKeys(["docs"]), layoutKeys(["blog"])) == 1;
-    assert sharedDepth(layoutKeys(["docs", "api"]), layoutKeys(["blog", "hi"])) == 1;
+    assert sharedDepth(layoutKeys(["docs", "api"]), layoutKeys(["blog", "hi"]))
+        == 1;
 }
 
 test "reconcile: a navigation to the current route remounts nothing" {

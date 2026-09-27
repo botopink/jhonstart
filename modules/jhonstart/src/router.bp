@@ -20,7 +20,7 @@
 
 import {Element, ElementBase} from "element";
 import {encoding} from "std";
-import {table: {parseTable, RouteEntry}, match: {matchPath, attempt, RouteMatch}, navigation: {NavKind, NavOutcome, signalFromWire}} from "routing";
+import {table.parseTable, table.RouteEntry, match.matchPath, match.attempt, match.RouteMatch, navigation.NavKind, navigation.NavOutcome, navigation.signalFromWire} from "routing";
 import {refresh.refreshValue} from "actions";
 
 pub type RouterState(
@@ -61,13 +61,12 @@ pub fn pairValue(pairs: Array<#(string, string)>, name: string) -> string {
     var found = "";
     var seen = false;
     for (pairs) { p ->
-        if (seen == false) {
+        if (seen == false)
             if (p._0 == name) {
                 found = p._1;
                 seen = true;
-            };
-        };
-    };
+            }
+    }
     return found;
 }
 
@@ -76,9 +75,11 @@ pub fn pairValue(pairs: Array<#(string, string)>, name: string) -> string {
 // pattern is what front 22 matched against, and rewriting it here would make
 // the two disagree about what a dynamic segment is called.
 pub fn patternSegments(pattern: string) -> Array<string> {
-    return pattern.split("/").filter({ part ->
-        part != "";
-    });
+    return pattern
+        .split("/")
+        .filter({ part ->
+            part != "";
+        });
 }
 
 // Read one segment by index, out of range answering `""`. A typed parameter
@@ -89,11 +90,9 @@ pub fn segmentAt(segments: Array<string>, index: i32) -> string {
     var found = "";
     var i = 0;
     for (segments) { part ->
-        if (i == index) {
-            found = part;
-        };
+        if (i == index) found = part;
         i = i + 1;
-    };
+    }
     return found;
 }
 
@@ -136,24 +135,24 @@ pub fn segmentAt(segments: Array<string>, index: i32) -> string {
 // client rebuilding the snapshot from the payload on every transition, and it
 // cannot do that through a cell that exists only on the server.
 
-#[@External.Node("./router_runtime.mjs", "path"),
-  @External.Erlang("jhonstart_router", "path")]
+#[@External.Node("./router_runtime.mjs", "path")]
+#[@External.Erlang("jhonstart_router", "path")]
 pub declare fn __jhRoutePath() -> string;
 
-#[@External.Node("./router_runtime.mjs", "params"),
-  @External.Erlang("jhonstart_router", "params")]
+#[@External.Node("./router_runtime.mjs", "params")]
+#[@External.Erlang("jhonstart_router", "params")]
 pub declare fn __jhRouteParams() -> string;
 
-#[@External.Node("./router_runtime.mjs", "search"),
-  @External.Erlang("jhonstart_router", "search")]
+#[@External.Node("./router_runtime.mjs", "search")]
+#[@External.Erlang("jhonstart_router", "search")]
 pub declare fn __jhRouteSearch() -> string;
 
-#[@External.Node("./router_runtime.mjs", "pattern"),
-  @External.Erlang("jhonstart_router", "pattern")]
+#[@External.Node("./router_runtime.mjs", "pattern")]
+#[@External.Erlang("jhonstart_router", "pattern")]
 pub declare fn __jhRoutePattern() -> string;
 
-#[@External.Node("./router_runtime.mjs", "selected"),
-  @External.Erlang("jhonstart_router", "selected")]
+#[@External.Node("./router_runtime.mjs", "selected")]
+#[@External.Erlang("jhonstart_router", "selected")]
 pub declare fn __jhRouteSelected() -> i32;
 
 // The one writer. The five values go in TOGETHER because a half-updated
@@ -170,8 +169,8 @@ pub declare fn __jhRouteSelected() -> i32;
 // transition. It is also what makes `snapshot()` assertable — the front's own
 // test plan asks for "`snapshot()` over a stubbed host module", and a stub you
 // cannot seed is a stub you cannot assert.
-#[@External.Node("./router_runtime.mjs", "fill"),
-  @External.Erlang("jhonstart_router", "fill")]
+#[@External.Node("./router_runtime.mjs", "fill")]
+#[@External.Erlang("jhonstart_router", "fill")]
 pub declare fn __jhRouteFill(
     path: string,
     params: string,
@@ -184,16 +183,16 @@ pub declare fn __jhRouteFill(
 // are the only two readers of per-request input a component has, and each sets
 // it; front 30's payload writer reads it as `d`; the render clears it when it
 // starts. A render that read neither is static, and a cache may keep it.
-#[@External.Node("./router_runtime.mjs", "markDynamic"),
-  @External.Erlang("jhonstart_router", "mark_dynamic")]
+#[@External.Node("./router_runtime.mjs", "markDynamic")]
+#[@External.Erlang("jhonstart_router", "mark_dynamic")]
 declare fn __jhRouteMarkDynamic() -> i32;
 
-#[@External.Node("./router_runtime.mjs", "dynamic"),
-  @External.Erlang("jhonstart_router", "dynamic")]
+#[@External.Node("./router_runtime.mjs", "dynamic")]
+#[@External.Erlang("jhonstart_router", "dynamic")]
 declare fn __jhRouteDynamic() -> bool;
 
-#[@External.Node("./router_runtime.mjs", "resetDynamic"),
-  @External.Erlang("jhonstart_router", "reset_dynamic")]
+#[@External.Node("./router_runtime.mjs", "resetDynamic")]
+#[@External.Erlang("jhonstart_router", "reset_dynamic")]
 declare fn __jhRouteResetDynamic() -> i32;
 
 pub fn markDynamic() -> i32 {
@@ -319,8 +318,8 @@ pub fn selectedLayoutSegments() -> @Component<ElementBase, Array<string>> {
 // every cell here carries both targets because an erlang-only cell reds the
 // commonJS row at its call site.
 
-#[@External.Node("./router_runtime.mjs", "navigate"),
-  @External.Erlang("jhonstart_router", "navigate")]
+#[@External.Node("./router_runtime.mjs", "navigate")]
+#[@External.Erlang("jhonstart_router", "navigate")]
 declare fn __jhNavigate(kind: string, href: string) -> i32;
 
 // What the last `push`/`replace`/… recorded, as `"<kind> <href>"`, and `""`
@@ -328,8 +327,8 @@ declare fn __jhNavigate(kind: string, href: string) -> i32;
 // into a 307 response; in the browser it is the last href the History API was
 // handed. It is `pub` because front 28's dispatcher has to read it — a verb
 // that records where nobody can look is a verb that does nothing.
-#[@External.Node("./router_runtime.mjs", "lastNavigation"),
-  @External.Erlang("jhonstart_router", "last_navigation")]
+#[@External.Node("./router_runtime.mjs", "lastNavigation")]
+#[@External.Erlang("jhonstart_router", "last_navigation")]
 pub declare fn __jhLastNavigation() -> string;
 
 pub fn lastNavigation() -> string {
@@ -409,11 +408,16 @@ pub fn applySignal(wire: string) -> i32 {
 // params are `[]` — the caller renders the not-found boundary. The params are
 // read in pattern order through `routing`'s `attempt`, a catch-all's value
 // being its segments joined with `/`.
-pub fn resolveRoute(tableWire: string, path: string, search: string) -> RouterState {
+pub fn resolveRoute(
+    tableWire: string,
+    path: string,
+    search: string,
+) -> RouterState {
     var pattern = "";
-    if (matchPath(parseTable(tableWire), path)) { m ->
+    if (matchPath(parseTable(tableWire), path)) {
+        m ->
         pattern = matchedPattern(m);
-    };
+    }
     var pairs: Array<#(string, string)> = [];
     if (pattern != "") {
         val a = attempt(pattern, path);
@@ -421,9 +425,15 @@ pub fn resolveRoute(tableWire: string, path: string, search: string) -> RouterSt
         for (a.names) { n ->
             pairs = pairs.append([#(n, segmentAt(a.values, i))]);
             i = i + 1;
-        };
-    };
-    return RouterState(path: path, params: pairs, search: encoding.formParse(search), pattern: pattern, selected: 0);
+        }
+    }
+    return RouterState(
+        path: path,
+        params: pairs,
+        search: encoding.formParse(search),
+        pattern: pattern,
+        selected: 0,
+    );
 }
 
 // A typed parameter: a match read back through the optional binder loses its

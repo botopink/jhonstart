@@ -28,7 +28,12 @@ pub fn fragment(
     children: Children,
     attrs: Array<#(string, string)> = [],
 ) -> Element {
-    return Element(tag: "#fragment", value: "", children: children, attrs: attrs);
+    return Element(
+        tag: "#fragment",
+        value: "",
+        children: children,
+        attrs: attrs,
+    );
 }
 
 pub fn div(
@@ -66,31 +71,52 @@ pub fn renderToString(e: Element) -> string {
     var inner = "";
     for (e.children) { c ->
         inner = inner + renderToString(c);
-    };
+    }
     if (e.tag == "#fragment") return inner;
     var attrStr = "";
     for (e.attrs) { a ->
         attrStr = attrStr + " " + a._0 + "=\"" + a._1 + "\"";
-    };
+    }
     return "<" + e.tag + attrStr + ">" + inner + "</" + e.tag + ">";
 }
 
 test "leaf, fragment, and a nested tree render to HTML" {
     assert renderToString(text("hi", attrs: [])) == "hi";
-    assert renderToString(fragment([text("a", attrs: []), text("b", attrs: [])], attrs: [])) == "ab";
-    val tree = div([p([text("hi", attrs: [])], attrs: []), text("!", attrs: [])], attrs: []);
+    assert renderToString(
+        fragment([text("a", attrs: []), text("b", attrs: [])], attrs: []),
+    )
+        == "ab";
+    val tree = div(
+        [p([text("hi", attrs: [])], attrs: []), text("!", attrs: [])],
+        attrs: [],
+    );
     assert renderToString(tree) == "<div><p>hi</p>!</div>";
 }
 
 test "deeply nested lists build and render (list form)" {
-    val page = div([
+    val page = div(
+        [
             h1([text("Title", attrs: [])], attrs: []),
-            ul([
+            ul(
+                [
                     li([text("one", attrs: [])], attrs: []),
-                    li([span([text("t", attrs: []), text("wo", attrs: [])], attrs: [])], attrs: []),
-                ], attrs: []),
-        ], attrs: []);
-    assert renderToString(page) == "<div><h1>Title</h1><ul><li>one</li><li><span>two</span></li></ul></div>";
+                    li(
+                        [
+                            span(
+                                [text("t", attrs: []), text("wo", attrs: [])],
+                                attrs: [],
+                            ),
+                        ],
+                        attrs: [],
+                    ),
+                ],
+                attrs: [],
+            ),
+        ],
+        attrs: [],
+    );
+    assert renderToString(page)
+        == "<div><h1>Title</h1><ul><li>one</li><li><span>two</span></li></ul></div>";
 }
 
 val coerceList = div([text("a", attrs: []), text("b", attrs: [])], attrs: []);

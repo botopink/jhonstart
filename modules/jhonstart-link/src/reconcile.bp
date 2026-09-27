@@ -70,7 +70,7 @@ pub fn layoutKeys(segments: Array<string>) -> Array<string> {
     for (segments) { part ->
         keys = keys.append([layoutKey(segments, depth)]);
         depth = depth + 1;
-    };
+    }
     return keys;
 }
 
@@ -90,19 +90,15 @@ pub fn sharedDepth(current: Array<string>, target: Array<string>) -> i32 {
     var i = 0;
     var diverged = false;
     for (current) { key ->
-        if (diverged == false) {
+        if (diverged == false)
             if (i < target.length) {
-                if (key == keyAt(target, i)) {
-                    shared = i + 1;
-                } else {
+                if (key == keyAt(target, i))
+                    shared = i + 1
+                else
                     diverged = true;
-                };
-            } else {
-                diverged = true;
-            };
-        };
+            } else diverged = true;
         i = i + 1;
-    };
+    }
     return shared;
 }
 
@@ -114,10 +110,8 @@ fn keyAt(keys: Array<string>, index: i32) -> string {
     var found = "";
     var i = 0;
     for (keys) { key ->
-        if (i == index) {
-            found = key;
-        };
+        if (i == index) found = key;
         i = i + 1;
-    };
+    }
     return found;
 }

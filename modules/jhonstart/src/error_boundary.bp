@@ -62,7 +62,7 @@
 
 import {Element} from "element";
 import {hash} from "std";
-import {navigation: {NavKind, NavOutcome, signalReason, isSignalReason}} from "routing";
+import {navigation.NavKind, navigation.NavOutcome, navigation.signalReason, navigation.isSignalReason} from "routing";
 
 pub type ErrorInfo(message: string, digest: string)
 
@@ -94,7 +94,12 @@ pub fn serverInfoFor(message: string) -> ErrorInfo {
 // The boundary's wrapper: `data-jh-e` is the anchor front 68's runtime routes a
 // transition failure to, and where a client error is caught.
 pub fn wrap(id: string, tree: Element) -> Element {
-    return Element(tag: "div", value: "", children: [tree], attrs: [#("data-jh-e", id)]);
+    return Element(
+        tag: "div",
+        value: "",
+        children: [tree],
+        attrs: [#("data-jh-e", id)],
+    );
 }
 
 // The reset control's attribute. A fallback that offers a retry puts it on its
@@ -108,14 +113,16 @@ pub fn resetAttr(id: string) -> #(string, string) {
 // reason becomes `Error(reason)`, and any other raise becomes `Error` of its
 // message — so a component that crashed is caught like one that returned
 // `Error`.
-#[@External.Node("./signal_runtime.mjs", "capture"),
-  @External.Erlang("jhonstart_signal", "capture")]
-declare fn __jhCapture(child: fn() -> @Result<Element, string>) -> @Result<Element, string>;
+#[@External.Node("./signal_runtime.mjs", "capture")]
+#[@External.Erlang("jhonstart_signal", "capture")]
+declare fn __jhCapture(
+    child: fn() -> @Result<Element, string>,
+) -> @Result<Element, string>;
 
 // Raise a reason on the host; never returns. Typed `-> string` so that
 // `throw notFound();` type-checks inside a `@Result` thunk.
-#[@External.Node("./signal_runtime.mjs", "raise"),
-  @External.Erlang("jhonstart_signal", "raise")]
+#[@External.Node("./signal_runtime.mjs", "raise")]
+#[@External.Erlang("jhonstart_signal", "raise")]
 declare fn __jhRaise(reason: string) -> string;
 
 // The child's outcome, through the capture cell. The function-valued field is
@@ -142,9 +149,7 @@ pub fn renderBoundary(b: ErrorBoundary) -> Element {
 }
 
 fn caughtOrRaised(b: ErrorBoundary, message: string) -> Element {
-    if (isSignal(message)) {
-        __jhRaise(message);
-    };
+    if (isSignal(message)) __jhRaise(message);
     return fallbackFor(b, message);
 }
 
@@ -156,13 +161,17 @@ pub fn isSignal(message: string) -> bool {
 
 // `routing`'s reason for a not-found, without raising it.
 pub fn notFoundReason() -> string {
-    return signalReason(NavOutcome(kind: NavKind.NotFound, location: "", status: 404));
+    return signalReason(
+        NavOutcome(kind: NavKind.NotFound, location: "", status: 404),
+    );
 }
 
 // `routing`'s reason for a 307 redirect to `url`, without raising it. A target
 // holding `:` is kept whole: the location is everything after the verb.
 pub fn redirectReason(url: string) -> string {
-    return signalReason(NavOutcome(kind: NavKind.Redirect, location: url, status: 307));
+    return signalReason(
+        NavOutcome(kind: NavKind.Redirect, location: url, status: 307),
+    );
 }
 
 // The page signal: raises `nav:not-found`. The render answers it with a 404
@@ -188,9 +197,7 @@ pub fn renderBoundaryChecked(b: ErrorBoundary) -> @Result<Element, string> {
         Ok(tree) -> "";
         Error(message) -> message;
     };
-    if (isSignal(failure)) {
-        throw failure;
-    };
+    if (isSignal(failure)) throw failure;
     return case outcome {
         Ok(tree) -> wrap(b.id, tree);
         Error(message) -> fallbackFor(b, message);

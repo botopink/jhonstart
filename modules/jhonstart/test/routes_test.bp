@@ -14,26 +14,8 @@
 
 import {Element, ElementBase, text, div, p} from "element";
 import {main} from "elements";
-import {
-    page,
-    layout,
-    template,
-    defaultView,
-    PageContext,
-    LayoutProps,
-    uiTable,
-    ctxParam,
-    ctxRest,
-    jhPage,
-    jhLayout,
-    jhTemplate,
-    jhDefault,
-    jhLoading,
-    jhNotFound,
-    segmentFor,
-    pageFor,
-} from "routes";
-import {table: {parseTable, RouteEntry}, segment: {parsePath, patternOf}} from "routing";
+import {page, layout, template, defaultView, PageContext, LayoutProps, uiTable, ctxParam, ctxRest, jhPage, jhLayout, jhTemplate, jhDefault, jhLoading, jhNotFound, segmentFor, pageFor} from "routes";
+import {table.parseTable, table.RouteEntry, segment.parsePath, segment.patternOf} from "routing";
 
 #[layout("")]
 pub fn RootLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
@@ -83,8 +65,17 @@ fn BlogLoading() -> Element {
 
 val __loading = jhLoading("blog", { -> BlogLoading() });
 
-fn ctx(pattern: string, params: Array<#(string, string)>, rest: string[]) -> PageContext {
-    return PageContext(pathname: "/x", pattern: pattern, params: params, rest: rest);
+fn ctx(
+    pattern: string,
+    params: Array<#(string, string)>,
+    rest: string[],
+) -> PageContext {
+    return PageContext(
+        pathname: "/x",
+        pattern: pattern,
+        params: params,
+        rest: rest,
+    );
 }
 
 test "routes: each marker puts its contract-1 line in uiTable, in registration order" {
@@ -115,7 +106,7 @@ test "routes: the table round-trips through routing's parseTable and parsePath" 
     var pages = 0;
     for (rows) { r ->
         if (r.kind == "P") pages = pages + 1;
-    };
+    }
     assert pages == 4;
 }
 

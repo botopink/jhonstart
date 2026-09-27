@@ -9,24 +9,7 @@
 // — a reading convention; the checker defect that forced it (a binding leaking
 // into every later declaration's scope) is closed.
 
-import {
-    ErrorInfo,
-    ErrorBoundary,
-    digestOf,
-    infoFor,
-    serverInfoFor,
-    wrap,
-    resetAttr,
-    outcomeOf,
-    renderBoundary,
-    renderBoundaryChecked,
-    isSignal,
-    notFound,
-    redirect,
-    notFoundReason,
-    redirectReason,
-    catchError,
-} from "error_boundary";
+import {ErrorInfo, ErrorBoundary, digestOf, infoFor, serverInfoFor, wrap, resetAttr, outcomeOf, renderBoundary, renderBoundaryChecked, isSignal, notFound, redirect, notFoundReason, redirectReason, catchError} from "error_boundary";
 import {Element, div, p, text, renderToString} from "element";
 import {button, htmlTag, head, body, title, meta, h2} from "elements";
 import {push, lastNavigation} from "router";
@@ -64,15 +47,25 @@ fn crashingChild() -> @Result<Element, string> {
 // The `error.bp` a developer writes: `ErrorPage`, never `Error` (the `@Result`
 // variant), activating nothing, so a plain `-> Element`.
 fn ErrorPage(info: ErrorInfo) -> Element {
-    return div([
+    return div(
+        [
             h2([text("Something went wrong", attrs: [])], attrs: []),
-            p([text("ref " + info.digest + info.message, attrs: [])], attrs: []),
+            p(
+                [text("ref " + info.digest + info.message, attrs: [])],
+                attrs: [],
+            ),
             button([text("Retry", attrs: [])], attrs: [resetAttr("dash")]),
-        ], attrs: []);
+        ],
+        attrs: [],
+    );
 }
 
 fn boundaryOf(child: fn() -> @Result<Element, string>) -> ErrorBoundary {
-    return ErrorBoundary(id: "dash", fallback: { info -> ErrorPage(info) }, child: child);
+    return ErrorBoundary(
+        id: "dash",
+        fallback: { info -> ErrorPage(info) },
+        child: child,
+    );
 }
 
 // ── step 1: the digest and the two infos ────────────────────────────────────
@@ -113,7 +106,9 @@ test "error: the fallback's ErrorInfo has an empty message — nothing leaks" {
 }
 
 test "error: a child that crashes is caught like one that answered Error" {
-    val out = renderToString(renderBoundary(boundaryOf({ -> crashingChild() })));
+    val out = renderToString(
+        renderBoundary(boundaryOf({ -> crashingChild() })),
+    );
     assert out.contains("Something went wrong");
 }
 
@@ -146,7 +141,9 @@ test "error: a nav:not-found child is not caught — the result is Error, unchan
         Error(message) -> message;
     };
     assert raisedMessage == "nav:not-found";
-    val answered = renderBoundaryChecked(boundaryOf({ -> notFoundValueChild() }));
+    val answered = renderBoundaryChecked(
+        boundaryOf({ -> notFoundValueChild() }),
+    );
     val answeredMessage = case answered {
         Ok(tree) -> "caught";
         Error(message) -> message;
@@ -190,7 +187,7 @@ test "error: an ordinary failure is caught and yields Ok of the fallback" {
 test "error: isSignal recognises every routing prefix and nothing else" {
     for (signalPrefixes()) { prefix ->
         assert isSignal(prefix + "x") || isSignal(prefix);
-    };
+    }
     assert isSignal("nav:") == false;
     assert isSignal("boom") == false;
     assert isSignal("nav:not-found");
@@ -202,7 +199,10 @@ test "error: isSignal recognises every routing prefix and nothing else" {
 // boundary's `@Result` channel by construction, so the boundary renders `Ok`
 // and the handler name survives into the markup.
 fn handlerChild() -> @Result<Element, string> {
-    return button([text("Like", attrs: [])], attrs: [#("data-jh-on-click", "LikeButton:like")]);
+    return button(
+        [text("Like", attrs: [])],
+        attrs: [#("data-jh-on-click", "LikeButton:like")],
+    );
 }
 
 test "error: an event handler is outside the boundary — Ok, handler name kept" {
@@ -211,7 +211,8 @@ test "error: an event handler is outside the boundary — Ok, handler name kept"
         Ok(tree) -> renderToString(tree);
         Error(reason) -> "raised";
     };
-    assert markup == "<div data-jh-e=\"dash\"><button data-jh-on-click=\"LikeButton:like\">Like</button></div>";
+    assert markup
+        == "<div data-jh-e=\"dash\"><button data-jh-on-click=\"LikeButton:like\">Like</button></div>";
 }
 
 // Rule 3: a transition failure is routed by front 68's runtime to the nearest
@@ -220,7 +221,8 @@ test "error: the boundary's anchor carries data-jh-e with its id" {
     val anchor = wrap("seg-2", div([], attrs: []));
     assert anchor.attrs.length == 1;
     assert anchor.attrs.at(0).unwrapOr(#("", ""))._0 == "data-jh-e";
-    assert renderToString(anchor) == "<div data-jh-e=\"seg-2\"><div></div></div>";
+    assert renderToString(anchor)
+        == "<div data-jh-e=\"seg-2\"><div></div></div>";
 }
 
 test "error: the fallback's reset control is data-jh-reset, inert on the server" {
@@ -233,17 +235,33 @@ test "error: the fallback's reset control is data-jh-reset, inert on the server"
 test "error: catchError is the constructor under a readable name" {
     val b = catchError("dash", { info -> ErrorPage(info) }, { -> okChild() });
     assert b.id == "dash";
-    assert renderToString(renderBoundary(b)) == "<div data-jh-e=\"dash\"><div>metrics</div></div>";
+    assert renderToString(renderBoundary(b))
+        == "<div data-jh-e=\"dash\"><div>metrics</div></div>";
 }
 
 // ── the three file conventions ──────────────────────────────────────────────
 
 // `global-error.bp` owns its document: front 94's `htmlTag` and `body`.
 fn GlobalError(info: ErrorInfo) -> Element {
-    return htmlTag([
-            head([title([text("Error", attrs: [])], attrs: []), meta([], attrs: [#("charset", "utf-8")])], attrs: []),
-            body([h2([text("Something went wrong", attrs: [])], attrs: []), p([text(info.digest, attrs: [])], attrs: [])], attrs: []),
-        ], attrs: [#("lang", "en")]);
+    return htmlTag(
+        [
+            head(
+                [
+                    title([text("Error", attrs: [])], attrs: []),
+                    meta([], attrs: [#("charset", "utf-8")]),
+                ],
+                attrs: [],
+            ),
+            body(
+                [
+                    h2([text("Something went wrong", attrs: [])], attrs: []),
+                    p([text(info.digest, attrs: [])], attrs: []),
+                ],
+                attrs: [],
+            ),
+        ],
+        attrs: [#("lang", "en")],
+    );
 }
 
 test "error: global-error renders its own html and body, each exactly once" {

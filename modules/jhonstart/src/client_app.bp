@@ -28,42 +28,42 @@
 
 import {Element, ElementBase} from "element";
 import {encoding} from "std";
-import {table: {parseTable, RouteEntry}, match: {ancestorPatterns, RouteMatch}, navigation: {NavKind, NavOutcome, signalFromReason}} from "routing";
+import {table.parseTable, table.RouteEntry, match.ancestorPatterns, match.RouteMatch, navigation.NavKind, navigation.NavOutcome, navigation.signalFromReason} from "routing";
 import {RouterState, resolveRoute, fill, replace} from "router";
 import {ErrorInfo, isSignal, notFound, notFoundReason} from "error_boundary";
 import {compose, renderNode, resetRender, componentOutcome, attemptRender} from "render";
 import {redirectAllowed} from "streaming";
 import {PageContext, LayoutProps, UiSegment, segmentFor, pageFor} from "routes";
 
-#[@External.Node("./client_app.mjs", "locationPath"),
-  @External.Erlang("jhonstart_client_app", "location_path")]
+#[@External.Node("./client_app.mjs", "locationPath")]
+#[@External.Erlang("jhonstart_client_app", "location_path")]
 declare fn __jhLocationPath() -> string;
 
-#[@External.Node("./client_app.mjs", "locationSearch"),
-  @External.Erlang("jhonstart_client_app", "location_search")]
+#[@External.Node("./client_app.mjs", "locationSearch")]
+#[@External.Erlang("jhonstart_client_app", "location_search")]
 declare fn __jhLocationSearch() -> string;
 
 // The ONE node-only write of the front: the markup into `mount`. (Its erlang
 // twin writes the test store — the core is compiled on both rows, and a called
 // node-only cell reds the erlang compile.)
-#[@External.Node("./client_app.mjs", "mount"),
-  @External.Erlang("jhonstart_client_app", "mount")]
+#[@External.Node("./client_app.mjs", "mount")]
+#[@External.Erlang("jhonstart_client_app", "mount")]
 declare fn __jhMount(selector: string, html: string) -> i32;
 
-#[@External.Node("./client_app.mjs", "locationReplace"),
-  @External.Erlang("jhonstart_client_app", "location_replace")]
+#[@External.Node("./client_app.mjs", "locationReplace")]
+#[@External.Erlang("jhonstart_client_app", "location_replace")]
 declare fn __jhLocationReplace(to: string) -> i32;
 
-#[@External.Node("./client_app.mjs", "setLocation"),
-  @External.Erlang("jhonstart_client_app", "set_location")]
+#[@External.Node("./client_app.mjs", "setLocation")]
+#[@External.Erlang("jhonstart_client_app", "set_location")]
 declare fn __jhSetLocation(path: string, search: string) -> i32;
 
-#[@External.Node("./client_app.mjs", "mounted"),
-  @External.Erlang("jhonstart_client_app", "mounted")]
+#[@External.Node("./client_app.mjs", "mounted")]
+#[@External.Erlang("jhonstart_client_app", "mounted")]
 declare fn __jhMounted(selector: string) -> string;
 
-#[@External.Node("./client_app.mjs", "replaced"),
-  @External.Erlang("jhonstart_client_app", "replaced")]
+#[@External.Node("./client_app.mjs", "replaced")]
+#[@External.Erlang("jhonstart_client_app", "replaced")]
 declare fn __jhReplaced() -> string;
 
 // The no-DOM store's test surface: set the location, read what was mounted and
@@ -86,12 +86,27 @@ pub type ClientApp(routes: string, mount: string, allowedRedirects: string[]) {
     }
 }
 
-pub fn clientApp(routes: string, mount: string, allowedRedirects: string[] = []) -> ClientApp {
-    return ClientApp(routes: routes, mount: mount, allowedRedirects: allowedRedirects);
+pub fn clientApp(
+    routes: string,
+    mount: string,
+    allowedRedirects: string[] = [],
+) -> ClientApp {
+    return ClientApp(
+        routes: routes,
+        mount: mount,
+        allowedRedirects: allowedRedirects,
+    );
 }
 
 fn defaultNotFound() -> Element {
-    return Element(tag: "h1", value: "", children: [Element(tag: "#text", value: "Not found", children: [], attrs: [])], attrs: []);
+    return Element(
+        tag: "h1",
+        value: "",
+        children: [
+            Element(tag: "#text", value: "Not found", children: [], attrs: []),
+        ],
+        attrs: [],
+    );
 }
 
 fn noPage(route: PageContext) -> @Component<ElementBase, Element> {
@@ -104,7 +119,12 @@ fn chainOf(pattern: string) -> Array<UiSegment> {
 }
 
 fn contextOf(r: RouterState) -> PageContext {
-    return PageContext(pathname: r.path, pattern: r.pattern, params: r.params, rest: []);
+    return PageContext(
+        pathname: r.path,
+        pattern: r.pattern,
+        params: r.params,
+        rest: [],
+    );
 }
 
 fn pathPart(to: string) -> string {
@@ -141,23 +161,44 @@ fn mountTree(target: string, tree: Element) -> @Result<void, string> {
 }
 
 pub fn startClientApp(site: ClientApp) -> @Task<@Result<void, string>> {
-    val out = await navigateTo(site, __jhLocationPath(), __jhLocationSearch(), 0);
+    val out = await navigateTo(
+        site,
+        __jhLocationPath(),
+        __jhLocationSearch(),
+        0,
+    );
     return try out;
 }
 
-fn navigateTo(site: ClientApp, path: string, search: string, hops: i32) -> @Task<@Result<void, string>> {
-    if (hops > 8) throw "clientApp: more than 8 redirects in a row, stopping at `" + path + "`";
+fn navigateTo(
+    site: ClientApp,
+    path: string,
+    search: string,
+    hops: i32,
+) -> @Task<@Result<void, string>> {
+    if (hops > 8)
+        throw "clientApp: more than 8 redirects in a row, stopping at `"
+            + path
+            + "`";
     resetRender();
     val routeState = resolveRoute(site.routes, path, search);
     val ctx = contextOf(routeState);
-    fill(ctx.pathname, encoding.formStringify(ctx.params), encoding.formStringify(routeState.search), ctx.pattern, 0);
+    fill(
+        ctx.pathname,
+        encoding.formStringify(ctx.params),
+        encoding.formStringify(routeState.search),
+        ctx.pattern,
+        0,
+    );
     if (routeState.pattern == "") {
         val missing = mountTree(site.mount, defaultNotFound());
         return try missing;
-    };
+    }
     val page = pageFor(routeState.pattern, { route -> noPage(route) });
     val chain = chainOf(routeState.pattern);
-    val outcome = await componentOutcome({ -> compose(chain, ctx, { -> page(ctx) }) });
+    val outcome = await componentOutcome(
+        { -> compose(chain, ctx, { -> page(ctx) }) },
+    );
     val failure = case outcome {
         Ok(tree) -> "";
         Error(message) -> message;
@@ -169,32 +210,44 @@ fn navigateTo(site: ClientApp, path: string, search: string, hops: i32) -> @Task
         };
         val mounted = mountTree(site.mount, tree);
         return try mounted;
-    };
+    }
     val handled = await handleSignal(site, failure, hops);
     return try handled;
 }
 
 // The one handler for a raised signal in the browser.
-pub fn handleSignal(site: ClientApp, reason: string, hops: i32) -> @Task<@Result<void, string>> {
+pub fn handleSignal(
+    site: ClientApp,
+    reason: string,
+    hops: i32,
+) -> @Task<@Result<void, string>> {
     if (isSignal(reason) == false) throw reason;
     val out = signalFromReason(reason);
     if (kindWord(out) == "not-found") {
         val nf = mountTree(site.mount, stashedNotFoundTree());
         return try nf;
-    };
+    }
     val to = out.location;
-    if (redirectAllowed(site.routes, site.allowedRedirects, to) == false) throw "clientApp: redirect target `" + to + "` refused - a relative target must be in the route table, an absolute one listed in clientApp(allowedRedirects: [...])";
+    if (redirectAllowed(site.routes, site.allowedRedirects, to) == false)
+        throw "clientApp: redirect target `"
+            + to
+            + "` refused - a relative target must be in the route table, an absolute one listed in clientApp(allowedRedirects: [...])";
     if (to.startsWith("/") && to.startsWith("//") == false) {
         replace(to);
-        val next = await navigateTo(site, pathPart(to), queryPart(to), hops + 1);
+        val next = await navigateTo(
+            site,
+            pathPart(to),
+            queryPart(to),
+            hops + 1,
+        );
         return try next;
-    };
+    }
     __jhLocationReplace(to);
     return;
 }
 
-#[@External.Node("./render.mjs", "stashedNotFound"),
-  @External.Erlang("jhonstart_render", "stashed_not_found")]
+#[@External.Node("./render.mjs", "stashedNotFound")]
+#[@External.Erlang("jhonstart_render", "stashed_not_found")]
 declare fn __jhStashedNotFound(fallback: Element) -> Element;
 
 fn stashedNotFoundTree() -> Element {

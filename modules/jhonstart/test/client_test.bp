@@ -66,26 +66,7 @@
 // or column, at a call site that is correct. Nothing here works around it in
 // library source; `client.bp` declares no local that shadows anything.
 
-import {
-    client,
-    clientProps,
-    islandId,
-    islandAttrOf,
-    islandAttr,
-    Island,
-    clientMount,
-    islandEntry,
-    propsOf,
-    serverSlotAttr,
-    serverSlot,
-    serverOnly,
-    hydrate,
-    propsFor,
-    registerStarter,
-    registerRouteStarters,
-    registeredStarters,
-    registeredRouteStarters,
-} from "client";
+import {client, clientProps, islandId, islandAttrOf, islandAttr, Island, clientMount, islandEntry, propsOf, serverSlotAttr, serverSlot, serverOnly, hydrate, propsFor, registerStarter, registerRouteStarters, registeredStarters, registeredRouteStarters} from "client";
 import {globals} from "globals";
 import {attemptRender} from "render";
 import {Element, div, h1, p, ul, li, text, renderToString} from "element";
@@ -111,12 +92,15 @@ pub type LikeProps(
 #[client]
 pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
     val c = use state(props.likes);
-    return button([
+    return button(
+        [
             text(c.value.toString() + " likes", attrs: []),
-        ], attrs: [
+        ],
+        attrs: [
             #("data-jh-on-click", "LikeButton:like"),
             #("data-jh-post", props.postId),
-        ]);
+        ],
+    );
 }
 
 #[clientProps]
@@ -126,7 +110,10 @@ pub type ThemeProps(theme: string)
 // is not serialized. That separation is the whole Context-Provider pattern, and
 // it is why `Element` is off the serializable whitelist.
 #[client]
-pub fn ThemeProvider(props: ThemeProps, children: Children) -> @Component<ElementBase, Element> {
+pub fn ThemeProvider(
+    props: ThemeProps,
+    children: Children,
+) -> @Component<ElementBase, Element> {
     val current = use state(props.theme);
     return div(children, attrs: [#("class", "theme-" + current.value)]);
 }
@@ -140,7 +127,8 @@ pub fn StaticBadge(props: ThemeProps) -> Element {
 
 test "client: the marker fires on a plain -> Element component too" {
     assert __jhClient_StaticBadge() == "StaticBadge";
-    assert renderToString(StaticBadge(ThemeProps(theme: "dark"))) == "<div class=\"badge\">dark</div>";
+    assert renderToString(StaticBadge(ThemeProps(theme: "dark")))
+        == "<div class=\"badge\">dark</div>";
 }
 
 test "client: the marker emits a pure fn returning the component's name" {
@@ -209,7 +197,10 @@ test "client: islandAttrOf and islandAttr agree by construction, not by review" 
 }
 
 test "client: the placeholder carries the id only — the name and props are payload" {
-    val el = clientMount(Island(id: "i0", component: "Counter", props: [#("start", "3")]), []);
+    val el = clientMount(
+        Island(id: "i0", component: "Counter", props: [#("start", "3")]),
+        [],
+    );
     assert el.tag == "div";
     assert el.attrs.length == 1;
     assert renderToString(el) == "<div data-jh-i=\"i0\"></div>";
@@ -224,17 +215,25 @@ test "client: children render inside the placeholder, unmodified" {
 }
 
 test "client: islandEntry is the payload's i row — id, component, encoded props" {
-    val row = islandEntry(Island(id: "i0", component: "Counter", props: [#("start", "3")]));
+    val row = islandEntry(
+        Island(id: "i0", component: "Counter", props: [#("start", "3")]),
+    );
     assert row._0 == "i0";
     assert row._1 == "Counter";
     assert row._2 == "start=3";
 }
 
 test "client: islandEntry encodes several props k=v&k=v, in order" {
-    val row = islandEntry(Island(id: "i0", component: "LikeButton", props: [
-            #("postId", "7"),
-            #("likes", "3"),
-        ]));
+    val row = islandEntry(
+        Island(
+            id: "i0",
+            component: "LikeButton",
+            props: [
+                #("postId", "7"),
+                #("likes", "3"),
+            ],
+        ),
+    );
     assert row._2 == "postId=7&likes=3";
 }
 
@@ -253,24 +252,42 @@ test "client: serverSlot emits data-jh-s=\"1\" and nothing else" {
 }
 
 test "client: the server subtree is carried through the slot untouched" {
-    val markup = renderToString(serverSlot([
-            section([p([text("4 tickets open", attrs: [])], attrs: [])], attrs: [#("class", "dashboard")]),
-        ]));
-    assert markup == "<div data-jh-s=\"1\"><section class=\"dashboard\"><p>4 tickets open</p></section></div>";
+    val markup = renderToString(
+        serverSlot(
+            [
+                section(
+                    [p([text("4 tickets open", attrs: [])], attrs: [])],
+                    attrs: [#("class", "dashboard")],
+                ),
+            ],
+        ),
+    );
+    assert markup
+        == "<div data-jh-s=\"1\"><section class=\"dashboard\"><p>4 tickets open</p></section></div>";
 }
 
 // The Context-Provider shape: a client provider wrapping a server-rendered
 // tree. The island is the provider; the hole is the server's.
 fn Dashboard(userName: string, openTickets: i32) -> Element {
-    return section([
+    return section(
+        [
             h1([text("Hello, " + userName, attrs: [])], attrs: []),
-            p([text(openTickets.toString() + " tickets open", attrs: [])], attrs: []),
-        ], attrs: [#("class", "dashboard")]);
+            p(
+                [text(openTickets.toString() + " tickets open", attrs: [])],
+                attrs: [],
+            ),
+        ],
+        attrs: [#("class", "dashboard")],
+    );
 }
 
 fn RootLayout(theme: string, page: Element) -> Element {
     return clientMount(
-        Island(id: islandId(0), component: "ThemeProvider", props: [#("theme", theme)]),
+        Island(
+            id: islandId(0),
+            component: "ThemeProvider",
+            props: [#("theme", theme)],
+        ),
         [serverSlot([page])],
     );
 }
@@ -294,23 +311,39 @@ test "client: the server subtree is rendered ONCE, by the server" {
 // a page that emits its own does the same, so the ids in the markup and the ids
 // in the payload's `i` row agree.
 fn postRow(ordinal: i32, title: string, postId: string, likes: i32) -> Element {
-    return li([
+    return li(
+        [
             h2([text(title, attrs: [])], attrs: []),
-            clientMount(Island(id: islandId(ordinal), component: "LikeButton", props: [
-                    #("postId", postId),
-                    #("likes", likes.toString()),
-                ]), []),
-        ], attrs: [#("class", "post-row")]);
+            clientMount(
+                Island(
+                    id: islandId(ordinal),
+                    component: "LikeButton",
+                    props: [
+                        #("postId", postId),
+                        #("likes", likes.toString()),
+                    ],
+                ),
+                [],
+            ),
+        ],
+        attrs: [#("class", "post-row")],
+    );
 }
 
 fn PostList() -> Element {
-    return div([
+    return div(
+        [
             h1([text("Posts", attrs: [])], attrs: []),
-            ul([
+            ul(
+                [
                     postRow(0, "First", "1", 0),
                     postRow(1, "Second", "2", 9),
-                ], attrs: [#("class", "posts")]),
-        ], attrs: [#("class", "page")]);
+                ],
+                attrs: [#("class", "posts")],
+            ),
+        ],
+        attrs: [#("class", "page")],
+    );
 }
 
 test "client: a server component emits the island, not the component" {
@@ -332,10 +365,16 @@ test "client: the list renders one island per post, numbered in render order" {
 // ── step 4: the pure half of `propsFor`, and the poison pill ────────────────
 
 test "client: propsOf decodes the row islandEntry encoded" {
-    val row = islandEntry(Island(id: "i0", component: "LikeButton", props: [
-            #("postId", "7"),
-            #("likes", "3"),
-        ]));
+    val row = islandEntry(
+        Island(
+            id: "i0",
+            component: "LikeButton",
+            props: [
+                #("postId", "7"),
+                #("likes", "3"),
+            ],
+        ),
+    );
     val back = propsOf(row._2);
     assert back.length == 2;
     assert back.at(0).unwrapOr(#("", ""))._0 == "postId";
@@ -386,24 +425,35 @@ test "client: registerStarter fills the registry's table, in registration order"
 }
 
 test "client: a second starter for one component fails, naming it" {
-    registerStarter("StarterTwice", { raw, commit -> startNothing(raw, commit) });
-    val out = attemptRender({ -> registerStarter("StarterTwice", { raw, commit -> startNothing(raw, commit) }) });
+    registerStarter(
+        "StarterTwice",
+        { raw, commit -> startNothing(raw, commit) },
+    );
+    val out = attemptRender(
+        { -> registerStarter("StarterTwice", { raw, commit -> startNothing(raw, commit) }) },
+    );
     val message = case out {
         Ok(n) -> "";
         Error(m) -> m;
     };
-    assert message.contains("a starter for `StarterTwice` is already registered");
+    assert message.contains(
+        "a starter for `StarterTwice` is already registered",
+    );
 }
 
 test "client: registerRouteStarters keeps one loader per route pattern" {
     registerRouteStarters("/blog/[slug]", { -> loadNothing() });
     assert registeredRouteStarters().contains("/blog/[slug]");
-    val out = attemptRender({ -> registerRouteStarters("/blog/[slug]", { -> loadNothing() }) });
+    val out = attemptRender(
+        { -> registerRouteStarters("/blog/[slug]", { -> loadNothing() }) },
+    );
     val message = case out {
         Ok(n) -> "";
         Error(m) -> m;
     };
-    assert message.contains("a starter loader for route `/blog/[slug]` is already registered");
+    assert message.contains(
+        "a starter loader for route `/blog/[slug]` is already registered",
+    );
 }
 
 test "client: the starter table is the registry's fourth global" {

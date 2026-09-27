@@ -51,9 +51,7 @@ fn recWrite(chunk: string) -> @Task<void> {
 // has been written — the signal `slowPosts` answers on.
 fn recWriteOpening(chunk: string, afterAside: Gate) -> @Task<void> {
     recPush("write " + chunk);
-    if (chunk.contains("data-jh-f=\"h2\"")) {
-        async.openGate(afterAside);
-    }
+    if (chunk.contains("data-jh-f=\"h2\"")) async.openGate(afterAside);
 }
 
 fn recClose() -> @Task<void> {
@@ -95,16 +93,34 @@ fn allText() -> string {
 }
 
 fn req() -> RequestData {
-    return RequestData(method: "GET", path: "/blog/hi", params: [#("slug", "hi")], query: [], headers: [], cookies: [#("session", "s1")]);
+    return RequestData(
+        method: "GET",
+        path: "/blog/hi",
+        params: [#("slug", "hi")],
+        query: [],
+        headers: [],
+        cookies: [#("session", "s1")],
+    );
 }
 
 fn anonymous() -> RequestData {
-    return RequestData(method: "GET", path: "/dashboard", params: [], query: [], headers: [], cookies: []);
+    return RequestData(
+        method: "GET",
+        path: "/dashboard",
+        params: [],
+        query: [],
+        headers: [],
+        cookies: [],
+    );
 }
 
 val table = "L|/\nP|/blog/[slug]\nP|/login\nP|/blog\nP|/dashboard";
 
-fn inputOf(pattern: string, chain: Array<UiSegment>, page: fn() -> @Component<ElementBase, Element>) -> PageInput {
+fn inputOf(
+    pattern: string,
+    chain: Array<UiSegment>,
+    page: fn() -> @Component<ElementBase, Element>,
+) -> PageInput {
     return PageInput(
         build: "b1",
         pathname: "/blog/hi",
@@ -151,8 +167,14 @@ val gateBudget = 10000;
 // process could be scheduled after the timer fired.
 fn slowPosts(afterAside: Gate) -> @Component<ElementBase, Element> {
     val opened = await async.awaitGate(afterAside, gateBudget);
-    val rows = if (opened) ["a", "b"] else ["the aside's fill was never written"];
-    return ul(rows.map({ r -> li([text(r, attrs: [])], attrs: []) }), attrs: [#("class", "posts")]);
+    val rows = if (opened)
+        ["a", "b"]
+    else
+        ["the aside's fill was never written"];
+    return ul(
+        rows.map({ r -> li([text(r, attrs: [])], attrs: []) }),
+        attrs: [#("class", "posts")],
+    );
 }
 
 fn fastAside() -> @Component<ElementBase, Element> {
@@ -160,11 +182,26 @@ fn fastAside() -> @Component<ElementBase, Element> {
 }
 
 fn StreamedPage(afterAside: Gate) -> @Component<ElementBase, Element> {
-    return section([
+    return section(
+        [
             h2([text("Blog", attrs: [])], attrs: []),
-            Suspense(Boundary(id: holeId(1), fallback: div([text("wait", attrs: [])], attrs: []), child: { -> slowPosts(afterAside) })),
-            Suspense(Boundary(id: holeId(2), fallback: div([text("wait2", attrs: [])], attrs: []), child: { -> fastAside() })),
-        ], attrs: []);
+            Suspense(
+                Boundary(
+                    id: holeId(1),
+                    fallback: div([text("wait", attrs: [])], attrs: []),
+                    child: { -> slowPosts(afterAside) },
+                ),
+            ),
+            Suspense(
+                Boundary(
+                    id: holeId(2),
+                    fallback: div([text("wait2", attrs: [])], attrs: []),
+                    child: { -> fastAside() },
+                ),
+            ),
+        ],
+        attrs: [],
+    );
 }
 
 fn MissingPage() -> @Component<ElementBase, Element> {
@@ -199,9 +236,7 @@ fn pageRan() -> @Component<ElementBase, Element> {
 
 fn SessionLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
     val jar = cookies();
-    if (jar.length == 0) {
-        redirect("/login");
-    };
+    if (jar.length == 0) redirect("/login");
     return div([props.children], attrs: [#("class", "dash")]);
 }
 
@@ -210,7 +245,10 @@ fn NotFoundView() -> Element {
 }
 
 fn ErrorView(info: ErrorInfo) -> Element {
-    return div([text("failed " + info.digest, attrs: [])], attrs: [#("class", "err")]);
+    return div(
+        [text("failed " + info.digest, attrs: [])],
+        attrs: [#("class", "err")],
+    );
 }
 
 fn LoadingView() -> Element {
@@ -226,7 +264,22 @@ fn LayoutView(props: LayoutProps) -> @Component<ElementBase, Element> {
 }
 
 fn fullSegment() -> UiSegment {
-    return withNotFound(withLoading(withError(withTemplate(withLayout(segment("/blog/[slug]"), { props -> LayoutView(props) }), { props -> TemplateView(props) }), { info -> ErrorView(info) }), { -> LoadingView() }), { -> NotFoundView() });
+    return withNotFound(
+        withLoading(
+            withError(
+                withTemplate(
+                    withLayout(
+                        segment("/blog/[slug]"),
+                        { props -> LayoutView(props) },
+                    ),
+                    { props -> TemplateView(props) },
+                ),
+                { info -> ErrorView(info) },
+            ),
+            { -> LoadingView() },
+        ),
+        { -> NotFoundView() },
+    );
 }
 
 // ── step 8: the streamed render ─────────────────────────────────────────────
@@ -234,7 +287,11 @@ fn fullSegment() -> UiSegment {
 test "stream: a page with boundaries writes the shell, then each fill, each awaited" {
     val site = app([], []);
     val afterAside = async.newGate();
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> StreamedPage(afterAside) }),
+        req(),
+        recorderOpening(afterAside),
+    );
     assert outcomeText(out) == "ok";
     val w = writes();
     assert w.length == 4;
@@ -248,10 +305,22 @@ test "stream: a page with boundaries writes the shell, then each fill, each awai
 test "stream: fills come in completion order, each carrying its own markup" {
     val site = app([], []);
     val afterAside = async.newGate();
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> StreamedPage(afterAside) }),
+        req(),
+        recorderOpening(afterAside),
+    );
     val w = writes();
-    assert w.at(1).unwrapOr("").startsWith("write <template data-jh-f=\"h2\"><span>aside</span></template>");
-    assert w.at(2).unwrapOr("").startsWith("write <template data-jh-f=\"h1\"><ul class=\"posts\">");
+    assert w
+        .at(1)
+        .unwrapOr("")
+        .startsWith(
+            "write <template data-jh-f=\"h2\"><span>aside</span></template>",
+        );
+    assert w
+        .at(2)
+        .unwrapOr("")
+        .startsWith("write <template data-jh-f=\"h1\"><ul class=\"posts\">");
     assert w.at(3).unwrapOr("").contains("<script>window.__bp0 = {\"v\":1,");
     assert w.at(3).unwrapOr("").contains("\"h\":[\"h1\",\"h2\"]");
 }
@@ -261,7 +330,11 @@ test "stream: fills come in completion order, each carrying its own markup" {
 // flight at the same time: a render that resolved them one after the other
 // leaves the first waiting on a gate the second has not opened, and it answers
 // "gate never opened".
-fn loader(mine: Gate, theirs: Gate, value: string) -> @Component<ElementBase, Element> {
+fn loader(
+    mine: Gate,
+    theirs: Gate,
+    value: string,
+) -> @Component<ElementBase, Element> {
     async.openGate(mine);
     val opened = await async.awaitGate(theirs, gateBudget);
     val shown = if (opened) value else "gate never opened: " + value;
@@ -269,17 +342,36 @@ fn loader(mine: Gate, theirs: Gate, value: string) -> @Component<ElementBase, El
 }
 
 fn TwoLoaders(a: Gate, b: Gate) -> @Component<ElementBase, Element> {
-    return div([
-            Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> loader(a, b, "a") })),
-            Suspense(Boundary(id: holeId(2), fallback: div([], attrs: []), child: { -> loader(b, a, "b") })),
-        ], attrs: []);
+    return div(
+        [
+            Suspense(
+                Boundary(
+                    id: holeId(1),
+                    fallback: div([], attrs: []),
+                    child: { -> loader(a, b, "a") },
+                ),
+            ),
+            Suspense(
+                Boundary(
+                    id: holeId(2),
+                    fallback: div([], attrs: []),
+                    child: { -> loader(b, a, "b") },
+                ),
+            ),
+        ],
+        attrs: [],
+    );
 }
 
 test "stream: two boundaries resolve concurrently — each waits on the other" {
     val site = app([], []);
     val a = async.newGate();
     val b = async.newGate();
-    val out = await site.renderStream(inputOf("/blog", [], { -> TwoLoaders(a, b) }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> TwoLoaders(a, b) }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     assert writes().length == 4;
     assert allText().contains("<span>a</span>");
@@ -291,22 +383,40 @@ test "stream: two boundaries resolve concurrently — each waits on the other" {
 
 test "compose: layout > template > error > loading > not-found > page, in the markup" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog/[slug]", [fullSegment()], { -> BlogPage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog/[slug]", [fullSegment()], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     val shell = writes().at(0).unwrapOr("");
-    val nest = shell.indexOf("<section class=\"layout\"><div class=\"tpl\"><div data-jh-t=");
-    assert shell.contains("<section class=\"layout\"><div data-jh-t=\"/blog/[slug]#");
-    assert shell.contains("\"><div class=\"tpl\"><div data-jh-e=\"/blog/[slug]\"><div data-jh-h=\"h1\"><div class=\"sk\">loading</div></div></div></div></div></section>");
+    val nest = shell.indexOf(
+        "<section class=\"layout\"><div class=\"tpl\"><div data-jh-t=",
+    );
+    assert shell.contains(
+        "<section class=\"layout\"><div data-jh-t=\"/blog/[slug]#",
+    );
+    assert shell.contains(
+        "\"><div class=\"tpl\"><div data-jh-e=\"/blog/[slug]\"><div data-jh-h=\"h1\"><div class=\"sk\">loading</div></div></div></div></div></section>",
+    );
     val fill = writes().at(1).unwrapOr("");
-    assert fill.contains("<template data-jh-f=\"h1\"><div data-jh-n=\"/blog/[slug]\"><p>post /blog/hi</p></div></template>");
+    assert fill.contains(
+        "<template data-jh-f=\"h1\"><div data-jh-n=\"/blog/[slug]\"><p>post /blog/hi</p></div></template>",
+    );
 }
 
 test "compose: a segment with no template contributes no wrapper" {
     val site = app([], []);
     val bare = withLayout(segment("/"), { props -> LayoutView(props) });
-    val out = await site.render(inputOf("/blog/[slug]", [bare], { -> BlogPage() }), req(), recorder());
+    val out = await site.render(
+        inputOf("/blog/[slug]", [bare], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     val doc = writes().at(0).unwrapOr("");
-    assert doc.contains("<div data-jh-root=\"\"><section class=\"layout\"><p>post /blog/hi</p></section></div>");
+    assert doc.contains(
+        "<div data-jh-root=\"\"><section class=\"layout\"><p>post /blog/hi</p></section></div>",
+    );
 }
 
 fn depthLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
@@ -321,17 +431,31 @@ test "compose: each layout receives its selected depth, root-first" {
         withLayout(segment("/blog"), { props -> depthLayout(props) }),
         withLayout(segment("/blog/[slug]"), { props -> depthLayout(props) }),
     ];
-    val out = await site.render(inputOf("/blog/[slug]", chain, { -> BlogPage() }), req(), recorder());
+    val out = await site.render(
+        inputOf("/blog/[slug]", chain, { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     val doc = writes().at(0).unwrapOr("");
-    assert doc.contains("<div>[blog]<div>[[slug]]<div>[]<p>post /blog/hi</p></div></div></div>");
+    assert doc.contains(
+        "<div>[blog]<div>[[slug]]<div>[]<p>post /blog/hi</p></div></div></div>",
+    );
 }
 
 test "compose: two renders of one route give the template two keys" {
     val site = app([], []);
     val tpl = withTemplate(segment("/blog"), { props -> TemplateView(props) });
-    val a = await site.render(inputOf("/blog", [tpl], { -> BlogPage() }), req(), recorder());
+    val a = await site.render(
+        inputOf("/blog", [tpl], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     val first = writes().at(0).unwrapOr("");
-    val b = await site.render(inputOf("/blog", [tpl], { -> BlogPage() }), req(), recorder());
+    val b = await site.render(
+        inputOf("/blog", [tpl], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     val second = writes().at(0).unwrapOr("");
     assert first.contains("data-jh-t=\"/blog#");
     assert first != second;
@@ -356,7 +480,11 @@ fn readRequestOutside() -> @Task<i32> {
 
 test "stream: a component reads the req the render received, and nothing after it ends" {
     val site = app([], []);
-    val out = await site.render(inputOf("/blog", [], { -> RequestEcho() }), req(), recorder());
+    val out = await site.render(
+        inputOf("/blog", [], { -> RequestEcho() }),
+        req(),
+        recorder(),
+    );
     assert writes().at(0).unwrapOr("").contains("<p>s1</p>");
     val outside = await attemptTask({ -> readRequestOutside() });
     val message = case outside {
@@ -373,16 +501,33 @@ fn bundleTag(route: string) -> string {
 test "stream: defaultHooks renders a working document with no <script src>; one field replaced keeps the other" {
     val site = app([], []);
     setHooks(defaultHooks());
-    val plain = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
+    val plain = await site.render(
+        inputOf("/blog", [], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     val doc = writes().at(0).unwrapOr("");
     assert doc.contains("<script src") == false;
-    assert doc.startsWith("write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">");
+    assert doc.startsWith(
+        "write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">",
+    );
     assert doc.endsWith("</body></html>");
     val base = defaultHooks();
-    setHooks(RenderHooks(headExtra: base.headExtra, bodyExtra: { route -> bundleTag(route) }));
-    val bundled = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
+    setHooks(
+        RenderHooks(
+            headExtra: base.headExtra,
+            bodyExtra: { route -> bundleTag(route) },
+        ),
+    );
+    val bundled = await site.render(
+        inputOf("/blog", [], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     val withBundle = writes().at(0).unwrapOr("");
-    assert withBundle.contains("</script><script src=\"/b.js\"></script></body></html>");
+    assert withBundle.contains(
+        "</script><script src=\"/b.js\"></script></body></html>",
+    );
     assert withBundle.contains("<meta charset=\"utf-8\"></head>");
     setHooks(defaultHooks());
 }
@@ -392,7 +537,11 @@ test "stream: defaultHooks renders a working document with no <script src>; one 
 test "signal: notFound before the first chunk is a 404 with the nearest not-found boundary" {
     val site = app([], []);
     val seg = withNotFound(segment("/blog/[slug]"), { -> NotFoundView() });
-    val out = await site.render(inputOf("/blog/[slug]", [seg], { -> MissingPage() }), req(), recorder());
+    val out = await site.render(
+        inputOf("/blog/[slug]", [seg], { -> MissingPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     assert recEvents().at(0).unwrapOr("") == "status 404";
     assert writes().length == 1;
@@ -402,31 +551,55 @@ test "signal: notFound before the first chunk is a 404 with the nearest not-foun
 
 test "signal: redirect(\"/login\") before the first chunk is a 307 with no body" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> LoginRedirectPage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> LoginRedirectPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     assert allText() == "status 307\nheader location /login\nclose";
 }
 
 test "signal: a layout's redirect means the page never runs" {
     val site = app([], []);
-    val guard = withLayout(segment("/dashboard"), { props -> SessionLayout(props) });
-    val out = await site.renderStream(inputOf("/dashboard", [guard], { -> pageRan() }), anonymous(), recorder());
+    val guard = withLayout(
+        segment("/dashboard"),
+        { props -> SessionLayout(props) },
+    );
+    val out = await site.renderStream(
+        inputOf("/dashboard", [guard], { -> pageRan() }),
+        anonymous(),
+        recorder(),
+    );
     assert allText() == "status 307\nheader location /login\nclose";
     assert allText().contains("page ran") == false;
 }
 
 test "signal: a target outside the table, or an unlisted absolute one, fails the render" {
     val site = app([], []);
-    val nowhere = await site.renderStream(inputOf("/blog", [], { -> NowhereRedirectPage() }), req(), recorder());
+    val nowhere = await site.renderStream(
+        inputOf("/blog", [], { -> NowhereRedirectPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(nowhere).contains("`/nowhere` refused");
     assert allText() == "close";
-    val evil = await site.renderStream(inputOf("/blog", [], { -> EvilRedirectPage() }), req(), recorder());
+    val evil = await site.renderStream(
+        inputOf("/blog", [], { -> EvilRedirectPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(evil).contains("`https://evil.example` refused");
     assert allText() == "close";
     val listed = app([], ["https://accounts.example/"]);
-    val ok = await listed.renderStream(inputOf("/blog", [], { -> AccountsRedirectPage() }), req(), recorder());
+    val ok = await listed.renderStream(
+        inputOf("/blog", [], { -> AccountsRedirectPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(ok) == "ok";
-    assert allText() == "status 307\nheader location https://accounts.example/\nclose";
+    assert allText()
+        == "status 307\nheader location https://accounts.example/\nclose";
 }
 
 test "signal: redirectAllowed checks relative targets against the table only" {
@@ -456,38 +629,85 @@ fn lateNowhere() -> @Component<ElementBase, Element> {
 }
 
 fn LateNotFoundPage() -> @Component<ElementBase, Element> {
-    return div([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> lateMissing() }))], attrs: []);
+    return div(
+        [
+            Suspense(
+                Boundary(
+                    id: holeId(1),
+                    fallback: div([], attrs: []),
+                    child: { -> lateMissing() },
+                ),
+            ),
+        ],
+        attrs: [],
+    );
 }
 
 fn LateRedirectPage() -> @Component<ElementBase, Element> {
-    return div([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> lateLogin() }))], attrs: []);
+    return div(
+        [
+            Suspense(
+                Boundary(
+                    id: holeId(1),
+                    fallback: div([], attrs: []),
+                    child: { -> lateLogin() },
+                ),
+            ),
+        ],
+        attrs: [],
+    );
 }
 
 fn LateNowherePage() -> @Component<ElementBase, Element> {
-    return div([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> lateNowhere() }))], attrs: []);
+    return div(
+        [
+            Suspense(
+                Boundary(
+                    id: holeId(1),
+                    fallback: div([], attrs: []),
+                    child: { -> lateNowhere() },
+                ),
+            ),
+        ],
+        attrs: [],
+    );
 }
 
 test "late: a notFound after the shell is the last chunk, status 200, no later fill" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> LateNotFoundPage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> LateNotFoundPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     assert countOf("status") == 1;
     assert recEvents().at(0).unwrapOr("") == "status 200";
-    assert writes().at(1).unwrapOr("") == "write <template data-jh-g=\"not-found\"><h1>Not found</h1></template><script>__bp2()</script>";
+    assert writes().at(1).unwrapOr("")
+        == "write <template data-jh-g=\"not-found\"><h1>Not found</h1></template><script>__bp2()</script>";
     assert countOf("close") == 1;
 }
 
 test "late: a redirect after the shell is data-jh-g markup through escape.attribute" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> LateRedirectPage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> LateRedirectPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
-    assert writes().at(1).unwrapOr("") == "write <template data-jh-g=\"redirect\" data-jh-to=\"/blog\"></template><script>__bp2()</script>";
+    assert writes().at(1).unwrapOr("")
+        == "write <template data-jh-g=\"redirect\" data-jh-to=\"/blog\"></template><script>__bp2()</script>";
     assert countOf("status") == 1;
 }
 
 test "late: a refused target after the shell fails the render and writes no markup" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> LateNowherePage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> LateNowherePage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out).contains("`/nowhere` refused");
     assert allText().contains("data-jh-g") == false;
     assert countOf("close") == 1;
@@ -554,11 +774,23 @@ fn plRenderKey() -> @Task<Array<#(string, Json)>> {
 }
 
 fn recording() -> RenderPlugin {
-    return RenderPlugin(name: "rec", head: { -> plHead() }, chunk: { id -> plChunk(id) }, close: { -> plClose() }, payload: { -> plPayload() });
+    return RenderPlugin(
+        name: "rec",
+        head: { -> plHead() },
+        chunk: { id -> plChunk(id) },
+        close: { -> plClose() },
+        payload: { -> plPayload() },
+    );
 }
 
 fn quiet(name: string) -> RenderPlugin {
-    return RenderPlugin(name: name, head: { -> quietHead() }, chunk: { id -> quietChunk(id) }, close: { -> plClose() }, payload: { -> plNoPayload() });
+    return RenderPlugin(
+        name: name,
+        head: { -> quietHead() },
+        chunk: { id -> quietChunk(id) },
+        close: { -> plClose() },
+        payload: { -> plNoPayload() },
+    );
 }
 
 fn quietHead() -> @Task<string> {
@@ -583,66 +815,133 @@ fn pluginEvents() -> string[] {
 test "plugin: head once, chunk per boundary in completion order, close once, payload last" {
     val site = app([recording()], []);
     val afterAside = async.newGate();
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> StreamedPage(afterAside) }),
+        req(),
+        recorderOpening(afterAside),
+    );
     assert outcomeText(out) == "ok";
-    assert pluginEvents().filter({ e -> e.startsWith("plugin chunk") == false }).join("|") == "plugin head|plugin close|plugin payload";
+    assert pluginEvents()
+        .filter({ e -> e.startsWith("plugin chunk") == false })
+        .join("|")
+        == "plugin head|plugin close|plugin payload";
     val w = writes();
     assert w.at(1).unwrapOr("").contains("<style>.h2{}</style>");
     assert w.at(2).unwrapOr("").contains("<style>.h1{}</style>");
-    assert allText().indexOf("plugin head") < allText().indexOf("write <!DOCTYPE");
-    assert allText().indexOf("plugin close") > allText().indexOf("data-jh-f=\"h1\"");
+    assert allText().indexOf("plugin head")
+        < allText().indexOf("write <!DOCTYPE");
+    assert allText().indexOf("plugin close")
+        > allText().indexOf("data-jh-f=\"h1\"");
 }
 
 test "plugin: head lands in <head>, each chunk first inside its fill, the payload key verbatim" {
     val site = app([recording()], []);
     val afterAside = async.newGate();
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> StreamedPage(afterAside) }),
+        req(),
+        recorderOpening(afterAside),
+    );
     val w = writes();
     assert w.at(0).unwrapOr("").contains("<style>.head{}</style></head>");
-    assert w.at(1).unwrapOr("").startsWith("write <template data-jh-f=\"h2\"><style>.h2{}</style><span>aside</span>");
-    assert w.at(2).unwrapOr("").startsWith("write <template data-jh-f=\"h1\"><style>.h1{}</style><ul");
+    assert w
+        .at(1)
+        .unwrapOr("")
+        .startsWith(
+            "write <template data-jh-f=\"h2\"><style>.h2{}</style><span>aside</span>",
+        );
+    assert w
+        .at(2)
+        .unwrapOr("")
+        .startsWith("write <template data-jh-f=\"h1\"><style>.h1{}</style><ul");
     assert w.at(3).unwrapOr("").contains("\"x\":[1]}");
 }
 
 test "plugin: a render with no plugin writes no <style> and no plugin key" {
     val site = app([], []);
     val afterAside = async.newGate();
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> StreamedPage(afterAside) }),
+        req(),
+        recorderOpening(afterAside),
+    );
     assert allText().contains("<style>") == false;
     assert allText().contains("\"x\"") == false;
     val quietSite = app([quiet("q")], []);
     val quietAside = async.newGate();
-    val q = await quietSite.renderStream(inputOf("/blog", [], { -> StreamedPage(quietAside) }), req(), recorderOpening(quietAside));
+    val q = await quietSite.renderStream(
+        inputOf("/blog", [], { -> StreamedPage(quietAside) }),
+        req(),
+        recorderOpening(quietAside),
+    );
     assert allText().contains("<style>") == false;
 }
 
 test "plugin: a close answering Error fails the render with that message" {
-    val failing = RenderPlugin(name: "sheet", head: { -> quietHead() }, chunk: { id -> quietChunk(id) }, close: { -> plCloseFails() }, payload: { -> plNoPayload() });
+    val failing = RenderPlugin(
+        name: "sheet",
+        head: { -> quietHead() },
+        chunk: { id -> quietChunk(id) },
+        close: { -> plCloseFails() },
+        payload: { -> plNoPayload() },
+    );
     val site = app([failing], []);
     val afterAside = async.newGate();
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
-    assert outcomeText(out).contains("plugin `sheet` failed to close: a class was registered after the last chunk");
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> StreamedPage(afterAside) }),
+        req(),
+        recorderOpening(afterAside),
+    );
+    assert outcomeText(out).contains(
+        "plugin `sheet` failed to close: a class was registered after the last chunk",
+    );
     assert countOf("close") == 1;
 }
 
 test "plugin: a render key, or one key from two plugins, fails the render naming them" {
-    val bad = RenderPlugin(name: "bad", head: { -> quietHead() }, chunk: { id -> quietChunk(id) }, close: { -> plClose() }, payload: { -> plRenderKey() });
+    val bad = RenderPlugin(
+        name: "bad",
+        head: { -> quietHead() },
+        chunk: { id -> quietChunk(id) },
+        close: { -> plClose() },
+        payload: { -> plRenderKey() },
+    );
     val site = app([bad], []);
     val afterAside = async.newGate();
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> StreamedPage(afterAside) }),
+        req(),
+        recorderOpening(afterAside),
+    );
     assert outcomeText(out).contains("plugin `bad` gave the payload key `t`");
-    assert extrasProblem([#("a", "s", "[]"), #("b", "s", "[]")]).contains("plugins `a` and `b` both gave the payload key `s`");
+    assert extrasProblem([#("a", "s", "[]"), #("b", "s", "[]")]).contains(
+        "plugins `a` and `b` both gave the payload key `s`",
+    );
     assert extrasProblem([#("a", "s", "[]")]) == "";
 }
 
 // ── the document's language — `app(lang: …)` ────────────────────────────────
 
 test "stream: app(lang:) is the document's <html lang>, \"en\" when not given" {
-    val plain = await app([], []).render(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
-    assert writes().at(0).unwrapOr("").startsWith("write <!DOCTYPE html><html lang=\"en\">");
+    val plain = await app([], []).render(
+        inputOf("/blog", [], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
+    assert writes()
+        .at(0)
+        .unwrapOr("")
+        .startsWith("write <!DOCTYPE html><html lang=\"en\">");
     val site = app([], [], "pt-BR");
-    val streamed = await site.renderStream(inputOf("/blog", [], { -> BlogPage() }), req(), recorder());
-    assert writes().at(0).unwrapOr("").startsWith("write <!DOCTYPE html><html lang=\"pt-BR\"><head>");
+    val streamed = await site.renderStream(
+        inputOf("/blog", [], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
+    assert writes()
+        .at(0)
+        .unwrapOr("")
+        .startsWith("write <!DOCTYPE html><html lang=\"pt-BR\"><head>");
 }
 
 fn badLang() -> App {
@@ -655,7 +954,9 @@ test "stream: a lang that is not a language tag is refused by app, naming it" {
         Ok(a) -> "";
         Error(m) -> m;
     };
-    assert message.contains("app(lang: \"en\"><script>\") is not a language tag");
+    assert message.contains(
+        "app(lang: \"en\"><script>\") is not a language tag",
+    );
     assert isLangTag("zh-Hant-TW");
     assert isLangTag("") == false;
     assert isLangTag("1en") == false;
@@ -670,8 +971,8 @@ test "stream: a lang that is not a language tag is refused by app, naming it" {
 // pre-first-chunk `redirect("/login")` and a pre-first-chunk `notFound()`.
 
 type ChunkSink(
-    setStatus: fn(code: i32) -> void,
-    setHeader: fn(name: string, value: string) -> void,
+    setStatus: fn(code: i32),
+    setHeader: fn(name: string, value: string),
     write: fn(chunk: string) -> @Task<void>,
     close: fn() -> @Task<void>,
 )
@@ -701,20 +1002,34 @@ fn overSink(out: ChunkSink) -> Response {
 
 test "chunk writer: a page is 200, text/html, one document, one close" {
     val site = app([], []);
-    val out = await site.render(inputOf("/blog", [], { -> BlogPage() }), req(), overSink(recordingSink()));
+    val out = await site.render(
+        inputOf("/blog", [], { -> BlogPage() }),
+        req(),
+        overSink(recordingSink()),
+    );
     assert outcomeText(out) == "ok";
     val events = recEvents();
     assert events.length == 4;
     assert events.at(0).unwrapOr("") == "status 200";
-    assert events.at(1).unwrapOr("") == "header content-type text/html; charset=utf-8";
-    assert events.at(2).unwrapOr("").startsWith("write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><div data-jh-root=\"\">");
+    assert events.at(1).unwrapOr("")
+        == "header content-type text/html; charset=utf-8";
+    assert events
+        .at(2)
+        .unwrapOr("")
+        .startsWith(
+            "write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><div data-jh-root=\"\">",
+        );
     assert events.at(2).unwrapOr("").endsWith("</body></html>");
     assert events.at(3).unwrapOr("") == "close";
 }
 
 test "chunk writer: redirect(\"/login\") before the first chunk is 307, location, no body" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> LoginRedirectPage() }), req(), overSink(recordingSink()));
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> LoginRedirectPage() }),
+        req(),
+        overSink(recordingSink()),
+    );
     assert outcomeText(out) == "ok";
     assert allText() == "status 307\nheader location /login\nclose";
 }
@@ -722,11 +1037,16 @@ test "chunk writer: redirect(\"/login\") before the first chunk is 307, location
 test "chunk writer: notFound() before the first chunk is 404 and the not-found document" {
     val site = app([], []);
     val seg = withNotFound(segment("/blog/[slug]"), { -> NotFoundView() });
-    val out = await site.render(inputOf("/blog/[slug]", [seg], { -> MissingPage() }), req(), overSink(recordingSink()));
+    val out = await site.render(
+        inputOf("/blog/[slug]", [seg], { -> MissingPage() }),
+        req(),
+        overSink(recordingSink()),
+    );
     assert outcomeText(out) == "ok";
     val events = recEvents();
     assert events.at(0).unwrapOr("") == "status 404";
-    assert events.at(1).unwrapOr("") == "header content-type text/html; charset=utf-8";
+    assert events.at(1).unwrapOr("")
+        == "header content-type text/html; charset=utf-8";
     assert events.at(2).unwrapOr("").contains("<h2>No such post</h2>");
     assert events.at(events.length - 1).unwrapOr("") == "close";
     assert countOf("close") == 1;
@@ -751,7 +1071,18 @@ fn sortedChild() -> @Component<ElementBase, Element> {
 }
 
 fn StreamedSortedPage() -> @Component<ElementBase, Element> {
-    return section([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> sortedChild() }))], attrs: []);
+    return section(
+        [
+            Suspense(
+                Boundary(
+                    id: holeId(1),
+                    fallback: div([], attrs: []),
+                    child: { -> sortedChild() },
+                ),
+            ),
+        ],
+        attrs: [],
+    );
 }
 
 fn lastWrite() -> string {
@@ -761,21 +1092,33 @@ fn lastWrite() -> string {
 
 test "dynamic: a page that reads neither the query nor the request is static" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog/[slug]", [], { -> BlogPage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog/[slug]", [], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     assert lastWrite().contains("\"d\":false");
 }
 
 test "dynamic: reading the query through searchParams() marks the render" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> SortedPage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> SortedPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     assert lastWrite().contains("\"d\":true");
 }
 
 test "dynamic: reading the request marks the render" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> CookiePage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> CookiePage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     assert allText().contains("hi s1");
     assert lastWrite().contains("\"d\":true");
@@ -783,7 +1126,11 @@ test "dynamic: reading the request marks the render" {
 
 test "dynamic: a boundary's read marks the page, from the boundary's own process" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedSortedPage() }), req(), recorder());
+    val out = await site.renderStream(
+        inputOf("/blog", [], { -> StreamedSortedPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(out) == "ok";
     assert allText().contains("sorted 0");
     assert lastWrite().contains("\"d\":true");
@@ -791,8 +1138,16 @@ test "dynamic: a boundary's read marks the page, from the boundary's own process
 
 test "dynamic: the mark does not leak into the next render" {
     val site = app([], []);
-    val first = await site.renderStream(inputOf("/blog", [], { -> SortedPage() }), req(), recorder());
-    val second = await site.renderStream(inputOf("/blog/[slug]", [], { -> BlogPage() }), req(), recorder());
+    val first = await site.renderStream(
+        inputOf("/blog", [], { -> SortedPage() }),
+        req(),
+        recorder(),
+    );
+    val second = await site.renderStream(
+        inputOf("/blog/[slug]", [], { -> BlogPage() }),
+        req(),
+        recorder(),
+    );
     assert outcomeText(second) == "ok";
     assert lastWrite().contains("\"d\":false");
 }

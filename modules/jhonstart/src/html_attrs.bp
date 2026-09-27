@@ -20,7 +20,10 @@ pub fn classAttr(value: string) -> #(string, string) {
 }
 
 // Base first, then the extra pairs, each list in its own order.
-pub fn withAttrs(base: Array<#(string, string)>, extra: Array<#(string, string)>) -> Array<#(string, string)> {
+pub fn withAttrs(
+    base: Array<#(string, string)>,
+    extra: Array<#(string, string)>,
+) -> Array<#(string, string)> {
     return base.append(extra);
 }
 
@@ -49,7 +52,8 @@ test "withAttrs — base first, appended, order preserved" {
     assert attrValue(all, "id") == "x";
     assert attrValue(all, "class") == "e_1";
     val el = Element(tag: "div", value: "", children: [], attrs: all);
-    assert renderToString(el) == "<div id=\"x\" class=\"e_1\" role=\"note\"></div>";
+    assert renderToString(el)
+        == "<div id=\"x\" class=\"e_1\" role=\"note\"></div>";
 }
 
 test "attrValue — a missing name is the empty string, the last duplicate wins" {

@@ -50,7 +50,10 @@ pub fn effect(run: fn(), deps: unknown[]) -> @Component<ElementBase, #()> {
 
 // `memo` — a value memoized across renders. Computed eagerly here (the first
 // render has no previous `deps` to compare against), yielding the computed `T`.
-pub fn memo<T>(compute: fn() -> T, deps: unknown[]) -> @Component<ElementBase, T> {
+pub fn memo<T>(
+    compute: fn() -> T,
+    deps: unknown[],
+) -> @Component<ElementBase, T> {
     return compute();
 }
 
@@ -126,8 +129,23 @@ fn Counter() -> @Component<ElementBase, Element> {
     val doubled = use memo({ ->
         c.value + c.value;
     }, []);
-    return Element(tag: "div", value: "", children: [
-            Element(tag: "#text", value: "count: " + c.value.toString(), children: [], attrs: []),
-            Element(tag: "#text", value: " x2=" + doubled.toString(), children: [], attrs: []),
-        ], attrs: []);
+    return Element(
+        tag: "div",
+        value: "",
+        children: [
+            Element(
+                tag: "#text",
+                value: "count: " + c.value.toString(),
+                children: [],
+                attrs: [],
+            ),
+            Element(
+                tag: "#text",
+                value: " x2=" + doubled.toString(),
+                children: [],
+                attrs: [],
+            ),
+        ],
+        attrs: [],
+    );
 }

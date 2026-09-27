@@ -145,28 +145,28 @@ pub type RequestData(
 // carries. No JSON, no record serialization, nothing that has to agree between
 // an Erlang term and a JS object.
 
-#[@External.Node("./server_runtime.mjs", "method"),
-  @External.Erlang("jhonstart_server", "method")]
+#[@External.Node("./server_runtime.mjs", "method")]
+#[@External.Erlang("jhonstart_server", "method")]
 declare fn __jhReqMethod() -> string;
 
-#[@External.Node("./server_runtime.mjs", "path"),
-  @External.Erlang("jhonstart_server", "path")]
+#[@External.Node("./server_runtime.mjs", "path")]
+#[@External.Erlang("jhonstart_server", "path")]
 declare fn __jhReqPath() -> string;
 
-#[@External.Node("./server_runtime.mjs", "params"),
-  @External.Erlang("jhonstart_server", "params")]
+#[@External.Node("./server_runtime.mjs", "params")]
+#[@External.Erlang("jhonstart_server", "params")]
 declare fn __jhReqParams() -> string;
 
-#[@External.Node("./server_runtime.mjs", "query"),
-  @External.Erlang("jhonstart_server", "query")]
+#[@External.Node("./server_runtime.mjs", "query")]
+#[@External.Erlang("jhonstart_server", "query")]
 declare fn __jhReqQuery() -> string;
 
-#[@External.Node("./server_runtime.mjs", "headers"),
-  @External.Erlang("jhonstart_server", "headers")]
+#[@External.Node("./server_runtime.mjs", "headers")]
+#[@External.Erlang("jhonstart_server", "headers")]
 declare fn __jhReqHeaders() -> string;
 
-#[@External.Node("./server_runtime.mjs", "cookies"),
-  @External.Erlang("jhonstart_server", "cookies")]
+#[@External.Node("./server_runtime.mjs", "cookies")]
+#[@External.Erlang("jhonstart_server", "cookies")]
 declare fn __jhReqCookies() -> string;
 
 // The writer pair, and the seam front 30's render calls once per render with
@@ -186,8 +186,8 @@ declare fn __jhReqCookies() -> string;
 // The `-> i32` is the ecosystem's shape for a host cell whose value is not used
 // (`router.bp`'s `__jhRouteFill`, `rakun/src/runtime.bp`'s `rkScan`). It is not
 // a status code and callers ignore it.
-#[@External.Node("./server_runtime.mjs", "enter"),
-  @External.Erlang("jhonstart_server", "enter")]
+#[@External.Node("./server_runtime.mjs", "enter")]
+#[@External.Erlang("jhonstart_server", "enter")]
 declare fn __jhReqEnter(
     method: string,
     path: string,
@@ -197,13 +197,13 @@ declare fn __jhReqEnter(
     cookies: string,
 ) -> i32;
 
-#[@External.Node("./server_runtime.mjs", "leave"),
-  @External.Erlang("jhonstart_server", "leave")]
+#[@External.Node("./server_runtime.mjs", "leave")]
+#[@External.Erlang("jhonstart_server", "leave")]
 declare fn __jhReqLeave() -> i32;
 
 // `1` between an `enterRequest` and its `leaveRequest`, `0` otherwise.
-#[@External.Node("./server_runtime.mjs", "entered"),
-  @External.Erlang("jhonstart_server", "entered")]
+#[@External.Node("./server_runtime.mjs", "entered")]
+#[@External.Erlang("jhonstart_server", "entered")]
 declare fn __jhReqEntered() -> i32;
 
 // Enter the request for the render that follows: the four pair lists go in
@@ -227,7 +227,9 @@ pub fn leaveRequest() -> i32 {
 }
 
 fn requireEntered(reader: string) -> i32 {
-    assert __jhReqEntered() == 1, "jhonstart: " + reader + " read outside a render — the request is entered by the render (enterRequest) and left when it ends";
+    assert __jhReqEntered() == 1, "jhonstart: "
+        + reader
+        + " read outside a render — the request is entered by the render (enterRequest) and left when it ends";
     return 1;
 }
 
@@ -303,7 +305,9 @@ pub fn headers() -> Array<#(string, string)> {
 // fails `variable 'Page' is unbound` on erlang — a compiler defect measured
 // against `2e6bb4ac` and reported, not worked around. It is the same rule
 // rakun's front 23 records for the fields of its `ElementView`.
-pub fn renderServerComponent(component: fn() -> @Task<Element>) -> @Task<string> {
+pub fn renderServerComponent(
+    component: fn() -> @Task<Element>,
+) -> @Task<string> {
     val tree = await component();
     return renderToString(tree);
 }
@@ -313,7 +317,9 @@ pub fn renderServerComponent(component: fn() -> @Task<Element>) -> @Task<string>
 // `@Component` return grants `use`, and `@Component` extends `@Task`, so the same
 // body may `await` too). Its thunk is rendered here, as `renderServerComponent`
 // renders a `@Task` one.
-pub fn renderComponent(component: fn() -> @Component<ElementBase, Element>) -> @Task<string> {
+pub fn renderComponent(
+    component: fn() -> @Component<ElementBase, Element>,
+) -> @Task<string> {
     val tree = await component();
     return renderToString(tree);
 }

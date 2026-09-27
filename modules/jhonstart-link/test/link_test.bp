@@ -21,24 +21,7 @@
 //
 // Nor is the transition driver here; see `reconcile_test.bp`.
 
-import {
-    LinkProps,
-    linkProps,
-    withPrefetch,
-    withReplace,
-    withScroll,
-    withTarget,
-    withClass,
-    Link,
-    prefetchMode,
-    layoutKey,
-    LinkStatus,
-    linkStatusOf,
-    linkStatus,
-    linkMount,
-    linkPrefetch,
-    linkRouteKind,
-} from "link";
+import {LinkProps, linkProps, withPrefetch, withReplace, withScroll, withTarget, withClass, Link, prefetchMode, layoutKey, LinkStatus, linkStatusOf, linkStatus, linkMount, linkPrefetch, linkRouteKind} from "link";
 import {Element, text, span, renderToString} from "jhonstart";
 
 // ── step 1: the props and their five copy helpers ───────────────────────────
@@ -88,7 +71,10 @@ test "link: withReplace, withScroll, withTarget and withClass do the same" {
 }
 
 test "link: the helpers compose, each keeping what the previous one set" {
-    val p = withClass(withTarget(withPrefetch(linkProps("/y"), false), "_blank"), "nav");
+    val p = withClass(
+        withTarget(withPrefetch(linkProps("/y"), false), "_blank"),
+        "nav",
+    );
     assert p.href == "/y";
     assert p.prefetch == false;
     assert p.target == "_blank";
@@ -105,36 +91,52 @@ test "link: the common anchor is href plus the marker, in that order" {
 }
 
 test "link: prefetch false adds data-jh-prefetch=\"0\" and nothing else" {
-    val el = Link(withPrefetch(linkProps("/blog"), false), [text("Blog", attrs: [])]);
+    val el = Link(
+        withPrefetch(linkProps("/blog"), false),
+        [text("Blog", attrs: [])],
+    );
     assert el.attrs.length == 3;
     val html = renderToString(el);
     assert html.contains("data-jh-prefetch=\"0\"");
     assert html.contains("data-jh-replace") == false;
     assert html.contains("data-jh-scroll") == false;
-    assert html == "<a href=\"/blog\" data-jh-l=\"1\" data-jh-prefetch=\"0\">Blog</a>";
+    assert html
+        == "<a href=\"/blog\" data-jh-l=\"1\" data-jh-prefetch=\"0\">Blog</a>";
 }
 
 test "link: replace true adds data-jh-replace=\"1\"" {
-    val el = Link(withReplace(linkProps("/blog"), true), [text("Blog", attrs: [])]);
+    val el = Link(
+        withReplace(linkProps("/blog"), true),
+        [text("Blog", attrs: [])],
+    );
     assert el.attrs.length == 3;
     assert renderToString(el).contains("data-jh-replace=\"1\"");
 }
 
 test "link: scroll false adds data-jh-scroll=\"0\"" {
-    val el = Link(withScroll(linkProps("/blog"), false), [text("Blog", attrs: [])]);
+    val el = Link(
+        withScroll(linkProps("/blog"), false),
+        [text("Blog", attrs: [])],
+    );
     assert el.attrs.length == 3;
     assert renderToString(el).contains("data-jh-scroll=\"0\"");
 }
 
 test "link: target emits a REAL target attribute, not a data- one" {
-    val el = Link(withTarget(linkProps("/ext"), "_blank"), [text("Ext", attrs: [])]);
+    val el = Link(
+        withTarget(linkProps("/ext"), "_blank"),
+        [text("Ext", attrs: [])],
+    );
     val html = renderToString(el);
     assert html.contains(" target=\"_blank\"");
     assert html.contains("data-jh-target") == false;
 }
 
 test "link: className emits a REAL class attribute" {
-    val el = Link(withClass(linkProps("/x"), "nav active"), [text("X", attrs: [])]);
+    val el = Link(
+        withClass(linkProps("/x"), "nav active"),
+        [text("X", attrs: [])],
+    );
     assert renderToString(el).contains(" class=\"nav active\"");
 }
 
@@ -142,29 +144,51 @@ test "link: a default-valued prop emits NO attribute" {
     // prefetch true, replace false, scroll true, no target, no class — the
     // whole point of the table: two hundred links do not carry five redundant
     // pairs each.
-    val el = Link(withScroll(withReplace(linkProps("/x"), false), true), [text("X", attrs: [])]);
+    val el = Link(
+        withScroll(withReplace(linkProps("/x"), false), true),
+        [text("X", attrs: [])],
+    );
     assert el.attrs.length == 2;
 }
 
 test "link: every overridden prop at once, in the table's order" {
-    val p = withClass(withTarget(withScroll(withReplace(withPrefetch(linkProps("/all"), false), true), false), "_blank"), "nav");
+    val p = withClass(
+        withTarget(
+            withScroll(
+                withReplace(withPrefetch(linkProps("/all"), false), true),
+                false,
+            ),
+            "_blank",
+        ),
+        "nav",
+    );
     assert renderToString(Link(p, [text("All", attrs: [])]))
         == "<a href=\"/all\" data-jh-l=\"1\" data-jh-prefetch=\"0\" data-jh-replace=\"1\" data-jh-scroll=\"0\" target=\"_blank\" class=\"nav\">All</a>";
 }
 
 test "link: children are an arbitrary tree, not only text" {
-    val el = Link(linkProps("/p"), [span([text("a", attrs: [])], attrs: []), text("b", attrs: [])]);
-    assert renderToString(el) == "<a href=\"/p\" data-jh-l=\"1\"><span>a</span>b</a>";
+    val el = Link(
+        linkProps("/p"),
+        [span([text("a", attrs: [])], attrs: []), text("b", attrs: [])],
+    );
+    assert renderToString(el)
+        == "<a href=\"/p\" data-jh-l=\"1\"><span>a</span>b</a>";
 }
 
 // A nav bar is what the front is for, and it is the shape a consumer writes.
 // `Link` reaches no host cell, so this component renders in a test with no
 // host present — which is also why it renders during the server pass.
 fn NavBar() -> Element {
-    return span([
+    return span(
+        [
             Link(linkProps("/"), [text("Home", attrs: [])]),
-            Link(withPrefetch(linkProps("/blog"), false), [text("Blog", attrs: [])]),
-        ], attrs: []);
+            Link(
+                withPrefetch(linkProps("/blog"), false),
+                [text("Blog", attrs: [])],
+            ),
+        ],
+        attrs: [],
+    );
 }
 
 test "link: a component built out of Links renders the server pass" {

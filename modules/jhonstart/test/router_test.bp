@@ -9,30 +9,7 @@
 // assertion below RUNS there; the commonJS row runs the same assertions
 // against the `.mjs` half of the same cells.
 
-import {
-    RouterState,
-    pairValue,
-    patternSegments,
-    segmentAt,
-    navigationFor,
-    applySignal,
-    resolveRoute,
-    fill,
-    snapshot,
-    router,
-    pathname,
-    params,
-    searchParams,
-    selectedLayoutSegment,
-    selectedLayoutSegments,
-    push,
-    replace,
-    back,
-    forward,
-    refresh,
-    prefetch,
-    lastNavigation,
-} from "router";
+import {RouterState, pairValue, patternSegments, segmentAt, navigationFor, applySignal, resolveRoute, fill, snapshot, router, pathname, params, searchParams, selectedLayoutSegment, selectedLayoutSegments, push, replace, back, forward, refresh, prefetch, lastNavigation} from "router";
 import {Element, ElementBase, div, span, text, renderToString} from "element";
 import {encoding} from "std";
 import {refresh.refreshValue} from "actions";
@@ -244,11 +221,14 @@ fn ActiveNav() -> @Component<ElementBase, Element> {
     val here = use pathname();
     val seg = use selectedLayoutSegment();
     val ps = use params();
-    return div([
+    return div(
+        [
             span([text(here, attrs: [])], attrs: []),
             span([text(seg, attrs: [])], attrs: [#("class", "active")]),
             span([text(pairValue(ps, "slug"), attrs: [])], attrs: []),
-        ], attrs: []);
+        ],
+        attrs: [],
+    );
 }
 
 test "router: a component activating the hooks renders the server pass" {
@@ -256,7 +236,8 @@ test "router: a component activating the hooks renders the server pass" {
     val e = await ActiveNav();
     assert e.tag == "div";
     assert e.children.length == 3;
-    assert renderToString(e) == "<div><span>/blog/hi</span><span class=\"active\">blog</span><span>hi</span></div>";
+    assert renderToString(e)
+        == "<div><span>/blog/hi</span><span class=\"active\">blog</span><span>hi</span></div>";
 }
 
 // ── step 4: the navigation verbs ────────────────────────────────────────────

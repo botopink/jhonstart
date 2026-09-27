@@ -55,64 +55,66 @@ import {PageContext, LayoutProps, UiSegment, segment} from "routes";
 
 // ── the per-render state (render.mjs / sidecars/jhonstart_render.erl) ───────
 
-#[@External.Node("./render.mjs", "stateReset"),
-  @External.Erlang("jhonstart_render", "state_reset")]
+#[@External.Node("./render.mjs", "stateReset")]
+#[@External.Erlang("jhonstart_render", "state_reset")]
 pub declare fn __jhStateReset() -> i32;
 
-#[@External.Node("./render.mjs", "takeBoundaries"),
-  @External.Erlang("jhonstart_render", "take_boundaries")]
+#[@External.Node("./render.mjs", "takeBoundaries")]
+#[@External.Erlang("jhonstart_render", "take_boundaries")]
 pub declare fn __jhTakeBoundaries() -> Array<Boundary>;
 
-#[@External.Node("./render.mjs", "nextIslandOrdinal"),
-  @External.Erlang("jhonstart_render", "next_island_ordinal")]
+#[@External.Node("./render.mjs", "nextIslandOrdinal")]
+#[@External.Erlang("jhonstart_render", "next_island_ordinal")]
 declare fn __jhNextIslandOrdinal() -> i32;
 
-#[@External.Node("./render.mjs", "pushIsland"),
-  @External.Erlang("jhonstart_render", "push_island")]
+#[@External.Node("./render.mjs", "pushIsland")]
+#[@External.Erlang("jhonstart_render", "push_island")]
 declare fn __jhPushIsland(row: #(string, string, string)) -> i32;
 
-#[@External.Node("./render.mjs", "islands"),
-  @External.Erlang("jhonstart_render", "islands")]
+#[@External.Node("./render.mjs", "islands")]
+#[@External.Erlang("jhonstart_render", "islands")]
 pub declare fn __jhIslands() -> Array<#(string, string, string)>;
 
-#[@External.Node("./render.mjs", "setIslandBase"),
-  @External.Erlang("jhonstart_render", "set_island_base")]
+#[@External.Node("./render.mjs", "setIslandBase")]
+#[@External.Erlang("jhonstart_render", "set_island_base")]
 pub declare fn __jhSetIslandBase(n: i32) -> i32;
 
-#[@External.Node("./render.mjs", "stashNotFound"),
-  @External.Erlang("jhonstart_render", "stash_not_found")]
+#[@External.Node("./render.mjs", "stashNotFound")]
+#[@External.Erlang("jhonstart_render", "stash_not_found")]
 declare fn __jhStashNotFound(e: Element) -> i32;
 
-#[@External.Node("./render.mjs", "stashedNotFound"),
-  @External.Erlang("jhonstart_render", "stashed_not_found")]
+#[@External.Node("./render.mjs", "stashedNotFound")]
+#[@External.Erlang("jhonstart_render", "stashed_not_found")]
 pub declare fn __jhStashedNotFound(fallback: Element) -> Element;
 
-#[@External.Node("./render.mjs", "nextNav"),
-  @External.Erlang("jhonstart_render", "next_nav")]
+#[@External.Node("./render.mjs", "nextNav")]
+#[@External.Erlang("jhonstart_render", "next_nav")]
 declare fn __jhNextNav() -> i32;
 
-#[@External.Node("./render.mjs", "setHooks"),
-  @External.Erlang("jhonstart_render", "set_hooks")]
+#[@External.Node("./render.mjs", "setHooks")]
+#[@External.Erlang("jhonstart_render", "set_hooks")]
 declare fn __jhSetHooks(h: RenderHooks) -> void;
 
-#[@External.Node("./render.mjs", "hooks"),
-  @External.Erlang("jhonstart_render", "hooks")]
+#[@External.Node("./render.mjs", "hooks")]
+#[@External.Erlang("jhonstart_render", "hooks")]
 declare fn __jhHooks(fallback: RenderHooks) -> RenderHooks;
 
-#[@External.Node("./signal_runtime.mjs", "tryTask"),
-  @External.Erlang("jhonstart_signal", "try_task")]
+#[@External.Node("./signal_runtime.mjs", "tryTask")]
+#[@External.Erlang("jhonstart_signal", "try_task")]
 pub declare fn __jhTryTask<T>(f: fn() -> @Task<T>) -> @Task<@Result<T, string>>;
 
-#[@External.Node("./signal_runtime.mjs", "tryTask"),
-  @External.Erlang("jhonstart_signal", "try_task")]
-pub declare fn __jhTryComponent(f: fn() -> @Component<ElementBase, Element>) -> @Task<@Result<Element, string>>;
+#[@External.Node("./signal_runtime.mjs", "tryTask")]
+#[@External.Erlang("jhonstart_signal", "try_task")]
+pub declare fn __jhTryComponent(
+    f: fn() -> @Component<ElementBase, Element>,
+) -> @Task<@Result<Element, string>>;
 
-#[@External.Node("./signal_runtime.mjs", "tryValue"),
-  @External.Erlang("jhonstart_signal", "try_value")]
+#[@External.Node("./signal_runtime.mjs", "tryValue")]
+#[@External.Erlang("jhonstart_signal", "try_value")]
 pub declare fn __jhTryValue<T>(f: fn() -> T) -> @Result<T, string>;
 
-#[@External.Node("./signal_runtime.mjs", "raise"),
-  @External.Erlang("jhonstart_signal", "raise")]
+#[@External.Node("./signal_runtime.mjs", "raise")]
+#[@External.Erlang("jhonstart_signal", "raise")]
 declare fn __jhRaiseElement(reason: string) -> Element;
 
 // The per-render state reached from OUTSIDE this directory goes through these
@@ -139,7 +141,9 @@ pub fn attemptTask<T>(f: fn() -> @Task<T>) -> @Task<@Result<T, string>> {
 // A component thunk's outcome — `Error(reason)` for a raise. Called from other
 // modules instead of the cell: on the commonJS row the cell's rejection is
 // turned into `{ error }` only at a call site in THIS module.
-pub fn componentOutcome(f: fn() -> @Component<ElementBase, Element>) -> @Task<@Result<Element, string>> {
+pub fn componentOutcome(
+    f: fn() -> @Component<ElementBase, Element>,
+) -> @Task<@Result<Element, string>> {
     val out = await __jhTryComponent(f);
     return try out;
 }
@@ -157,7 +161,8 @@ pub fn renderNode(e: Element) -> string {
     if (e.tag == "#fragment") return renderChildren(e.children);
     val open = "<" + e.tag + renderAttrs(e.attrs) + ">";
     if (isVoidTag(e.tag)) return open;
-    if (isRawTextTag(e.tag)) return open + rawBody(e.tag, e.children) + "</" + e.tag + ">";
+    if (isRawTextTag(e.tag))
+        return open + rawBody(e.tag, e.children) + "</" + e.tag + ">";
     return open + renderChildren(e.children) + "</" + e.tag + ">";
 }
 
@@ -165,7 +170,7 @@ fn renderChildren(children: Children) -> string {
     var out = "";
     for (children) { c ->
         out = out + renderNode(c);
-    };
+    }
     return out;
 }
 
@@ -173,7 +178,7 @@ fn renderAttrs(attrs: Array<#(string, string)>) -> string {
     var out = "";
     for (attrs) { a ->
         out = out + " " + a._0 + "=\"" + escape.attribute(a._1) + "\"";
-    };
+    }
     return out;
 }
 
@@ -184,9 +189,13 @@ fn rawBody(tag: string, children: Children) -> string {
     var out = "";
     for (children) { c ->
         out = out + c.value;
-    };
+    }
     val closer = "</" + tag;
-    assert out.toLower().contains(closer) == false, "render: a <" + tag + "> body contains `" + closer + "`, which would close the element early - refused, never escaped";
+    assert out.toLower().contains(closer) == false, "render: a <"
+        + tag
+        + "> body contains `"
+        + closer
+        + "`, which would close the element early - refused, never escaped";
     return out;
 }
 
@@ -206,9 +215,17 @@ pub fn shellHtml(page: Element) -> string {
 
 // An island in render order: the next ordinal, the placeholder front 29's
 // `clientMount` builds, and the payload `i` row recorded for this render.
-pub fn mountIsland(component: string, props: Array<#(string, string)>, children: Children) -> Element {
+pub fn mountIsland(
+    component: string,
+    props: Array<#(string, string)>,
+    children: Children,
+) -> Element {
     val ordinal = __jhNextIslandOrdinal();
-    val island = Island(id: islandId(ordinal), component: component, props: props);
+    val island = Island(
+        id: islandId(ordinal),
+        component: component,
+        props: props,
+    );
     __jhPushIsland(islandEntry(island));
     return clientMount(island, children);
 }
@@ -228,7 +245,10 @@ fn noExtra(route: string) -> string {
 }
 
 pub fn defaultHooks() -> RenderHooks {
-    return RenderHooks(headExtra: { route -> noExtra(route) }, bodyExtra: { route -> noExtra(route) });
+    return RenderHooks(
+        headExtra: { route -> noExtra(route) },
+        bodyExtra: { route -> noExtra(route) },
+    );
 }
 
 // Stored once, at boot, for every render that follows (a process-independent
@@ -253,8 +273,13 @@ pub fn substitute(tree: Element, inner: Element) -> Element {
     var kids: Array<Element> = [];
     for (tree.children) { c ->
         kids.push(substitute(c, inner));
-    };
-    return Element(tag: tree.tag, value: tree.value, children: kids, attrs: tree.attrs);
+    }
+    return Element(
+        tag: tree.tag,
+        value: tree.value,
+        children: kids,
+        attrs: tree.attrs,
+    );
 }
 
 fn segmentOf(chain: Array<UiSegment>, i: i32) -> UiSegment {
@@ -263,7 +288,7 @@ fn segmentOf(chain: Array<UiSegment>, i: i32) -> UiSegment {
     for (chain) { s ->
         if (n == i) found = s;
         n = n + 1;
-    };
+    }
     return found;
 }
 
@@ -275,10 +300,20 @@ fn propsFor(route: PageContext) -> LayoutProps {
 // The query is the snapshot's own — the render filled it at depth 0 — since
 // `PageContext` carries none.
 fn enterDepth(route: PageContext, depth: i32) -> i32 {
-    return fill(route.pathname, encoding.formStringify(route.params), encoding.formStringify(snapshot().search), route.pattern, depth);
+    return fill(
+        route.pathname,
+        encoding.formStringify(route.params),
+        encoding.formStringify(snapshot().search),
+        route.pattern,
+        depth,
+    );
 }
 
-fn layoutOf(seg: UiSegment, route: PageContext, depth: i32) -> @Component<ElementBase, Element> {
+fn layoutOf(
+    seg: UiSegment,
+    route: PageContext,
+    depth: i32,
+) -> @Component<ElementBase, Element> {
     enterDepth(route, depth);
     if (seg.hasLayout == false) return childrenMarker();
     val view = seg.layoutView;
@@ -286,25 +321,42 @@ fn layoutOf(seg: UiSegment, route: PageContext, depth: i32) -> @Component<Elemen
     return tree;
 }
 
-fn templateOf(seg: UiSegment, route: PageContext) -> @Component<ElementBase, Element> {
+fn templateOf(
+    seg: UiSegment,
+    route: PageContext,
+) -> @Component<ElementBase, Element> {
     if (seg.hasTemplate == false) return childrenMarker();
     val view = seg.templateView;
     val tree = await view(propsFor(route));
     val key = seg.pattern + "#" + __jhNextNav().toString();
-    return Element(tag: "div", value: "", children: [tree], attrs: [#("data-jh-t", key)]);
+    return Element(
+        tag: "div",
+        value: "",
+        children: [tree],
+        attrs: [#("data-jh-t", key)],
+    );
 }
 
 // The page, composed through `chain`: root-first, layouts before the page.
-pub fn compose(chain: Array<UiSegment>, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+pub fn compose(
+    chain: Array<UiSegment>,
+    route: PageContext,
+    page: fn() -> @Component<ElementBase, Element>,
+) -> @Component<ElementBase, Element> {
     val tree = await composeAt(chain, 0, route, page);
     return tree;
 }
 
-fn composeAt(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn composeAt(
+    chain: Array<UiSegment>,
+    i: i32,
+    route: PageContext,
+    page: fn() -> @Component<ElementBase, Element>,
+) -> @Component<ElementBase, Element> {
     if (i >= chain.length) {
         val leaf = await page();
         return leaf;
-    };
+    }
     val seg = segmentOf(chain, i);
     val shell = await layoutOf(seg, route, i);
     val tmpl = await templateOf(seg, route);
@@ -317,29 +369,43 @@ fn errorId(seg: UiSegment) -> string {
 }
 
 // `error > loading > not-found > (the rest)` for segment `i`.
-fn errorLevel(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn errorLevel(
+    chain: Array<UiSegment>,
+    i: i32,
+    route: PageContext,
+    page: fn() -> @Component<ElementBase, Element>,
+) -> @Component<ElementBase, Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasLoading) {
         val loading = seg.loadingView;
         val hole = holeId(nextHoleOrdinal());
         val child: fn() -> @Component<ElementBase, Element> = { -> caughtBelow(chain, i, route, page) };
-        val placeholder = Suspense(Boundary(id: hole, fallback: loading(), child: child));
+        val placeholder = Suspense(
+            Boundary(id: hole, fallback: loading(), child: child),
+        );
         if (seg.hasError) return wrap(errorId(seg), placeholder);
         return placeholder;
-    };
+    }
     val tree = await caughtBelow(chain, i, route, page);
     return tree;
 }
 
 // The error boundary of segment `i` around its not-found level. A signal is
 // re-raised; an ordinary failure renders the segment's error view.
-fn caughtBelow(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn caughtBelow(
+    chain: Array<UiSegment>,
+    i: i32,
+    route: PageContext,
+    page: fn() -> @Component<ElementBase, Element>,
+) -> @Component<ElementBase, Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasError == false) {
         val plain = await notFoundLevel(chain, i, route, page);
         return plain;
-    };
-    val outcome = await __jhTryComponent({ -> notFoundLevel(chain, i, route, page) });
+    }
+    val outcome = await __jhTryComponent(
+        { -> notFoundLevel(chain, i, route, page) },
+    );
     val failure = case outcome {
         Ok(tree) -> "";
         Error(message) -> message;
@@ -359,13 +425,20 @@ fn errorTree(seg: UiSegment, outcome: @Result<Element, string>) -> Element {
 
 // The not-found level: `data-jh-n` around the rest, and the nearest not-found
 // tree for a not-found signal raised below it.
-fn notFoundLevel(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn notFoundLevel(
+    chain: Array<UiSegment>,
+    i: i32,
+    route: PageContext,
+    page: fn() -> @Component<ElementBase, Element>,
+) -> @Component<ElementBase, Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasNotFound == false) {
         val plain = await composeAt(chain, i + 1, route, page);
         return plain;
-    };
-    val outcome = await __jhTryComponent({ -> composeAt(chain, i + 1, route, page) });
+    }
+    val outcome = await __jhTryComponent(
+        { -> composeAt(chain, i + 1, route, page) },
+    );
     val failure = case outcome {
         Ok(tree) -> "";
         Error(message) -> message;
@@ -373,7 +446,7 @@ fn notFoundLevel(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn()
     if (failure == notFoundReason()) {
         val view = seg.notFoundView;
         __jhStashNotFound(notFoundAnchor(seg.pattern, view()));
-    };
+    }
     if (failure != "") return __jhRaiseElement(failure);
     val tree = case outcome {
         Ok(t) -> t;
@@ -384,11 +457,16 @@ fn notFoundLevel(chain: Array<UiSegment>, i: i32, route: PageContext, page: fn()
 
 // The not-found anchor: the client swaps a late not-found into the nearest one.
 pub fn notFoundAnchor(pattern: string, tree: Element) -> Element {
-    return Element(tag: "div", value: "", children: [tree], attrs: [#("data-jh-n", pattern)]);
+    return Element(
+        tag: "div",
+        value: "",
+        children: [tree],
+        attrs: [#("data-jh-n", pattern)],
+    );
 }
 
-#[@External.Node("./render.mjs", "nextHoleOrdinal"),
-  @External.Erlang("jhonstart_render", "next_hole_ordinal")]
+#[@External.Node("./render.mjs", "nextHoleOrdinal")]
+#[@External.Erlang("jhonstart_render", "next_hole_ordinal")]
 declare fn __jhNextHoleOrdinal() -> i32;
 
 // The next hole ordinal of this render: `h1`, `h2`, … in shell order.
@@ -418,8 +496,12 @@ pub fn renderKeys() -> string[] {
 }
 
 pub fn writePayload(p: Payload) -> string {
-    val islandRows = p.islands.map({ row -> json.array([json.quote(row._0), json.quote(row._1), json.quote(row._2)]) });
-    val actionRows = p.actions.map({ row -> json.array([json.quote(row._0), json.quote(row._1)]) });
+    val islandRows = p.islands.map(
+        { row -> json.array([json.quote(row._0), json.quote(row._1), json.quote(row._2)]) },
+    );
+    val actionRows = p.actions.map(
+        { row -> json.array([json.quote(row._0), json.quote(row._1)]) },
+    );
     val holeRows = p.holes.map({ h -> json.quote(h) });
     var fields: Array<#(string, string)> = [
         #("v", "1"),
@@ -436,13 +518,17 @@ pub fn writePayload(p: Payload) -> string {
     ];
     for (p.extras) { extra ->
         fields.push(extra);
-    };
+    }
     return escape.scriptJson(json.object(fields));
 }
 
 // The payload script: `<script>window.<globals.payload> = {…}</script>`.
 pub fn payloadScript(p: Payload) -> string {
-    return "<script>window." + globals.payload + " = " + writePayload(p) + "</script>";
+    return "<script>window."
+        + globals.payload
+        + " = "
+        + writePayload(p)
+        + "</script>";
 }
 
 // ── the document ────────────────────────────────────────────────────────────
@@ -462,10 +548,21 @@ pub fn isLangTag(tag: string) -> bool {
 // Everything up to and including the root's opening tag: the doctype, the
 // `<html lang>` the app was built with, the head (front 32's tags, the
 // plugins' `head`, `RenderHooks.headExtra`), and `<div data-jh-root="">`.
-pub fn documentStart(lang: string, head: string, pluginHead: string, route: string) -> string {
+pub fn documentStart(
+    lang: string,
+    head: string,
+    pluginHead: string,
+    route: string,
+) -> string {
     val hooks = currentHooks();
     val headExtra = hooks.headExtra;
-    return "<!DOCTYPE html><html lang=\"" + escape.attribute(lang) + "\"><head><meta charset=\"utf-8\">" + head + pluginHead + headExtra(route) + "</head><body><div data-jh-root=\"\">";
+    return "<!DOCTYPE html><html lang=\""
+        + escape.attribute(lang)
+        + "\"><head><meta charset=\"utf-8\">"
+        + head
+        + pluginHead
+        + headExtra(route)
+        + "</head><body><div data-jh-root=\"\">";
 }
 
 // Everything after the fills: the payload script, `RenderHooks.bodyExtra`, and
@@ -478,6 +575,17 @@ pub fn documentEnd(p: Payload, route: string) -> string {
 
 // A whole document in one string: `documentStart`, the composed tree, the
 // root's close, `fills`, `documentEnd`.
-pub fn document(lang: string, head: string, pluginHead: string, body: string, fills: string, p: Payload) -> string {
-    return documentStart(lang, head, pluginHead, p.pattern) + body + "</div>" + fills + documentEnd(p, p.pattern);
+pub fn document(
+    lang: string,
+    head: string,
+    pluginHead: string,
+    body: string,
+    fills: string,
+    p: Payload,
+) -> string {
+    return documentStart(lang, head, pluginHead, p.pattern)
+        + body
+        + "</div>"
+        + fills
+        + documentEnd(p, p.pattern);
 }

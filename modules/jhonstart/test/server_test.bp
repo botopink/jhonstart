@@ -44,16 +44,7 @@
 // `2e6bb4ac`, reported, and not worked around anywhere in `server.bp`. Every
 // call below spells `{ -> Page(…) }`.
 
-import {
-    RequestData,
-    request,
-    cookies,
-    headers,
-    enterRequest,
-    leaveRequest,
-    renderServerComponent,
-    renderComponent,
-} from "server";
+import {RequestData, request, cookies, headers, enterRequest, leaveRequest, renderServerComponent, renderComponent} from "server";
 import {fill, pathname} from "router";
 import {Element, ElementBase, div, p, h1, ul, li, text, renderToString} from "element";
 import {article} from "elements";
@@ -186,16 +177,17 @@ fn encoded(
     );
 }
 
-
 test "server: the six cells round-trip into the record of step 1" {
-    enterRequest(encoded(
-        "POST",
-        "/blog/hi",
-        "slug=hi",
-        "sort=desc&page=2",
-        "accept=text/html",
-        "sid=42&theme=dark",
-    ));
+    enterRequest(
+        encoded(
+            "POST",
+            "/blog/hi",
+            "slug=hi",
+            "sort=desc&page=2",
+            "accept=text/html",
+            "sid=42&theme=dark",
+        ),
+    );
     val r = await request();
     assert r.method == "POST";
     assert r.path == "/blog/hi";
@@ -239,7 +231,9 @@ test "server: an enter replaces the whole request" {
 // page that wants only the cookies does not pay for the other four decodes —
 // and cannot disagree with `request().cookie(n)` about what it finds.
 test "server: cookies() and headers() answer the same lists the record carries" {
-    enterRequest(encoded("GET", "/x", "", "", "accept=text/html&x=1", "sid=42"));
+    enterRequest(
+        encoded("GET", "/x", "", "", "accept=text/html&x=1", "sid=42"),
+    );
     assert cookies().length == 1;
     assert headers().length == 2;
     val r = await request();
@@ -294,7 +288,9 @@ fn PostTitlePage(params: Array<#(string, string)>) -> @Task<Element> {
 }
 
 test "server: a @Task component awaits a loader and renders" {
-    val out = await renderServerComponent({ -> PostTitlePage([#("slug", "hi")]) });
+    val out = await renderServerComponent(
+        { -> PostTitlePage([#("slug", "hi")]) },
+    );
     assert out == "<div><h1>Post hi</h1></div>";
 }
 
@@ -317,18 +313,24 @@ fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
     );
     val post = await loadPost(r.param("slug"));
     val comments = await loadComments(post.id);
-    return article([
+    return article(
+        [
             h1([text(post.title, attrs: [])], attrs: []),
-            ul(comments.map({ c ->
-                commentRow(c);
-            }), attrs: []),
-        ], attrs: []);
+            ul(
+                comments.map({ c ->
+                    commentRow(c);
+                }),
+                attrs: [],
+            ),
+        ],
+        attrs: [],
+    );
 }
 
 test "server: two sequential awaits at statement level, then a sync render" {
     val out = await renderServerComponent({ -> PostPage([#("slug", "hi")]) });
-    assert out ==
-        "<article><h1>Post hi</h1><ul><li>ana: first on p-hi</li><li>bo: second on p-hi</li></ul></article>";
+    assert out
+        == "<article><h1>Post hi</h1><ul><li>ana: first on p-hi</li><li>bo: second on p-hi</li></ul></article>";
 }
 
 // `renderServerComponent` awaits EXACTLY once and renders synchronously
@@ -354,18 +356,30 @@ fn justTree(e: Element) -> @Task<Element> {
 fn GreetingPage() -> @Task<Element> {
     val r = await request();
     val post = await loadPost(r.param("slug"));
-    return div([
+    return div(
+        [
             h1([text("Hello, " + r.cookie("name"), attrs: [])], attrs: []),
             p([text(post.title, attrs: [])], attrs: []),
             p([text("via " + r.header("accept"), attrs: [])], attrs: []),
-        ], attrs: []);
+        ],
+        attrs: [],
+    );
 }
 
 test "server: a component reads the filled request and renders it" {
-    enterRequest(encoded("GET", "/blog/hi", "slug=hi", "", "accept=text/html", "name=ana"));
+    enterRequest(
+        encoded(
+            "GET",
+            "/blog/hi",
+            "slug=hi",
+            "",
+            "accept=text/html",
+            "name=ana",
+        ),
+    );
     val out = await renderServerComponent({ -> GreetingPage() });
-    assert out ==
-        "<div><h1>Hello, ana</h1><p>Post hi</p><p>via text/html</p></div>";
+    assert out
+        == "<div><h1>Hello, ana</h1><p>Post hi</p><p>via text/html</p></div>";
 }
 
 // The SAME page rendered from an explicit `RequestData` — no host, no fill.
@@ -374,11 +388,14 @@ test "server: a component reads the filled request and renders it" {
 // against the record is testable, and one written against the cells is not.
 fn GreetingFor(r: RequestData) -> @Task<Element> {
     val post = await loadPost(r.param("slug"));
-    return div([
+    return div(
+        [
             h1([text("Hello, " + r.cookie("name"), attrs: [])], attrs: []),
             p([text(post.title, attrs: [])], attrs: []),
             p([text("via " + r.header("accept"), attrs: [])], attrs: []),
-        ], attrs: []);
+        ],
+        attrs: [],
+    );
 }
 
 test "server: the same page renders from an explicit request, with no host" {
@@ -391,8 +408,8 @@ test "server: the same page renders from an explicit request, with no host" {
         cookies: [#("name", "ana")],
     );
     val out = await renderServerComponent({ -> GreetingFor(r) });
-    assert out ==
-        "<div><h1>Hello, ana</h1><p>Post hi</p><p>via text/html</p></div>";
+    assert out
+        == "<div><h1>Hello, ana</h1><p>Post hi</p><p>via text/html</p></div>";
 }
 
 // ── decision 128: a server component that uses and awaits ───────────────────
@@ -403,10 +420,13 @@ test "server: the same page renders from an explicit request, with no host" {
 fn RoutedPage() -> @Component<ElementBase, Element> {
     val here = use pathname();
     val post = await loadPost("hi");
-    return div([
+    return div(
+        [
             h1([text(post.title, attrs: [])], attrs: []),
             p([text(here, attrs: [])], attrs: []),
-        ], attrs: []);
+        ],
+        attrs: [],
+    );
 }
 
 test "server: a @Component component activates a hook and awaits a loader" {
@@ -472,7 +492,9 @@ test "server: request() after enterRequest(req) reconstructs the six fields" {
 // reads back as a space — the stand-in decoder the package carried before
 // decision 116 answered `a%20b`.
 test "server: a percent-encoded query value reads back decoded" {
-    enterRequest(encoded("GET", "/search", "", "q=a%20b&n=1%2B1", "", "c=x%3Dy"));
+    enterRequest(
+        encoded("GET", "/search", "", "q=a%20b&n=1%2B1", "", "c=x%3Dy"),
+    );
     val r = await request();
     assert r.queryParam("q") == "a b";
     assert r.queryParam("n") == "1+1";

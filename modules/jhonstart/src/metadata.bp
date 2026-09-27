@@ -73,7 +73,14 @@ pub type Viewport(width: string, initialScale: string, themeColor: string)
 // ── step 1: the empty records ───────────────────────────────────────────────
 
 pub fn emptyOpenGraph() -> OpenGraph {
-    return OpenGraph(title: "", description: "", url: "", ogType: "", siteName: "", images: []);
+    return OpenGraph(
+        title: "",
+        description: "",
+        url: "",
+        ogType: "",
+        siteName: "",
+        images: [],
+    );
 }
 
 pub fn emptyTwitter() -> TwitterCard {
@@ -147,7 +154,10 @@ pub fn mergeTwitter(parent: TwitterCard, child: TwitterCard) -> TwitterCard {
 }
 
 pub fn mergeIcons(parent: Icons, child: Icons) -> Icons {
-    return Icons(icon: pick(parent.icon, child.icon), apple: pick(parent.apple, child.apple));
+    return Icons(
+        icon: pick(parent.icon, child.icon),
+        apple: pick(parent.apple, child.apple),
+    );
 }
 
 // The title is templated ONLY when the child sets one: a child with an empty
@@ -156,7 +166,10 @@ pub fn mergeIcons(parent: Icons, child: Icons) -> Icons {
 // CHILD's, so it applies to the next level down and never composes into
 // "Hello | Docs | botopink | botopink".
 pub fn mergeMetadata(parent: Metadata, child: Metadata) -> Metadata {
-    val title = if (child.title == "") parent.title else applyTemplate(parent.titleTemplate, child.title);
+    val title = if (child.title == "")
+        parent.title
+    else
+        applyTemplate(parent.titleTemplate, child.title);
     return Metadata(
         title: title,
         titleTemplate: child.titleTemplate,
@@ -179,12 +192,20 @@ pub fn mergeViewport(parent: Viewport, child: Viewport) -> Viewport {
 
 fn metaName(name: string, content: string) -> string {
     if (content == "") return "";
-    return "<meta name=\"" + name + "\" content=\"" + escape.attribute(content) + "\">";
+    return "<meta name=\""
+        + name
+        + "\" content=\""
+        + escape.attribute(content)
+        + "\">";
 }
 
 fn metaProperty(property: string, content: string) -> string {
     if (content == "") return "";
-    return "<meta property=\"" + property + "\" content=\"" + escape.attribute(content) + "\">";
+    return "<meta property=\""
+        + property
+        + "\" content=\""
+        + escape.attribute(content)
+        + "\">";
 }
 
 fn linkRel(rel: string, href: string) -> string {
@@ -198,7 +219,7 @@ fn titleTag(value: string) -> string {
 }
 
 fn joinTags(tags: string[]) -> string {
-    return tags.filter({ t -> t != ""; }).join("\n");
+    return tags.filter({ t -> t != "" }).join("\n");
 }
 
 // The fixed order: title, description, Open Graph (title, description, url,
@@ -216,13 +237,13 @@ pub fn renderHead(m: Metadata) -> string {
     ];
     for (m.openGraph.images) { image ->
         tags.push(metaProperty("og:image", image));
-    };
+    }
     tags.push(metaName("twitter:card", m.twitter.card));
     tags.push(metaName("twitter:title", m.twitter.title));
     tags.push(metaName("twitter:description", m.twitter.description));
     for (m.twitter.images) { image ->
         tags.push(metaName("twitter:image", image));
-    };
+    }
     tags.push(linkRel("icon", m.icons.icon));
     tags.push(linkRel("apple-touch-icon", m.icons.apple));
     return joinTags(tags);
@@ -236,6 +257,8 @@ pub fn renderViewport(v: Viewport) -> string {
     if (v.initialScale != "") {
         val scale = "initial-scale=" + v.initialScale;
         content = if (content == "") scale else content + ", " + scale;
-    };
-    return joinTags([metaName("viewport", content), metaName("theme-color", v.themeColor)]);
+    }
+    return joinTags(
+        [metaName("viewport", content), metaName("theme-color", v.themeColor)],
+    );
 }

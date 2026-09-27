@@ -9,17 +9,7 @@ import {main, h2} from "elements";
 import {cookies} from "server";
 import {notFound, redirect} from "error_boundary";
 import {lastNavigation} from "router";
-import {
-    page,
-    layout,
-    PageContext,
-    LayoutProps,
-    jhPage,
-    jhLayout,
-    jhNotFound,
-    ctxParam,
-    ctxRest,
-} from "routes";
+import {page, layout, PageContext, LayoutProps, jhPage, jhLayout, jhNotFound, ctxParam, ctxRest} from "routes";
 import {ClientApp, clientApp, setClientLocation, mountedHtml, replacedLocation} from "client_app";
 
 #[layout("ca")]
@@ -81,14 +71,16 @@ test "clientApp: start renders the matched route into mount, the layout before t
     setClientLocation("/ca/7", "");
     val out = await clientApp(table, "#root", []).start();
     assert outcomeText(out) == "ok";
-    assert mountedHtml("#root") == "<main class=\"ca\"><div data-jh-n=\"/ca\"><p>item 7</p></div></main>";
+    assert mountedHtml("#root")
+        == "<main class=\"ca\"><div data-jh-n=\"/ca\"><p>item 7</p></div></main>";
 }
 
 test "clientApp: notFound renders the route's not-found boundary and leaves the URL alone" {
     setClientLocation("/ca/missing", "");
     val out = await clientApp(table, "#root", []).start();
     assert outcomeText(out) == "ok";
-    assert mountedHtml("#root") == "<div data-jh-n=\"/ca\"><div><h2>no such item</h2></div></div>";
+    assert mountedHtml("#root")
+        == "<div data-jh-n=\"/ca\"><div><h2>no such item</h2></div></div>";
     assert replacedLocation() == "";
 }
 
@@ -111,7 +103,11 @@ test "clientApp: an unlisted target fails the start and navigates nowhere; a lis
     assert outcomeText(evil).contains("`https://evil.example` refused");
     assert replacedLocation() == "";
     setClientLocation("/ca/evil", "");
-    val listed = await clientApp(table, "#root", ["https://evil.example"]).start();
+    val listed = await clientApp(
+        table,
+        "#root",
+        ["https://evil.example"],
+    ).start();
     assert outcomeText(listed) == "ok";
     assert replacedLocation() == "https://evil.example";
 }

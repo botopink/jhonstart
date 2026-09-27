@@ -40,10 +40,7 @@ pub fn el(
 // the constructor was handed. The uniform two-parameter shape is kept on the
 // constructors themselves — a one-parameter `input(attrs:)` would be a second
 // convention and would break the DSL's call shape.
-pub fn voidEl(
-    tag: string,
-    attrs: Array<#(string, string)>,
-) -> Element {
+pub fn voidEl(tag: string, attrs: Array<#(string, string)>) -> Element {
     return Element(tag: tag, value: "", children: [], attrs: attrs);
 }
 
@@ -94,10 +91,7 @@ pub fn isRawTextTag(tag: string) -> bool {
 // from "jhonstart" in that same module; `el("main", kids, attrs: [])` is the
 // remedy.
 
-pub fn a(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn a(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("a", children, attrs);
 }
 
@@ -157,38 +151,23 @@ pub fn aside(
 // (std's clock is `io.clock` since decision 106), and a consumer importing it
 // in the same file would have collided.
 
-pub fn h2(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn h2(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("h2", children, attrs);
 }
 
-pub fn h3(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn h3(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("h3", children, attrs);
 }
 
-pub fn h4(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn h4(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("h4", children, attrs);
 }
 
-pub fn h5(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn h5(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("h5", children, attrs);
 }
 
-pub fn h6(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn h6(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("h6", children, attrs);
 }
 
@@ -268,24 +247,15 @@ pub fn tbody(
     return el("tbody", children, attrs);
 }
 
-pub fn tr(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn tr(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("tr", children, attrs);
 }
 
-pub fn th(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn th(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("th", children, attrs);
 }
 
-pub fn td(
-    children: Children,
-    attrs: Array<#(string, string)> = [],
-) -> Element {
+pub fn td(children: Children, attrs: Array<#(string, string)> = []) -> Element {
     return el("td", children, attrs);
 }
 
@@ -394,7 +364,8 @@ pub fn hr(
 }
 
 test "el builds a tag the named surface does not carry" {
-    assert renderToString(el("figure", [text("x", attrs: [])], attrs: [])) == "<figure>x</figure>";
+    assert renderToString(el("figure", [text("x", attrs: [])], attrs: []))
+        == "<figure>x</figure>";
 }
 
 test "voidEl stores no children" {
@@ -434,45 +405,87 @@ test "isRawTextTag is script and style — escapable raw text is not raw text" {
 }
 
 test "a constructor renders its tag, nested" {
-    val out = renderToString(section([h2([text("Posts", attrs: [])], attrs: [])], attrs: []));
+    val out = renderToString(
+        section([h2([text("Posts", attrs: [])], attrs: [])], attrs: []),
+    );
     assert out == "<section><h2>Posts</h2></section>";
 }
 
 test "a renamed constructor still renders the HTML tag" {
     assert htmlTag([], attrs: []).tag == "html";
     assert timeTag([text("now", attrs: [])], attrs: []).tag == "time";
-    assert renderToString(timeTag([text("now", attrs: [])], attrs: [])) == "<time>now</time>";
+    assert renderToString(timeTag([text("now", attrs: [])], attrs: []))
+        == "<time>now</time>";
 }
 
 test "attribute order is the array order" {
-    val out = renderToString(a([text("x", attrs: [])], attrs: [#("href", "/p"), #("rel", "next")]));
+    val out = renderToString(
+        a([text("x", attrs: [])], attrs: [#("href", "/p"), #("rel", "next")]),
+    );
     assert out == "<a href=\"/p\" rel=\"next\">x</a>";
 }
 
 test "an attribute value is stored verbatim — escaping belongs to the renderer" {
-    val out = renderToString(a([text("x", attrs: [])], attrs: [#("href", "/a&b")]));
+    val out = renderToString(
+        a([text("x", attrs: [])], attrs: [#("href", "/a&b")]),
+    );
     assert out == "<a href=\"/a&b\">x</a>";
 }
 
 test "the form surface builds the shape front 24 binds an action to" {
-    val f = form([
+    val f = form(
+        [
             label([text("Title", attrs: [])], attrs: [#("for", "title")]),
-            select([option([text("a", attrs: [])], attrs: [#("value", "a")])], attrs: [#("name", "kind")]),
+            select(
+                [option([text("a", attrs: [])], attrs: [#("value", "a")])],
+                attrs: [#("name", "kind")],
+            ),
             textarea([], attrs: [#("name", "body")]),
             button([text("Save", attrs: [])], attrs: [#("type", "submit")]),
-        ], attrs: [#("data-jh-a", "createPost")]);
-    assert renderToString(f) == "<form data-jh-a=\"createPost\"><label for=\"title\">Title</label><select name=\"kind\"><option value=\"a\">a</option></select><textarea name=\"body\"></textarea><button type=\"submit\">Save</button></form>";
+        ],
+        attrs: [#("data-jh-a", "createPost")],
+    );
+    assert renderToString(f)
+        == "<form data-jh-a=\"createPost\"><label for=\"title\">Title</label><select name=\"kind\"><option value=\"a\">a</option></select><textarea name=\"body\"></textarea><button type=\"submit\">Save</button></form>";
 }
 
 test "the document shell and the table surface build" {
-    val doc = htmlTag([
+    val doc = htmlTag(
+        [
             head([title([text("Home", attrs: [])], attrs: [])], attrs: []),
-            body([table([
-                        thead([tr([th([text("h", attrs: [])], attrs: [])], attrs: [])], attrs: []),
-                        tbody([tr([td([text("c", attrs: [])], attrs: [])], attrs: [])], attrs: []),
-                    ], attrs: [])], attrs: []),
-        ], attrs: [#("lang", "en")]);
-    assert renderToString(doc) == "<html lang=\"en\"><head><title>Home</title></head><body><table><thead><tr><th>h</th></tr></thead><tbody><tr><td>c</td></tr></tbody></table></body></html>";
+            body(
+                [
+                    table(
+                        [
+                            thead(
+                                [
+                                    tr(
+                                        [th([text("h", attrs: [])], attrs: [])],
+                                        attrs: [],
+                                    ),
+                                ],
+                                attrs: [],
+                            ),
+                            tbody(
+                                [
+                                    tr(
+                                        [td([text("c", attrs: [])], attrs: [])],
+                                        attrs: [],
+                                    ),
+                                ],
+                                attrs: [],
+                            ),
+                        ],
+                        attrs: [],
+                    ),
+                ],
+                attrs: [],
+            ),
+        ],
+        attrs: [#("lang", "en")],
+    );
+    assert renderToString(doc)
+        == "<html lang=\"en\"><head><title>Home</title></head><body><table><thead><tr><th>h</th></tr></thead><tbody><tr><td>c</td></tr></tbody></table></body></html>";
 }
 
 test "the sectioning tags carry their own names" {
@@ -512,7 +525,9 @@ test "every void constructor's tag is in the void set" {
 }
 
 test "renderToString closes a void element — the frozen renderer's wrong answer" {
-    assert renderToString(meta([], attrs: [#("charset", "utf-8")])) == "<meta charset=\"utf-8\"></meta>";
+    assert renderToString(meta([], attrs: [#("charset", "utf-8")]))
+        == "<meta charset=\"utf-8\"></meta>";
     assert renderToString(br([], attrs: [])) == "<br></br>";
-    assert renderToString(link([], attrs: [#("rel", "icon")])) == "<link rel=\"icon\"></link>";
+    assert renderToString(link([], attrs: [#("rel", "icon")]))
+        == "<link rel=\"icon\"></link>";
 }
