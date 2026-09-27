@@ -19,7 +19,7 @@ import {Response, PageInput, App, app, redirectAllowed, extrasProblem, guarded} 
 import {RenderPlugin, Json} from "plugin";
 import {PageContext, LayoutProps, UiSegment, segment, withLayout, withTemplate, withError, withLoading, withNotFound} from "routes";
 import {Metadata, Viewport, emptyMetadata} from "metadata";
-import {async} from "std";
+import {async, async.Gate} from "std";
 
 // ── the recorder ────────────────────────────────────────────────────────────
 
@@ -47,6 +47,15 @@ fn recWrite(chunk: string) -> @Task<void> {
     recPush("write " + chunk);
 }
 
+// A recorded write that also opens `afterAside` once the aside's fill (`h2`)
+// has been written — the signal `slowPosts` answers on.
+fn recWriteOpening(chunk: string, afterAside: Gate) -> @Task<void> {
+    recPush("write " + chunk);
+    if (chunk.contains("data-jh-f=\"h2\"")) {
+        async.openGate(afterAside);
+    }
+}
+
 fn recClose() -> @Task<void> {
     recPush("close");
 }
@@ -57,6 +66,18 @@ fn recorder() -> Response {
         status: { code -> recStatus(code) },
         header: { name, value -> recHeader(name, value) },
         write: { chunk -> recWrite(chunk) },
+        close: { -> recClose() },
+    );
+}
+
+// The recorder of a `StreamedPage(afterAside)` render: it opens `afterAside`
+// when it writes the aside's fill, and only then can the posts boundary answer.
+fn recorderOpening(afterAside: Gate) -> Response {
+    recReset();
+    return Response(
+        status: { code -> recStatus(code) },
+        header: { name, value -> recHeader(name, value) },
+        write: { chunk -> recWriteOpening(chunk, afterAside) },
         close: { -> recClose() },
     );
 }
@@ -118,8 +139,19 @@ fn BlogPage() -> @Component<ElementBase, Element> {
     return p([text("post " + slug, attrs: [])], attrs: []);
 }
 
-fn slowPosts() -> @Component<ElementBase, Element> {
-    val rows = await async.delay(30, ["a", "b"]);
+// How long a boundary waits on a gate before it gives up. Every gate these
+// tests close is opened by the render itself, so it only elapses when the
+// render is wrong — and then as a red assertion, not a hang.
+val gateBudget = 10000;
+
+// The posts boundary answers only once the aside's fill has been WRITTEN
+// (`recorderOpening` opens the gate then), so the fills come h2 then h1 by
+// construction. A 30 ms `delay` said the same only while the machine was
+// idle: on erlang each boundary is its own process, and under load the aside's
+// process could be scheduled after the timer fired.
+fn slowPosts(afterAside: Gate) -> @Component<ElementBase, Element> {
+    val opened = await async.awaitGate(afterAside, gateBudget);
+    val rows = if (opened) ["a", "b"] else ["the aside's fill was never written"];
     return ul(rows.map({ r -> li([text(r, attrs: [])], attrs: []) }), attrs: [#("class", "posts")]);
 }
 
@@ -127,10 +159,10 @@ fn fastAside() -> @Component<ElementBase, Element> {
     return span([text("aside", attrs: [])], attrs: []);
 }
 
-fn StreamedPage() -> @Component<ElementBase, Element> {
+fn StreamedPage(afterAside: Gate) -> @Component<ElementBase, Element> {
     return section([
             h2([text("Blog", attrs: [])], attrs: []),
-            Suspense(Boundary(id: holeId(1), fallback: div([text("wait", attrs: [])], attrs: []), child: { -> slowPosts() })),
+            Suspense(Boundary(id: holeId(1), fallback: div([text("wait", attrs: [])], attrs: []), child: { -> slowPosts(afterAside) })),
             Suspense(Boundary(id: holeId(2), fallback: div([text("wait2", attrs: [])], attrs: []), child: { -> fastAside() })),
         ], attrs: []);
 }
@@ -201,7 +233,8 @@ fn fullSegment() -> UiSegment {
 
 test "stream: a page with boundaries writes the shell, then each fill, each awaited" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val afterAside = async.newGate();
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
     assert outcomeText(out) == "ok";
     val w = writes();
     assert w.length == 4;
@@ -214,7 +247,8 @@ test "stream: a page with boundaries writes the shell, then each fill, each awai
 
 test "stream: fills come in completion order, each carrying its own markup" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val afterAside = async.newGate();
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
     val w = writes();
     assert w.at(1).unwrapOr("").startsWith("write <template data-jh-f=\"h2\"><span>aside</span></template>");
     assert w.at(2).unwrapOr("").startsWith("write <template data-jh-f=\"h1\"><ul class=\"posts\">");
@@ -222,35 +256,35 @@ test "stream: fills come in completion order, each carrying its own markup" {
     assert w.at(3).unwrapOr("").contains("\"h\":[\"h1\",\"h2\"]");
 }
 
-fn loaderA() -> @Component<ElementBase, Element> {
-    val v = await async.delay(50, "a");
-    return span([text(v, attrs: [])], attrs: []);
+// Opens `mine`, then answers `value` once `theirs` is open. The two loaders
+// below cross their gates, so both answer only when the two boundaries are in
+// flight at the same time: a render that resolved them one after the other
+// leaves the first waiting on a gate the second has not opened, and it answers
+// "gate never opened".
+fn loader(mine: Gate, theirs: Gate, value: string) -> @Component<ElementBase, Element> {
+    async.openGate(mine);
+    val opened = await async.awaitGate(theirs, gateBudget);
+    val shown = if (opened) value else "gate never opened: " + value;
+    return span([text(shown, attrs: [])], attrs: []);
 }
 
-fn loaderB() -> @Component<ElementBase, Element> {
-    val v = await async.delay(50, "b");
-    return span([text(v, attrs: [])], attrs: []);
-}
-
-fn TwoLoaders() -> @Component<ElementBase, Element> {
+fn TwoLoaders(a: Gate, b: Gate) -> @Component<ElementBase, Element> {
     return div([
-            Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> loaderA() })),
-            Suspense(Boundary(id: holeId(2), fallback: div([], attrs: []), child: { -> loaderB() })),
+            Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> loader(a, b, "a") })),
+            Suspense(Boundary(id: holeId(2), fallback: div([], attrs: []), child: { -> loader(b, a, "b") })),
         ], attrs: []);
 }
 
-#[@External.Node("""Math.floor(performance.now())""")]
-#[@External.Erlang("erlang:monotonic_time(1000)")]
-declare fn nowMillis() -> i64;
-
-test "stream: two 50 ms boundaries resolve concurrently — well under 100 ms" {
+test "stream: two boundaries resolve concurrently — each waits on the other" {
     val site = app([], []);
-    val start = nowMillis();
-    val out = await site.renderStream(inputOf("/blog", [], { -> TwoLoaders() }), req(), recorder());
-    val took = nowMillis() - start;
+    val a = async.newGate();
+    val b = async.newGate();
+    val out = await site.renderStream(inputOf("/blog", [], { -> TwoLoaders(a, b) }), req(), recorder());
     assert outcomeText(out) == "ok";
-    assert took < 95;
     assert writes().length == 4;
+    assert allText().contains("<span>a</span>");
+    assert allText().contains("<span>b</span>");
+    assert allText().contains("gate never opened") == false;
 }
 
 // ── step 4: composition ─────────────────────────────────────────────────────
@@ -548,7 +582,8 @@ fn pluginEvents() -> string[] {
 // its calls are read off the fills it styled, in completion order.
 test "plugin: head once, chunk per boundary in completion order, close once, payload last" {
     val site = app([recording()], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val afterAside = async.newGate();
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
     assert outcomeText(out) == "ok";
     assert pluginEvents().filter({ e -> e.startsWith("plugin chunk") == false }).join("|") == "plugin head|plugin close|plugin payload";
     val w = writes();
@@ -560,7 +595,8 @@ test "plugin: head once, chunk per boundary in completion order, close once, pay
 
 test "plugin: head lands in <head>, each chunk first inside its fill, the payload key verbatim" {
     val site = app([recording()], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val afterAside = async.newGate();
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
     val w = writes();
     assert w.at(0).unwrapOr("").contains("<style>.head{}</style></head>");
     assert w.at(1).unwrapOr("").startsWith("write <template data-jh-f=\"h2\"><style>.h2{}</style><span>aside</span>");
@@ -570,18 +606,21 @@ test "plugin: head lands in <head>, each chunk first inside its fill, the payloa
 
 test "plugin: a render with no plugin writes no <style> and no plugin key" {
     val site = app([], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val afterAside = async.newGate();
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
     assert allText().contains("<style>") == false;
     assert allText().contains("\"x\"") == false;
     val quietSite = app([quiet("q")], []);
-    val q = await quietSite.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val quietAside = async.newGate();
+    val q = await quietSite.renderStream(inputOf("/blog", [], { -> StreamedPage(quietAside) }), req(), recorderOpening(quietAside));
     assert allText().contains("<style>") == false;
 }
 
 test "plugin: a close answering Error fails the render with that message" {
     val failing = RenderPlugin(name: "sheet", head: { -> quietHead() }, chunk: { id -> quietChunk(id) }, close: { -> plCloseFails() }, payload: { -> plNoPayload() });
     val site = app([failing], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val afterAside = async.newGate();
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
     assert outcomeText(out).contains("plugin `sheet` failed to close: a class was registered after the last chunk");
     assert countOf("close") == 1;
 }
@@ -589,7 +628,8 @@ test "plugin: a close answering Error fails the render with that message" {
 test "plugin: a render key, or one key from two plugins, fails the render naming them" {
     val bad = RenderPlugin(name: "bad", head: { -> quietHead() }, chunk: { id -> quietChunk(id) }, close: { -> plClose() }, payload: { -> plRenderKey() });
     val site = app([bad], []);
-    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage() }), req(), recorder());
+    val afterAside = async.newGate();
+    val out = await site.renderStream(inputOf("/blog", [], { -> StreamedPage(afterAside) }), req(), recorderOpening(afterAside));
     assert outcomeText(out).contains("plugin `bad` gave the payload key `t`");
     assert extrasProblem([#("a", "s", "[]"), #("b", "s", "[]")]).contains("plugins `a` and `b` both gave the payload key `s`");
     assert extrasProblem([#("a", "s", "[]")]) == "";
