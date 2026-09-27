@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The repository's own gate is hard** (front 101, gate-i and gate-j): the
+  pre-commit hook fails when no compiler is found (with the way out) instead
+  of warning and skipping; a staged `*.snap.new` / `*.snap.md.new` is refused
+  and `.gitignore` lists both; the `scripts/known-broken-examples.txt` branch
+  is gone — an example that does not build fails the gate. CI runs
+  `botopink-lib-test --target <t>` over the whole workspace (every member and
+  every example a row) instead of the core member only, with no `allow_fail`
+  key, and the examples and refusals gates on every row.
+
 - **`jhonstart-dom-test`'s `commonJS`-only restriction is structural** (front
   101, gate-d): `src/root.bp` gains `callFill(name, id)` and `callSignal(name)`
   over the raw `call` cell (now module-private), so compiled code — not only

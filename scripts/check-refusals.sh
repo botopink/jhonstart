@@ -8,5 +8,5 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # shellcheck source=git-hooks/lib/runner-standalone.sh
 . scripts/git-hooks/lib/runner-standalone.sh
-bin=$(locateBotopink) || fail "botopink binary not found (env BOTOPINK_BIN, ancestor zig-out/bin, or \$PATH)"
+bin=$(requireBotopink)
 runRefusalsGate "$bin"

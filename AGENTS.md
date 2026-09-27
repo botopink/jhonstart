@@ -659,15 +659,24 @@ constructors, so this is one declaration order away from any file in this tree.
 
 ## CI
 
-`.github/workflows/test.yml` runs `zig build test-libs -- --lib jhonstart
---target <t>` on every push / PR to `feat`/`master`/`main`, over
+`.github/workflows/test.yml` runs `botopink-lib-test --target <t>` from the
+botopink-lang checkout on every push / PR to `feat`/`master`/`main`, over
 `{ubuntu-22.04, macos-14} × {commonJS, erlang}` plus `commonJS` on
-`windows-2022` (`escript` ships cleanly only on linux + macos). Both target
-rows are hard cells — no `allow_fail`. Nothing about jhonstart is
-commonJS-only: `renderToString` turns an `Element` tree into a string, which is
-pure string work on either backend, and the core suite is 68/68 on erlang. The
-examples stage reads each example's own manifest target, so it is pinned to the
-commonJS row and runs once.
+`windows-2022` (`escript` ships cleanly only on linux + macos). The matrix is
+the manifests' target set (1.0.11-beta `00-gate` gate-j): the workspace declares
+`["commonJS", "erlang"]` and every member inherits or restricts it. Every row
+is hard — no `allow_fail`, no `continue-on-error`. Nothing about jhonstart is
+commonJS-only but `jhonstart-dom-test`: `renderToString` turns an `Element`
+tree into a string, which is pure string work on either backend. Without
+`--lib` the runner discovers every project the checkout holds — every member
+and every example of this workspace, one row each, the compiler's own
+`libs/std`, and the emilia checkout `jhonstart-emilia`'s `path` dependency
+needs (`botopink-lang/repository/emilia`, checked out by the workflow the way
+emilia's own CI checks out jhonstart) with its members (`--lib` takes one name
+and the runner has no workspace selector) — and skips a cell the member's
+manifest restricts away. The examples gate and
+the refusals gate (the pre-commit hook's stages) then run on **every** row, so
+no row is "the one that checks examples".
 
 Since the umbrella is a workspace, the `repository/` root contributes its
 **members** by manifest name: `--lib jhonstart` selects `modules/jhonstart/`,
@@ -695,9 +704,10 @@ the umbrella has no row, and `jhonstart-html`, `jhonstart-link`, `jhonstart-test
 | `forms` | ✓ 7/7 | ✓ 7/7 |
 | `document-shell` | ✓ 4/4 | ✓ 4/4 |
 
-`botopink test` in each member, summed per module; a row a member's
-`targets` leaves out is run here all the same and counted, except
-`jhonstart-dom-test`'s erlang row, which cannot compile (its cells are node-only).
+`botopink test` in each member, summed per module. `jhonstart-dom-test`'s
+erlang row does not exist: its manifest restricts `targets` to `["commonJS"]`,
+and the restriction is structural (`botopink build --target erlang` refuses the
+member with the host-binding error at `src/root.bp:37`, gate-d).
 The core's 190 → 199: the starter table (+4), `app(lang:)` (+2) and the
 contract-5d `ChunkWriter` literals (+3). Track C's second wave took the core from 85 to 187:
 fronts 26/28's codec and writer cells (+7), front 29 (+3), front 31's
@@ -769,19 +779,22 @@ git config core.hooksPath scripts/git-hooks
 ```
 
 `core.hooksPath` is per clone and applies to every worktree of it. The
-gate checks staged files for conflict markers, then — the root manifest being a
-workspace — runs `botopink test` **inside every `modules/*/` member** that holds
+gate checks staged files — no snapshot candidate (`*.snap.new` /
+`*.snap.md.new` is recorded by renaming it after the comparison with the spec's
+literal, never committed; `.gitignore` lists both and the hook refuses a
+`git add -f`), no conflict markers — then, the root manifest being a
+workspace, runs `botopink test` **inside every `modules/*/` member** that holds
 a `botopink.json`, each on its own manifest target (`botopink test` at the root
 is the refusal, so the runner never calls it there). The compiler binary is located via (in order)
 `$BOTOPINK_BIN`, the nearest ancestor
 `repository/botopink-lang/zig-out/bin/botopink`, then `$PATH`. If none
-resolve, the gate prints a yellow warning and exits 0 — CI runs the full
-suite and catches any regression there. Never commit with `--no-verify`;
-fix the red instead.
+resolve, the gate **fails** with the way out (`zig build install`, or
+`BOTOPINK_BIN`) — a commit with no `.bp` gate is refused, not warned about
+(gate-i: fail beats warn). Never commit with `--no-verify`; fix the red instead.
 
 After `botopink test`, the gate builds every `examples/*/` that has a
 `botopink.json` (`runExamplesGate`, each with its own manifest target,
-into a throwaway `--out`); CI runs the same function once per workflow.
+into a throwaway `--out`); CI runs the same function on every row.
 Each example depends on the core with `{ "jhonstart": { "workspace": true } }`
 (decisions 75 + 76 of 1.0.10-beta): the sibling member of the enclosing
 workspace, resolved without consulting a library root at all — so the gate
@@ -789,12 +802,8 @@ always tests the checkout being committed, worktree included. A `path` to
 `../..` is now the *points at the workspace itself* refusal, and a `git`
 dependency on a library of this ecosystem would resolve by name across the
 roots to some other checkout.
-`scripts/known-broken-examples.txt` lists the examples allowed to fail —
-`examples/<name>  <reason>` per line — and cannot rot: a listed example
-that builds, or a listed path that no longer exists, fails the gate too.
-When a fix makes an example build, delete its line in the same commit. The list may be absent,
-empty or hold only `#` comments — each means no example is allowed to fail.
-No example is listed today; every example builds **and runs**:
+There is no list of examples allowed to fail: an example that does not build
+fails the gate (gate-i). Every example builds **and runs**:
 
 | example | `botopink run` output |
 |---|---|
