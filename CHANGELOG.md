@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **`jhonstart-counter` and `jhonstart-todo` run on both rows** (1.0.11-beta
+  front 101, gate-a): the `"targets": ["commonJS"]` narrowing is gone from both
+  manifests — the two erlang reds it hid (a bare `print(…)`, a `fn`-typed field
+  called across a module boundary) are fixed in the compiler, and the cells pass
+  on erlang (4/4, 3/3).
+
 - **The `query` hole is closed** (`03-rakun` front 22 / `04-jhonstart`):
   `PageContext` loses its `query` field; `searchParams()` and `request()` mark
   the render dynamic through a flag in the router's host store, and the

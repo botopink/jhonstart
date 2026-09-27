@@ -134,9 +134,9 @@ repository/jhonstart/
 │       ├── src/assert_{html,route,link,server,island,stream,render,error_boundary,metadata,form}.bp ← `assertHtml`/`assertHtmlLines`, `assertRoute`/`assertActiveLink`, `assertLink`/`assertNavigation`, `assertRequest`, `assertClientBundleEntry`, `assertStream`, `assertDocument`/`assertResponse`/`assertPayload` (+ `jsonMembers`), `assertErrorBoundary`, `assertMetadata`/`assertViewport`, `assertForm`/`assertActionState`/`assertOptimistic` — texts per `test-snap.md` § 0.2
 │       └── test/helpers_test.bp + test/__snapshots__/ ← every twin against `test-snap.md`'s literal, and one accepted snapshot per helper family — both rows
 ├── examples/
-│   ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node (targets [commonJS])
+│   ├── jhonstart-counter/  ← MEMBER: `use state` + the client runtime under node; both rows
 │   ├── jhonstart-markup/   ← MEMBER: the `html """…"""` DSL cross-module (inherits [commonJS, erlang]) — was `examples/jhonstart-html/`, renamed by front 95 because a member name is unique in the workspace and the DSL member took it
-│   ├── jhonstart-todo/     ← MEMBER: builders + hooks + SSR (targets [commonJS])
+│   ├── jhonstart-todo/     ← MEMBER: builders + hooks + SSR; both rows
 │   ├── blog-ssr/           ← MEMBER (`modules.md` § 8, targets [commonJS, erlang]): `src/repo.bp` fixtures; `src/app/` — `layout` (RootLayout, metadata, viewport), `loading`, `error`, `not_found`, `global_error`, `blog/slug/{page,metadata}` (PostPage with two sequential loaders, postPanel, generateMetadata) — a module name is an identifier, so Next's `not-found` / `[slug]` are `not_found` / `slug`; `test/blog_test.bp` 10 snapshots
 │   ├── nav-shell/          ← MEMBER (targets [commonJS, erlang]): `Sidebar`, `DocsIndex` (prefetch off per row), `CheckoutLink` (LinkStatus); `test/nav_test.bp` 6 snapshots
 │   ├── islands/            ← MEMBER (targets [commonJS, erlang]): `#[client]` LikeButton / ThemeProvider with their `#[clientProps]`, `PostList` / `PostListFrom(posts, first)` numbering islands, `RootLayout(theme, page)` in a server slot; `test/islands_test.bp` 5 snapshots
@@ -723,46 +723,18 @@ would be a boundary that never starts. The same holds for front 27's 35 (25 in
 summary PER MODULE, so its last line is the last module's count and not the
 run's total (for the record: 3 + 15 + 4 + 22 + 3 + 2 + 25 + 10 + 24 + 17).
 
-`jhonstart-counter` and `jhonstart-todo` **restrict** `targets` to
-`["commonJS"]` (a member may only restrict the workspace's targets, never widen
-them), so the runner marks their erlang cell `~` and skips it; the erlang column
-above is what `--include-unsupported` measures underneath the restriction, which
-is what the compiler's `scripts/restricted-targets.txt` ledger pins.
-`jhonstart-markup` declares no `targets` and inherits both, because it is green on
-both.
-
-### The two erlang reds, measured 2026-09-21 (`botopink-lang` feat `ecf9fd1c`)
-
-A restriction had hidden them since the examples were written. They are **two
-unrelated defects**, not one, and an earlier reading of this section — "an
-imported function called unqualified", owner `00 · 13-module-identity` — was
-wrong about both: neither name is imported, and the module-atom machinery is not
-involved.
-
-1. **`function print/1 undefined`** — both examples, and **ours**. Their `main`
-   called `print(…)` rather than `@print(…)`. The bare spelling type-checks on
-   every target (a `registerBuiltins` binding plus a `pub declare fn print` in
-   the prelude) but only commonJS lowers it; erlang emits an undefined local,
-   beam an `unresolved_call`, wasm a trap. `@print` is the only form
-   `botopink-lang/docs.md` shows and the form `jhonstart-html` (now `jhonstart-markup`) already used,
-   which is why that example was green while these two were not. Fixed here.
-   This was never test-only: `botopink run --target erlang` failed identically,
-   and `botopink build --target erlang` exited 0 only because a build
-   transpiles without ever invoking `erlc`. The checker now refuses the bare
-   spelling itself — `unbound variable 'print' — printing is the builtin
-   `@print`` (botopink-lang `reject/bare_print_call`).
-
-2. **`function set/2 undefined`** — `jhonstart-counter` only, and **not ours**.
-   `c.set(5)` on a `State<T>` — `set` is a `fn(next: T)` field (G1) — lowers
-   correctly inside the module that declares the record (`(element(3, C))(5)`)
-   and to a bare undefined local across a module boundary, which every consumer
-   of `jhonstart/hooks` is by construction. commonJS is green on both sides.
-   Owner: `00 · 02-erlang`; the erlang backend collects function-typed fields
-   only from the module's own `type` declarations, and the cross-module export
-   index carries field names without their types. Minimal jhonstart-free repro
-   and the exact site: [`repro/erlang-imported-fn-field/`](repro/erlang-imported-fn-field/).
-   The one test that hits it is left exactly as written — a workaround in the
-   example would only hide the defect.
+No example declares `targets`: every one inherits the workspace's two rows
+and is green on both (a member may only restrict the workspace's targets, never
+widen them, and a restriction must be structural — `00-gate` decision gate-d:
+`botopink build --target <t>` in the member refuses with a host-binding error, or
+the row exists). `jhonstart-counter` and `jhonstart-todo` were `["commonJS"]`
+until 1.0.11-beta front 101: the two erlang reds behind the restriction — a bare
+`print(…)` (the checker now refuses it: `unbound variable 'print' — printing is
+the builtin `@print``, botopink-lang `reject/bare_print_call`) and a record's
+`fn`-typed field called across a module boundary (`c.set(5)` on a `State<T>`,
+lowered to an undefined local by the erlang backend) — are fixed in the compiler,
+and the restriction outlived its reason. Both cells pass on erlang (counter 4/4,
+todo 3/3; measured 2026-09-26 with the compiler pinned for front 101).
 
 Bootstrap path mirrors the other lib repos: check out this lib + a
 fresh `botopink-lang` clone, place this lib under
