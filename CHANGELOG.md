@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`jhonstart-dom-test`'s `commonJS`-only restriction is structural** (front
+  101, gate-d): `src/root.bp` gains `callFill(name, id)` and `callSignal(name)`
+  over the raw `call` cell (now module-private), so compiled code — not only
+  test blocks — calls a node-only cell and `botopink build --target erlang`
+  refuses the member with the host-binding error at `src/root.bp:37`. The
+  suite is unchanged in what it asserts (9/9 on commonJS).
+
 - **`jhonstart-counter` and `jhonstart-todo` run on both rows** (1.0.11-beta
   front 101, gate-a): the `"targets": ["commonJS"]` narrowing is gone from both
   manifests — the two erlang reds it hid (a bare `print(…)`, a `fn`-typed field

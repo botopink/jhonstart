@@ -7,7 +7,15 @@
 //// empty value, so these cells are asserted here, on commonJS only
 //// (`specs/1.0.10-beta/decisions-pending.md` 30-g). A document is installed
 //// from the markup the render wrote, the registered function is called by its
-//// registry name, and the document is read back serialized.
+//// registry name (`callFill`, `callSignal`), and the document is read back
+//// serialized.
+////
+//// The manifest's `"targets": ["commonJS"]` is structural (1.0.11-beta
+//// `00-gate` decision gate-d): every cell below is `#[@External.Node]` only,
+//// and `callFill` / `callSignal` call one from compiled code, so
+//// `botopink build --target erlang` refuses this member with the host-binding
+//// error at their call site — the restriction excludes a target the module
+//// cannot exist on, and hides no red.
 
 #[@External.Node("./fake_dom.mjs", "install")]
 pub declare fn installDocument(html: string) -> i32;
@@ -18,10 +26,22 @@ pub declare fn documentMarkup() -> string;
 #[@External.Node("./fake_dom.mjs", "recorded")]
 pub declare fn recordedNavigation() -> string;
 
-// Calls `globalThis[name](arg)` (no argument when `arg` is `""`), as a fill's
-// or a signal's `<script>` does.
+// Calls `globalThis[name](arg)` (no argument when `arg` is `""`); answers
+// `"called"`, or `"no function <name>"` when nothing is registered under it.
 #[@External.Node("./fake_dom.mjs", "call")]
-pub declare fn callGlobal(name: string, arg: string) -> string;
+declare fn callGlobal(name: string, arg: string) -> string;
+
+// Calls the fill function registered under `name` with a hole id, as a fill's
+// `<script>__bpN("h1")</script>` does.
+pub fn callFill(name: string, id: string) -> string {
+    return callGlobal(name, id);
+}
+
+// Calls the signal function registered under `name` with no argument, as a
+// signal's `<script>__bpN()</script>` does.
+pub fn callSignal(name: string) -> string {
+    return callGlobal(name, "");
+}
 
 #[@External.Node("./fake_dom.mjs", "uninstall")]
 pub declare fn uninstallDocument() -> i32;
