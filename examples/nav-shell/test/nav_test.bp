@@ -2,9 +2,9 @@
 
 import {RouterState, renderToString} from "jhonstart";
 import {LinkStatus, prefetchMode} from "jhonstart-link";
-import {Sidebar} from "sidebar";
-import {DocsIndex, Page} from "index";
-import {CheckoutLink} from "checkout";
+import {sidebar.Sidebar};
+import {index.DocsIndex, index.Page};
+import {checkout.CheckoutLink};
 import {assertActiveLink, assertHtml, assertHtmlLines, assertNavigation, simulateNavigation, fixtureRouter} from "jhonstart-test";
 import {testing.snapshots.assertText} from "std";
 

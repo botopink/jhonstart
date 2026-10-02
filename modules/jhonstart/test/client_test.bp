@@ -66,13 +66,13 @@
 // or column, at a call site that is correct. Nothing here works around it in
 // library source; `client.bp` declares no local that shadows anything.
 
-import {client, clientProps, islandId, islandAttrOf, islandAttr, Island, clientMount, islandEntry, propsOf, serverSlotAttr, serverSlot, serverOnly, hydrate, propsFor, registerStarter, registerRouteStarters, registeredStarters, registeredRouteStarters} from "client";
-import {globals} from "globals";
-import {attemptRender} from "render";
-import {Element, div, h1, p, ul, li, text, renderToString} from "element";
-import {button, h2, section} from "elements";
-import {state} from "hooks";
-import {ElementBase} from "element";
+import {client.client, client.clientProps, client.islandId, client.islandAttrOf, client.islandAttr, client.Island, client.clientMount, client.islandEntry, client.propsOf, client.serverSlotAttr, client.serverSlot, client.serverOnly, client.hydrate, client.propsFor, client.registerStarter, client.registerRouteStarters, client.registeredStarters, client.registeredRouteStarters};
+import {globals.globals};
+import {render.attemptRender};
+import {element.Element, element.div, element.h1, element.p, element.ul, element.li, element.text, element.renderToString};
+import {elements.button, elements.h2, elements.section};
+import {hooks.state};
+import {element.ElementBase};
 
 // ── step 1: `#[client]` — the marker, and the proof `@emit` fired ───────────
 //

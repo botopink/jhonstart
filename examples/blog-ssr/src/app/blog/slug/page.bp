@@ -5,7 +5,7 @@
 // comment service is the segment's error page.
 
 import {Element, ElementBase, article, h1, h2, p, section, ul, li, span, text, notFound} from "jhonstart";
-import {Post, Comment, findPost, findComments, loadPost, loadComments} from "repo";
+import {repo.Post, repo.Comment, repo.findPost, repo.findComments, repo.loadPost, repo.loadComments};
 
 fn commentRow(c: Comment) -> Element {
     return li([span([text(c.author)], attrs: [#("class", "author")]), text(c.text)]);

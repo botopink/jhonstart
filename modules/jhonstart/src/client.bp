@@ -77,9 +77,9 @@
 // everywhere and carries the same information: front 68 reads the set of
 // `__jhClient_*` names off the module graph.
 
-import {Element} from "element";
+import {element.Element};
 import {encoding} from "std";
-import {globals} from "globals";
+import {globals.globals};
 
 // ── step 1: `#[client]` — the marker ────────────────────────────────────────
 //

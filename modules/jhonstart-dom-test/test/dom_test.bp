@@ -7,7 +7,7 @@
 
 import {Chunk, fillHtml, redirectSignalHtml, notFoundSignalHtml, globals, registerFill, registerSignal, readPayload} from "jhonstart";
 import {json.Json} from "std";
-import {installDocument, documentMarkup, recordedNavigation, callFill, callSignal, uninstallDocument} from "root";
+import {root.installDocument, root.documentMarkup, root.recordedNavigation, root.callFill, root.callSignal, root.uninstallDocument};
 
 fn shell() -> string {
     return "<div data-jh-root=\"\"><section><div data-jh-h=\"h1\"><p>Loading…</p></div></section></div>";

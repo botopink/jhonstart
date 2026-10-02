@@ -8,17 +8,17 @@
 // completion gather hands each value back to it), so the recorder sees every
 // write.
 
-import {Element, ElementBase, text, div, p, span, ul, li} from "element";
-import {h2, section, main} from "elements";
-import {RequestData, cookies, request} from "server";
-import {selectedLayoutSegment, pathname, searchParams} from "router";
-import {notFound, redirect, ErrorInfo} from "error_boundary";
-import {Boundary, Suspense, holeId} from "suspense";
-import {compose, resetRender, registeredBoundaries, renderNode, RenderHooks, setHooks, defaultHooks, attemptTask, attemptRender, isLangTag} from "render";
-import {Response, PageInput, App, app, redirectAllowed, extrasProblem, guarded} from "streaming";
-import {RenderPlugin, Json} from "plugin";
-import {PageContext, LayoutProps, UiSegment, segment, withLayout, withTemplate, withError, withLoading, withNotFound} from "routes";
-import {Metadata, Viewport, emptyMetadata} from "metadata";
+import {element.Element, element.ElementBase, element.text, element.div, element.p, element.span, element.ul, element.li};
+import {elements.h2, elements.section, elements.main};
+import {server.RequestData, server.cookies, server.request};
+import {router.selectedLayoutSegment, router.pathname, router.searchParams};
+import {error_boundary.notFound, error_boundary.redirect, error_boundary.ErrorInfo};
+import {suspense.Boundary, suspense.Suspense, suspense.holeId};
+import {render.compose, render.resetRender, render.registeredBoundaries, render.renderNode, render.RenderHooks, render.setHooks, render.defaultHooks, render.attemptTask, render.attemptRender, render.isLangTag};
+import {streaming.Response, streaming.PageInput, streaming.App, streaming.app, streaming.redirectAllowed, streaming.extrasProblem, streaming.guarded};
+import {plugin.RenderPlugin, plugin.Json};
+import {routes.PageContext, routes.LayoutProps, routes.UiSegment, routes.segment, routes.withLayout, routes.withTemplate, routes.withError, routes.withLoading, routes.withNotFound};
+import {metadata.Metadata, metadata.Viewport, metadata.emptyMetadata};
 import {async, async.Gate} from "std";
 
 // ── the recorder ────────────────────────────────────────────────────────────

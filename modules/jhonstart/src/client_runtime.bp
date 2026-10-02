@@ -23,7 +23,7 @@
 //// called from erlang, so the erlang emit carries it as an unresolved external
 //// it never reaches.
 
-import {Element} from "element";
+import {element.Element};
 
 // Runs `component` under the loop and hands every committed tree to `commit`;
 // a `set`/`dispatch` re-runs the component and commits again. The handle the

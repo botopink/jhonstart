@@ -5,8 +5,8 @@ pub mod app;
 
 import {renderNode} from "jhonstart";
 import {fixtureRouter} from "jhonstart-test";
-import {RootLayout} from "app/layout";
-import {PostPage} from "app/blog/slug/page";
+import {app.layout.RootLayout};
+import {app.blog.slug.page.PostPage};
 
 fn main() -> @Task<void> {
     val r = fixtureRouter("/blog/hello", "/blog/[slug]", "slug=hello", "");

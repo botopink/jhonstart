@@ -40,9 +40,9 @@
 // `UiSegment` in `render.bp` would make this module and that one import each
 // other.
 
-import {Element, ElementBase} from "element";
-import {pairValue} from "router";
-import {ErrorInfo} from "error_boundary";
+import {element.Element, element.ElementBase};
+import {router.pairValue};
+import {error_boundary.ErrorInfo};
 import {segment.parsePath, segment.patternOf, segment.slotOf, table.RouteEntry, table.writeTable} from "routing";
 
 // NO `query` FIELD. The query is per-request input, and reading it marks the

@@ -4,7 +4,7 @@
 import {Element} from "jhonstart";
 import {applyOptimistic} from "jhonstart-forms";
 import {state.ActionState} from "actions";
-import {htmlLinesText} from "assert_html";
+import {assert_html.htmlLinesText};
 import {testing.snapshots} from "std";
 
 // `ok`, `message` and `redirectTo`, then one `f.<name>: <message>` line per

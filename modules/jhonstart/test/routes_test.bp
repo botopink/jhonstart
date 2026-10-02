@@ -12,9 +12,9 @@
 // `jhTemplate` / `jhDefault`, `PageContext`, `ctxParam` / `ctxRest` — beside
 // the marker itself.
 
-import {Element, ElementBase, text, div, p} from "element";
-import {main} from "elements";
-import {page, layout, template, defaultView, PageContext, LayoutProps, uiTable, ctxParam, ctxRest, jhPage, jhLayout, jhTemplate, jhDefault, jhLoading, jhNotFound, segmentFor, pageFor} from "routes";
+import {element.Element, element.ElementBase, element.text, element.div, element.p};
+import {elements.main};
+import {routes.page, routes.layout, routes.template, routes.defaultView, routes.PageContext, routes.LayoutProps, routes.uiTable, routes.ctxParam, routes.ctxRest, routes.jhPage, routes.jhLayout, routes.jhTemplate, routes.jhDefault, routes.jhLoading, routes.jhNotFound, routes.segmentFor, routes.pageFor};
 import {table.parseTable, table.RouteEntry, segment.parsePath, segment.patternOf} from "routing";
 
 #[layout("")]

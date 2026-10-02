@@ -14,7 +14,7 @@
 // (`holeId`), never derived from the route: a client navigation is a new
 // response with a new set of ordinals.
 
-import {Element, ElementBase} from "element";
+import {element.Element, element.ElementBase};
 
 pub type Boundary(
     id: string,

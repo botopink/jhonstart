@@ -27,8 +27,8 @@
 // The third row — "`reconcile.bp` declares no `#[@External.Erlang]` cell" — is
 // true and stronger than asked: it declares no cell of ANY target.
 
-import {layoutKeys, sharedDepth} from "reconcile";
-import {layoutKey} from "link";
+import {reconcile.layoutKeys, reconcile.sharedDepth};
+import {link.layoutKey};
 
 test "reconcile: layoutKeys is root-first and includes the root" {
     val keys = layoutKeys(["docs", "api"]);

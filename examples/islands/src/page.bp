@@ -5,8 +5,8 @@
 // from, so the provider can be `i0` and the posts after it.
 
 import {Element, ul, li, h2, text, clientMount, serverSlot} from "jhonstart";
-import {LikeProps, likeIsland} from "like_button";
-import {themeIsland} from "theme";
+import {like_button.LikeProps, like_button.likeIsland};
+import {theme.themeIsland};
 
 pub type Post(id: string, title: string, likes: i32)
 

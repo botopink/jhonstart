@@ -21,7 +21,7 @@
 //
 // Nor is the transition driver here; see `reconcile_test.bp`.
 
-import {LinkProps, linkProps, withPrefetch, withReplace, withScroll, withTarget, withClass, Link, prefetchMode, layoutKey, LinkStatus, linkStatusOf, linkStatus, linkMount, linkPrefetch, linkRouteKind} from "link";
+import {link.LinkProps, link.linkProps, link.withPrefetch, link.withReplace, link.withScroll, link.withTarget, link.withClass, link.Link, link.prefetchMode, link.layoutKey, link.LinkStatus, link.linkStatusOf, link.linkStatus, link.linkMount, link.linkPrefetch, link.linkRouteKind};
 import {Element, text, span, renderToString} from "jhonstart";
 
 // ── step 1: the props and their five copy helpers ───────────────────────────

@@ -4,13 +4,13 @@
 // signals and the target check run on both rows. The front's gate for
 // `clientApp` is the commonJS row.
 
-import {Element, ElementBase, text, div, p} from "element";
-import {main, h2} from "elements";
-import {cookies} from "server";
-import {notFound, redirect} from "error_boundary";
-import {lastNavigation} from "router";
-import {page, layout, PageContext, LayoutProps, jhPage, jhLayout, jhNotFound, ctxParam, ctxRest} from "routes";
-import {ClientApp, clientApp, setClientLocation, mountedHtml, replacedLocation} from "client_app";
+import {element.Element, element.ElementBase, element.text, element.div, element.p};
+import {elements.main, elements.h2};
+import {server.cookies};
+import {error_boundary.notFound, error_boundary.redirect};
+import {router.lastNavigation};
+import {routes.page, routes.layout, routes.PageContext, routes.LayoutProps, routes.jhPage, routes.jhLayout, routes.jhNotFound, routes.ctxParam, routes.ctxRest};
+import {client_app.ClientApp, client_app.clientApp, client_app.setClientLocation, client_app.mountedHtml, client_app.replacedLocation};
 
 #[layout("ca")]
 pub fn CaLayout(props: LayoutProps) -> @Component<ElementBase, Element> {

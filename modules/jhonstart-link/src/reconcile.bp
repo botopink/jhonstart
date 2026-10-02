@@ -54,7 +54,7 @@
 // This module declares no host cell of any target, and in particular no
 // `#[@External.Erlang]` one — the front's § Step 3b acceptance row.
 
-import {layoutKey} from "link";
+import {link.layoutKey};
 
 // `layoutKey` applied at EVERY depth, root-first and root INCLUDED, so the
 // list is one entry longer than the segment list: `["docs", "api"]` is
