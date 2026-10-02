@@ -4,11 +4,11 @@
 // `server_test.bp`, `link_test.bp` and `elements_test.bp` are: the module under
 // test is reached by its module name, so what the suite exercises is the
 // surface a `from "jhonstart"` consumer gets, not the module's private
-// interior. **That is also the front's § Step 1 acceptance row "the emitted
-// name is reachable at the application site, which must therefore import
+// interior. **That is also the front's § Step 1 acceptance row "the marker
+// is reachable at the application site, which must therefore import
 // `client`"**: the `import { client, clientProps } from "client";` below is
-// what makes `#[client]` applicable here at all, and the `__jhClient_*` names
-// asserted further down are emitted into THIS module by that application.
+// what makes `#[client]` applicable here at all, and the meta read further
+// down (`@typeinfo(X).meta.client.component`) is recorded by that application.
 //
 // The front's assigned target is **commonJS**, and every assertion below also
 // RUNS on the erlang row — not one is type-checked-only. That is the front's
@@ -126,22 +126,22 @@ pub fn StaticBadge(props: ThemeProps) -> Element {
 }
 
 test "client: the marker fires on a plain -> Element component too" {
-    assert __jhClient_StaticBadge() == "StaticBadge";
+    assert @typeinfo(StaticBadge).meta.client.component == "StaticBadge";
     assert renderToString(StaticBadge(ThemeProps(theme: "dark")))
         == "<div class=\"badge\">dark</div>";
 }
 
-test "client: the marker emits a pure fn returning the component's name" {
-    assert __jhClient_LikeButton() == "LikeButton";
-    assert __jhClient_ThemeProvider() == "ThemeProvider";
+test "client: the marker records the component's name as comptime meta" {
+    assert @typeinfo(LikeButton).meta.client.component == "LikeButton";
+    assert @typeinfo(ThemeProvider).meta.client.component == "ThemeProvider";
 }
 
-test "client: the emitted marker is a VALUE, not a call into a host registry" {
-    // It answers on the erlang row too, which is the point: an `@emit` fires on
-    // every target, so a marker that called a Node-only cell would make every
-    // `#[client]` component fail to link during the server render — the exact
-    // case the boundary exists to support.
-    val name = __jhClient_LikeButton();
+test "client: the marker is a CONSTANT, not a call into a host registry" {
+    // It answers on the erlang row too, which is the point: a marker that
+    // called a Node-only cell would make every `#[client]` component fail to
+    // link during the server render — the exact case the boundary exists to
+    // support. Meta is a compile-time constant on every target.
+    val name = @typeinfo(LikeButton).meta.client.component;
     assert name.length == 10;
 }
 

@@ -69,13 +69,14 @@
 
 // ── The marker is a PURE function, deliberately ─────────────────────────────
 //
-// `#[client]` emits `pub fn __jhClient_<Name>() -> string`, a pure function
-// returning the component's name — not a call into a runtime registry. An
-// `@emit` fires on EVERY target, so emitting a call into a Node-only cell would
-// make every `#[client]` component fail to link during the erlang server render
-// — the exact case the boundary exists to support. A pure marker links
-// everywhere and carries the same information: front 68 reads the set of
-// `__jhClient_*` names off the module graph.
+// `#[client]` records comptime meta — `decl.setMeta("component", <Name>)`,
+// read as `@typeinfo(<Name>).meta.client.component` (decision 216) — and no
+// run-time code at all: not a call into a runtime registry, which would make
+// every `#[client]` component fail to link during the erlang server render (a
+// Node-only cell called on every target) — the exact case the boundary exists
+// to support. Meta is a compile-time constant on every target and carries the
+// same information: front 68 reads the set of client components with
+// `@typeinfo.all(with: client)`.
 
 import {Element} from "element";
 import {encoding} from "std";
@@ -83,9 +84,9 @@ import {globals} from "globals";
 
 // ── step 1: `#[client]` — the marker ────────────────────────────────────────
 //
-// The `@emit` comes BEFORE the `fail` checks, matching rakun's ordering
-// (`decorators.bp`): a failed outcome discards the contributions, so only a
-// correctly placed declaration wires up.
+// The meta is set BEFORE the `fail` checks, matching rakun's ordering
+// (`decorators.bp`): a failed outcome discards it, so only a correctly placed
+// declaration is recorded.
 //
 // Two hard constraints on any decorator body, both of them the reason this one
 // is shaped the way it is: it cannot call a sibling function (each decorator is
@@ -98,15 +99,9 @@ import {globals} from "globals";
 // `"@Task<Element>"`. That is what makes check 2 reject a server component.
 //
 // `botopink check` runs the decorator like `build` and `test` do, so
-// `__jhClient_<Name>` is bound under `check` too.
+// the meta is recorded under `check` too.
 pub fn client(comptime decl: @Decl) {
-    @emit(
-        "pub fn __jhClient_"
-            + decl.name
-            + "() -> string { return \""
-            + decl.name
-            + "\"; }",
-    );
+    decl.setMeta("component", decl.name);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[client] must annotate a function");
     if (decl.returnType != "Element"
@@ -306,7 +301,7 @@ pub fn serverOnly() -> i32 {
 //
 //   | Front 68 input              | Produced by |
 //   |-----------------------------|-------------|
-//   | the set of client component names | the `__jhClient_<Name>` functions `#[client]` emits |
+//   | the set of client component names | `@typeinfo.all(with: client)` — the meta `#[client]` records |
 //   | the island rows             | `islandEntry` per island, collected into the payload's `i` key by front 23 |
 //   | the island selector         | `islandAttr(ordinal)` — decision 77, the only spelling of the pair |
 //   | the client module graph     | the transitive imports of every module declaring one |
