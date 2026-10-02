@@ -125,21 +125,13 @@ pub fn Link(props: LinkProps, children: Children) -> Element {
         #("href", props.href),
         #("data-jh-l", "1"),
     ];
-    if (props.prefetch == false) {
+    if (props.prefetch == false)
         pairs = pairs.append([#("data-jh-prefetch", "0")]);
-    };
-    if (props.replace) {
-        pairs = pairs.append([#("data-jh-replace", "1")]);
-    };
-    if (props.scroll == false) {
-        pairs = pairs.append([#("data-jh-scroll", "0")]);
-    };
-    if (props.target != "") {
-        pairs = pairs.append([#("target", props.target)]);
-    };
-    if (props.className != "") {
+    if (props.replace) pairs = pairs.append([#("data-jh-replace", "1")]);
+    if (props.scroll == false) pairs = pairs.append([#("data-jh-scroll", "0")]);
+    if (props.target != "") pairs = pairs.append([#("target", props.target)]);
+    if (props.className != "")
         pairs = pairs.append([#("class", props.className)]);
-    };
     return Element(tag: "a", value: "", children: children, attrs: pairs);
 }
 
@@ -200,20 +192,20 @@ pub fn linkStatusOf(href: string) -> LinkStatus {
 
 // ── step 4: the browser cells ───────────────────────────────────────────────
 
-#[@External.Node("./link_runtime.mjs", "mount"),
-  @External.Erlang("jhonstart_link", "mount")]
+#[@External.Node("./link_runtime.mjs", "mount")]
+#[@External.Erlang("jhonstart_link", "mount")]
 declare fn __jhLinkMount() -> i32;
 
-#[@External.Node("./link_runtime.mjs", "prefetch"),
-  @External.Erlang("jhonstart_link", "prefetch")]
+#[@External.Node("./link_runtime.mjs", "prefetch")]
+#[@External.Erlang("jhonstart_link", "prefetch")]
 pub declare fn __jhLinkPrefetch(href: string, mode: string) -> i32;
 
-#[@External.Node("./link_runtime.mjs", "status"),
-  @External.Erlang("jhonstart_link", "status")]
+#[@External.Node("./link_runtime.mjs", "status")]
+#[@External.Erlang("jhonstart_link", "status")]
 declare fn __jhLinkStatus() -> string;
 
-#[@External.Node("./link_runtime.mjs", "routeKind"),
-  @External.Erlang("jhonstart_link", "route_kind")]
+#[@External.Node("./link_runtime.mjs", "routeKind")]
+#[@External.Erlang("jhonstart_link", "route_kind")]
 declare fn __jhLinkRouteKind(href: string) -> string;
 
 // Delegated click interception and the viewport prefetcher, installed once —
