@@ -142,7 +142,7 @@ repository/jhonstart/
 │   ├── islands/            ← MEMBER (targets [commonJS, erlang]): `#[client]` LikeButton / ThemeProvider with their `#[clientProps]`, `PostList` / `PostListFrom(posts, first)` numbering islands, `RootLayout(theme, page)` in a server slot; `test/islands_test.bp` 5 snapshots
 │   ├── forms/              ← MEMBER (targets [commonJS, erlang]): `createPostForm` / `CreatePostForm`, `likeWidget` / `LikeWidget` (optimistic + form status), `searchForm`; `test/forms_test.bp` 7 snapshots
 │   └── document-shell/     ← MEMBER (targets [commonJS, erlang]): `documentShell` + `doctype` with constructors, `documentBody` in the `html` DSL, `main.bp` building `<main>` with `el`; `test/shell_test.bp` 4 snapshots
-├── refusals/               ← NOT members: one project per compile-time refusal of the library, each with the `expect.txt` its `botopink check` must print (stage 4 of the gate, `scripts/check-refusals.sh`)
+├── refusals/               ← NOT members: one project per compile-time refusal of the library, each with the `expect.txt` its `botopink check` must print (stage 6 of the gate, `scripts/check-refusals.sh`)
 │   ├── layout_plain_element/   ← `#[layout]` on `-> Element` (decision 117; the guide's `OldLayout`)
 │   ├── page_plain_element/     ← `#[page]` on `-> Element`
 │   └── template_task_element/  ← `#[template]` on `-> @Task<Element>`
@@ -657,39 +657,53 @@ the rule is a reading convention, and the files that state it say so.
 
 ## CI
 
-`.github/workflows/test.yml` runs `botopink-lib-test --target <t>` from the
-botopink-lang checkout on every push / PR to `feat`/`master`/`main`, over
-`{ubuntu-22.04, macos-14} × {commonJS, erlang}` plus `commonJS` on
-`windows-2022` (`escript` ships cleanly only on linux + macos). The matrix is
-the manifests' target set (1.0.11-beta `00-gate` gate-j): the workspace declares
-`["commonJS", "erlang"]` and every member inherits or restricts it. Every row
-is hard — no `allow_fail`, no `continue-on-error`. Nothing about jhonstart is
-commonJS-only but `jhonstart-dom-test`: `renderToString` turns an `Element`
-tree into a string, which is pure string work on either backend. Without
-`--lib` the runner discovers every project the checkout holds — every member
-and every example of this workspace, one row each, the compiler's own
-`libs/std`, and the emilia checkout `jhonstart-emilia`'s `path` dependency
-needs (`botopink-lang/repository/emilia`, checked out by the workflow the way
-emilia's own CI checks out jhonstart) with its members (`--lib` takes one name
-and the runner has no workspace selector) — and skips a cell the member's
-manifest restricts away. The examples gate and
-the refusals gate (the pre-commit hook's stages) then run on **every** row, so
-no row is "the one that checks examples".
+`.github/workflows/test.yml` runs on every push / PR to `feat`/`master`/`main`.
+Its rows are the manifests' target set (1.0.11-beta `00-gate` gate-j) on the
+runners the compiler is gated on: `{ubuntu-24.04, macos-14} × {commonJS,
+erlang}` — the workspace declares `["commonJS", "erlang"]` and every member
+inherits or restricts it. Every row is hard: no `allow_fail`, no
+`continue-on-error`. There is no `beam` row (`botopink test` cannot run beam)
+and no windows row (gate-f: botopink-lang's own workflow has none, so a row
+here would measure the compiler's windows port; it returns with the
+compiler's). The linux runner is `ubuntu-24.04`, not 22.04: the compiler links
+against a pinned glibc 2.38 and imports `arc4random_buf` (GLIBC_2.36), which
+ubuntu-22.04's glibc 2.35 cannot load. Erlang/OTP 28 **and** Node 20 are
+installed on every row: `zig build install` runs `erlc` and comptime
+evaluation spawns `erl` whatever the row's target, so a commonJS row needs OTP
+exactly as an erlang row does.
+
+Each row is one `botopink-lib-test --bin "$BOTOPINK_BIN" --target <t> --strict`
+from a scratch directory with `BOTOPINK_LIB_ROOTS` naming this repository: the
+runner discovers this workspace's members — the seven modules and the eight
+examples, one row each (the umbrella has none, decision 75) — and nothing
+else. Run from inside the checkout it would add the compiler's `libs/std` and
+every sibling under `repository/` as rows; from the scratch directory the
+emilia checkout `jhonstart-emilia`'s `path` dependency needs
+(`botopink-lang/repository/emilia`, checked out by the workflow the way
+emilia's own CI checks out jhonstart) is a dependency and not a row, so the
+workflow's verdict is jhonstart's. A cell the member's manifest restricts away
+(`jhonstart-dom-test` on erlang) is not a cell of that row. Nothing about
+jhonstart is commonJS-only but `jhonstart-dom-test`: `renderToString` turns an
+`Element` tree into a string, which is pure string work on either backend.
+Then the pre-commit hook's other stages run from the hook's own runner on
+**every** row — `runRepositoryStagesGate` (jhonstart has no
+`repository-stages.sh`), `runExamplesGate "$bin" <t>` and `runRefusalsGate` —
+so no row is "the one that checks examples".
 
 Since the umbrella is a workspace, the `repository/` root contributes its
 **members** by manifest name: `--lib jhonstart` selects `modules/jhonstart/`,
 the umbrella has no row, and `jhonstart-html`, `jhonstart-link`, `jhonstart-test`,
-`jhonstart-counter` / `jhonstart-markup` / `jhonstart-todo` are rows of their own. Over the workspace the runner prints
-(measured 2026-09-21 against the `zig-out` binary of the workspace's
-`botopink-lang` checkout; the core member's rows are `botopink test` inside
-`modules/jhonstart/`, counted in `test {}` blocks):
+`jhonstart-counter` / `jhonstart-markup` / `jhonstart-todo` are rows of their own. Over the workspace
+(measured 2026-10-01 with the compiler built from botopink-lang `29cfffc8`, by
+the pre-commit hook: `botopink test --target <t>` inside each member, the
+`total:` line of each run):
 
 | lib | commonJS | erlang |
 |---|---|---|
-| `jhonstart` | ✓ 199/199 | ✓ 199/199 |
+| `jhonstart` | ✓ 204/204 | ✓ 204/204 |
 | `jhonstart-html` (member) | ✓ 5/5 | ✓ 5/5 |
 | `jhonstart-link` (member) | ✓ 38/38 | ✓ 38/38 |
-| `jhonstart-emilia` (member) | ✓ 9/9 | ✓ 9/9 |
+| `jhonstart-emilia` (member) | ✓ 10/10 | ✓ 10/10 |
 | `jhonstart-forms` (member) | ✓ 15/15 | ✓ 15/15 |
 | `jhonstart-test` | ✓ 21/21 | ✓ 21/21 |
 | `jhonstart-dom-test` (commonJS only) | ✓ 9/9 | — not a target |
@@ -702,12 +716,14 @@ the umbrella has no row, and `jhonstart-html`, `jhonstart-link`, `jhonstart-test
 | `forms` | ✓ 7/7 | ✓ 7/7 |
 | `document-shell` | ✓ 4/4 | ✓ 4/4 |
 
-`botopink test` in each member, summed per module. `jhonstart-dom-test`'s
-erlang row does not exist: its manifest restricts `targets` to `["commonJS"]`,
-and the restriction is structural (`botopink build --target erlang` refuses the
-member with the host-binding error at `src/root.bp:37`, gate-d).
-The core's 190 → 199: the starter table (+4), `app(lang:)` (+2) and the
-contract-5d `ChunkWriter` literals (+3). Track C's second wave took the core from 85 to 187:
+29 cells: fourteen members on both rows and `jhonstart-dom-test` on one.
+`jhonstart-dom-test`'s erlang row does not exist: its manifest restricts
+`targets` to `["commonJS"]`, and the restriction is structural (`botopink build
+--target erlang` refuses the member with the host-binding error at
+`src/root.bp:37`, gate-d).
+The breakdown below was written when the core read 199 (it reads 204 today,
+and `jhonstart-emilia` 10 where it read 9). 190 → 199: the starter table (+4),
+`app(lang:)` (+2) and the contract-5d `ChunkWriter` literals (+3). Track C's second wave took the core from 85 to 187:
 fronts 26/28's codec and writer cells (+7), front 29 (+3), front 31's
 `error_boundary_test.bp` (19), front 32's `metadata_test.bp` (16), front 30's
 `render_test.bp` (22), `streaming_test.bp` (23) and `routes_test.bp` (8), and
@@ -731,11 +747,14 @@ would be a boundary that never starts. The same holds for front 27's 35 (25 in
 summary PER MODULE, so its last line is the last module's count and not the
 run's total (for the record: 3 + 15 + 4 + 22 + 3 + 2 + 25 + 10 + 24 + 17).
 
-No example declares `targets`: every one inherits the workspace's two rows
-and is green on both (a member may only restrict the workspace's targets, never
-widen them, and a restriction must be structural — `00-gate` decision gate-d:
-`botopink build --target <t>` in the member refuses with a host-binding error, or
-the row exists). `jhonstart-counter` and `jhonstart-todo` were `["commonJS"]`
+No example restricts `targets`: five spell the workspace's own list
+(`"targets": ["commonJS", "erlang"]` in `blog-ssr`, `document-shell`, `forms`,
+`islands` and `nav-shell`) and three declare none and inherit it
+(`jhonstart-counter`, `jhonstart-markup`, `jhonstart-todo`), so all eight run on
+both rows and are green on both (a member may only restrict the workspace's
+targets, never widen them, and a restriction must be structural — `00-gate`
+decision gate-d: `botopink build --target <t>` in the member refuses with a
+host-binding error, or the row exists). `jhonstart-counter` and `jhonstart-todo` were `["commonJS"]`
 until 1.0.11-beta front 101: the two erlang reds behind the restriction — a bare
 `print(…)` (the checker now refuses it: `unbound variable 'print' — printing is
 the builtin `@print``, botopink-lang `reject/bare_print_call`) and a record's
@@ -746,9 +765,10 @@ todo 3/3; measured 2026-09-26 with the compiler pinned for front 101).
 
 Bootstrap path mirrors the other lib repos: check out this lib + a
 fresh `botopink-lang` clone, place this lib under
-`botopink-lang/repository/jhonstart/`, then `zig build install && zig
-build test-libs`. `BOTOPINK_LANG_REF` repo variable pins a specific
-botopink-lang ref (default `feat`).
+`botopink-lang/repository/jhonstart/` and emilia under
+`botopink-lang/repository/emilia/`, `zig build install`, then the
+`botopink-lib-test` call above. `BOTOPINK_LANG_REF` repo variable pins a
+specific botopink-lang ref (default `feat`).
 
 ## Tagging (auto)
 
@@ -777,22 +797,53 @@ git config core.hooksPath scripts/git-hooks
 ```
 
 `core.hooksPath` is per clone and applies to every worktree of it. The
-gate checks staged files — no snapshot candidate (`*.snap.new` /
-`*.snap.md.new` is recorded by renaming it after the comparison with the spec's
-literal, never committed; `.gitignore` lists both and the hook refuses a
-`git add -f`), no conflict markers — then, the root manifest being a
-workspace, runs `botopink test` **inside every `modules/*/` member** that holds
-a `botopink.json`, each on its own manifest target (`botopink test` at the root
-is the refusal, so the runner never calls it there). The compiler binary is located via (in order)
-`$BOTOPINK_BIN`, the nearest ancestor
-`repository/botopink-lang/zig-out/bin/botopink`, then `$PATH`. If none
-resolve, the gate **fails** with the way out (`zig build install`, or
-`BOTOPINK_BIN`) — a commit with no `.bp` gate is refused, not warned about
-(gate-i: fail beats warn). Never commit with `--no-verify`; fix the red instead.
+gate's stages, in order — each one a refusal (decision 67: fail beats warn),
+none with a flag, variable or list that turns it off:
 
-After `botopink test`, the gate builds every `examples/*/` that has a
-`botopink.json` (`runExamplesGate`, each with its own manifest target,
-into a throwaway `--out`); CI runs the same function on every row.
+1. **staged files** — no snapshot candidate (`*.snap.new` / `*.snap.md.new` is
+   recorded by renaming it after the comparison with the spec's literal, never
+   committed; `.gitignore` lists both and the hook refuses a `git add -f`) and
+   no conflict marker;
+2. **the compiler** — `$BOTOPINK_BIN` when it is set (a value that is not an
+   executable is a refusal, never a reason to pick another compiler), else the
+   enclosing checkout's `repository/botopink-lang/zig-out/bin/botopink` (the
+   walk stops at the first ancestor that holds `repository/botopink-lang/`, so
+   a nested worktree never borrows another checkout's binary), else a
+   botopink-lang checkout's own `zig-out`, else `$PATH`. None → the gate
+   **fails** with the way out (`zig build install`, or `BOTOPINK_BIN`) — a
+   commit with no `.bp` gate is refused, not warned about (gate-i). The path
+   is exported as `BOTOPINK_BIN`;
+3. **repository stages** — `scripts/git-hooks/repository-stages.sh`, when a
+   repository tracks one. jhonstart has none;
+4. **tests** — `botopink test --target <t>` inside **every workspace member**
+   (every directory the root manifest's `workspaces` patterns expand to: the
+   seven `modules/*` and the eight `examples/*`) on **every target its
+   manifest declares** — the member's `targets`, else the workspace's
+   `["commonJS", "erlang"]`: 29 cells (`botopink test` at the root is the
+   workspace refusal, so the runner never calls it there). Before 1.0.11-beta
+   `00-gate` the hook ran a bare `botopink test` in `modules/*` only — each
+   manifest's default `target`, so no erlang cell and no example's tests;
+5. **examples** — `botopink build --target <t>` of every `examples/*/` on every
+   declared target, into a throwaway `--out` (`runExamplesGate`): 16 builds;
+6. **refusals** — `botopink check` of every `refusals/*/` project
+   (`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): 3 cases.
+
+Stages 1–3 stop the gate at the first red. Stages 4–6 all run: every red cell
+is listed with the tail of its output and a re-run line, and the gate fails at
+the end — one run tells every red. Measured 2026-10-01 with the compiler built
+from botopink-lang `29cfffc8`: 29/29 cells, 16/16 builds, 3/3 refusals, exit 0
+in 320 s on a loaded machine. Never commit with `--no-verify`; fix the red
+instead.
+
+`scripts/git-hooks/pre-commit` and `scripts/git-hooks/lib/runner-standalone.sh`
+are one text in the five library repositories (emilia, erika, jhonstart, onze,
+rakun): the meta repository's `hook-integrity` workflow compares the bytes
+(its check 4), so a change to either lands in all five together. What only
+one repository checks lives in that repository's
+`scripts/git-hooks/repository-stages.sh`, which the runner runs in a child
+process — it can add a red, it cannot remove or skip a shared stage (its exit
+status is all the runner reads).
+
 Each example depends on the core with `{ "jhonstart": { "workspace": true } }`
 (decisions 75 + 76 of 1.0.10-beta): the sibling member of the enclosing
 workspace, resolved without consulting a library root at all — so the gate
@@ -821,11 +872,10 @@ the parser refuses, so that file is not run through `botopink format` until the
 printer is fixed (`112-gate-format`). A new `.bp` file in either tree is
 formatted before it is committed.
 
-Last, the gate `botopink check`s every `refusals/*/` project
-(`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): a case passes
-when the check FAILS and its output holds every line of the case's
-`expect.txt`. A case that compiles, or that is refused with another message or
-at another location, fails the gate.
+A `refusals/*/` case (stage 6) passes when `botopink check` FAILS and its
+output holds every line of the case's `expect.txt`. A case that compiles, that
+is refused with another message or at another location, or that has no
+`expect.txt`, fails the gate.
 
 An element builder's `attrs` defaults to `[]`, and the default travels with the
 imported function (botopink C-04 across a module boundary): `text("x")`,
