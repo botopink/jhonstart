@@ -823,6 +823,12 @@ none with a flag, variable or list that turns it off:
    workspace refusal, so the runner never calls it there). Before 1.0.11-beta
    `00-gate` the hook ran a bare `botopink test` in `modules/*` only — each
    manifest's default `target`, so no erlang cell and no example's tests;
+   the cells run side by side on the runner's pool (`gatePool`: one per CPU,
+   bounded by `MemAvailable / 768 MiB`, a cell started only while the runnable
+   threads are at most the CPUs), and the report is printed in plan order once
+   every cell has finished — the lines the one-at-a-time hook printed, cell for
+   cell; stage 5's builds run the same way (1.0.11-beta front 115: emilia's
+   serial hook measured ~4 000 s);
 5. **examples** — `botopink build --target <t>` of every `examples/*/` on every
    declared target, into a throwaway `--out` (`runExamplesGate`): 16 builds;
 6. **refusals** — `botopink check` of every `refusals/*/` project
