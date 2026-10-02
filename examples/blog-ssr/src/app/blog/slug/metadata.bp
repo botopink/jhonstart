@@ -2,7 +2,7 @@
 // post (front 32's `generateMetadata`), merged onto the root layout's.
 
 import {Metadata, OpenGraph, TwitterCard, Icons} from "jhonstart";
-import {Post, loadPost} from "repo";
+import {repo.Post, repo.loadPost};
 
 fn slugOf(params: Array<#(string, string)>) -> string {
     val hit = params.filter({ kv -> kv._0 == "slug" });

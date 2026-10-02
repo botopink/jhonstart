@@ -6,17 +6,17 @@ import {Element, ElementBase, div, p, h1, h2, ul, li, a, nav, span, section, hea
 import {RouterState, Island, clientMount, Boundary, Suspense, holeId, ErrorInfo, catchError, notFound, redirect} from "jhonstart";
 import {emptyMetadata, app, PageInput} from "jhonstart";
 import {envelope.parseActionState} from "actions";
-import {fixtureRouter, fixtureRequest, fixturePageOver, stubEnvelope, renderToStream, simulateNavigation, renderRecorded, renderStreamCollect} from "harness";
-import {htmlText, htmlLinesText, tagPerLine, assertHtml} from "assert_html";
-import {routeText, activeLinkText, assertRoute} from "assert_route";
-import {navigationText, assertNavigation} from "assert_link";
-import {requestText, assertRequest} from "assert_server";
-import {clientBundleEntryText} from "assert_island";
-import {streamText, assertStream} from "assert_stream";
-import {jsonMembers, documentText, responseText, assertResponse} from "assert_render";
-import {errorBoundaryText, assertErrorBoundary} from "assert_error_boundary";
-import {metadataText} from "assert_metadata";
-import {actionStateText, optimisticText, assertOptimistic} from "assert_form";
+import {harness.fixtureRouter, harness.fixtureRequest, harness.fixturePageOver, harness.stubEnvelope, harness.renderToStream, harness.simulateNavigation, harness.renderRecorded, harness.renderStreamCollect};
+import {assert_html.htmlText, assert_html.htmlLinesText, assert_html.tagPerLine, assert_html.assertHtml};
+import {assert_route.routeText, assert_route.activeLinkText, assert_route.assertRoute};
+import {assert_link.navigationText, assert_link.assertNavigation};
+import {assert_server.requestText, assert_server.assertRequest};
+import {assert_island.clientBundleEntryText};
+import {assert_stream.streamText, assert_stream.assertStream};
+import {assert_render.jsonMembers, assert_render.documentText, assert_render.responseText, assert_render.assertResponse};
+import {assert_error_boundary.errorBoundaryText, assert_error_boundary.assertErrorBoundary};
+import {assert_metadata.metadataText};
+import {assert_form.actionStateText, assert_form.optimisticText, assert_form.assertOptimistic};
 
 // ── fixtures the cases share ────────────────────────────────────────────────
 

@@ -4,12 +4,12 @@
 // is decoded with std's `json.decode` on each, which is the one reader both
 // sides share.
 
-import {Element, ElementBase, text, div, p, span, ul, renderToString} from "element";
-import {input, script, style, a, h2} from "elements";
-import {renderNode, raw, shellHtml, Payload, writePayload, payloadScript, renderKeys, mountIsland, resetRender, renderedIslands, registeredBoundaries, attemptRender} from "render";
-import {Boundary, Suspense, holeId} from "suspense";
-import {alias, globals} from "globals";
-import {Chunk, resolve, fillHtml} from "streaming";
+import {element.Element, element.ElementBase, element.text, element.div, element.p, element.span, element.ul, element.renderToString};
+import {elements.input, elements.script, elements.style, elements.a, elements.h2};
+import {render.renderNode, render.raw, render.shellHtml, render.Payload, render.writePayload, render.payloadScript, render.renderKeys, render.mountIsland, render.resetRender, render.renderedIslands, render.registeredBoundaries, render.attemptRender};
+import {suspense.Boundary, suspense.Suspense, suspense.holeId};
+import {globals.alias, globals.globals};
+import {streaming.Chunk, streaming.resolve, streaming.fillHtml};
 import {json.decode, json.Json} from "std";
 
 // ── step 3: the escaping walker ─────────────────────────────────────────────

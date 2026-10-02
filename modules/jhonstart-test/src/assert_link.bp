@@ -1,8 +1,8 @@
 //// jhonstart-test/assert_link — a `Link` and a client transition (front 27).
 
 import {Element} from "jhonstart";
-import {Navigation} from "harness";
-import {htmlText} from "assert_html";
+import {harness.Navigation};
+import {assert_html.htmlText};
 import {testing.snapshots} from "std";
 
 // `from`, `to` (the layout keys, space-joined), `shared` (the depth), `keep`

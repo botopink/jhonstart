@@ -1,9 +1,9 @@
 // islands — `test-snap-examples.md` § `examples/islands/`.
 
 import {Element, Island, clientMount, serverSlot, islandEntry, renderToString} from "jhonstart";
-import {LikeProps, LikeButton, likeIsland, __jhClient_LikeButton} from "like_button";
-import {ThemeProps, ThemeProvider, themeIsland, __jhClient_ThemeProvider} from "theme";
-import {Post, PostList, PostListFrom, RootLayout} from "page";
+import {like_button.LikeProps, like_button.LikeButton, like_button.likeIsland, like_button.__jhClient_LikeButton};
+import {theme.ThemeProps, theme.ThemeProvider, theme.themeIsland, theme.__jhClient_ThemeProvider};
+import {page.Post, page.PostList, page.PostListFrom, page.RootLayout};
 import {assertHtml, assertHtmlLines, assertClientBundleEntry} from "jhonstart-test";
 import {testing.snapshots.assertText} from "std";
 

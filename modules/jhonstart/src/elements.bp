@@ -24,7 +24,7 @@
 // constructor cannot know whether its output is bound for HTML, for a payload
 // envelope, or for a test.
 
-import {Element, text, renderToString} from "element";
+import {element.Element, element.text, element.renderToString};
 
 // ── the two builders every constructor in this file goes through ──
 

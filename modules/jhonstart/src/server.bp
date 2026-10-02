@@ -83,8 +83,8 @@
 // markup by hand calls them at the point the value enters the tree. This file
 // hand-rolls no escaping and re-exports none.
 
-import {Element, ElementBase, renderToString} from "element";
-import {pairValue, markDynamic} from "router";
+import {element.Element, element.ElementBase, element.renderToString};
+import {router.pairValue, router.markDynamic};
 import {encoding} from "std";
 
 // ── step 1: the request as a record ─────────────────────────────────────────

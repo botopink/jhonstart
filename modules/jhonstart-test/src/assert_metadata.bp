@@ -1,7 +1,7 @@
 //// jhonstart-test/assert_metadata — the head and the viewport (front 32).
 
 import {Metadata, Viewport, renderHead, renderViewport} from "jhonstart";
-import {tagPerLine} from "assert_html";
+import {assert_html.tagPerLine};
 import {testing.snapshots} from "std";
 
 // `renderHead(m)`, one tag per line; an empty head is the empty text.

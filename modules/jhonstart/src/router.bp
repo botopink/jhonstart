@@ -18,7 +18,7 @@
 // source. A transported segment list could disagree with the pattern it came
 // from, and the disagreement would only show on the routes nobody tested.
 
-import {Element, ElementBase} from "element";
+import {element.Element, element.ElementBase};
 import {encoding} from "std";
 import {table.parseTable, table.RouteEntry, match.matchPath, match.attempt, match.RouteMatch, navigation.NavKind, navigation.NavOutcome, navigation.signalFromWire} from "routing";
 import {refresh.refreshValue} from "actions";

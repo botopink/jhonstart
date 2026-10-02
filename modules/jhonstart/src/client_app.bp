@@ -26,14 +26,14 @@
 // is refused). It lives in its own module rather than in `router.bp` because it
 // composes through `render.bp`, and `render.bp` reads the route snapshot.
 
-import {Element, ElementBase} from "element";
+import {element.Element, element.ElementBase};
 import {encoding} from "std";
 import {table.parseTable, table.RouteEntry, match.ancestorPatterns, match.RouteMatch, navigation.NavKind, navigation.NavOutcome, navigation.signalFromReason} from "routing";
-import {RouterState, resolveRoute, fill, replace} from "router";
-import {ErrorInfo, isSignal, notFound, notFoundReason} from "error_boundary";
-import {compose, renderNode, resetRender, componentOutcome, attemptRender} from "render";
-import {redirectAllowed} from "streaming";
-import {PageContext, LayoutProps, UiSegment, segmentFor, pageFor} from "routes";
+import {router.RouterState, router.resolveRoute, router.fill, router.replace};
+import {error_boundary.ErrorInfo, error_boundary.isSignal, error_boundary.notFound, error_boundary.notFoundReason};
+import {render.compose, render.renderNode, render.resetRender, render.componentOutcome, render.attemptRender};
+import {streaming.redirectAllowed};
+import {routes.PageContext, routes.LayoutProps, routes.UiSegment, routes.segmentFor, routes.pageFor};
 
 #[@External.Node("./client_app.mjs", "locationPath")]
 #[@External.Erlang("jhonstart_client_app", "location_path")]

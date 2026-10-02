@@ -44,10 +44,10 @@
 // `2e6bb4ac`, reported, and not worked around anywhere in `server.bp`. Every
 // call below spells `{ -> Page(…) }`.
 
-import {RequestData, request, cookies, headers, enterRequest, leaveRequest, renderServerComponent, renderComponent} from "server";
-import {fill, pathname} from "router";
-import {Element, ElementBase, div, p, h1, ul, li, text, renderToString} from "element";
-import {article} from "elements";
+import {server.RequestData, server.request, server.cookies, server.headers, server.enterRequest, server.leaveRequest, server.renderServerComponent, server.renderComponent};
+import {router.fill, router.pathname};
+import {element.Element, element.ElementBase, element.div, element.p, element.h1, element.ul, element.li, element.text, element.renderToString};
+import {elements.article};
 import {encoding} from "std";
 
 // ── step 1: the record and its four accessors ───────────────────────────────

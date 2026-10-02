@@ -3,9 +3,9 @@
 import {Element, renderToString} from "jhonstart";
 import {formAction, FormStatus, applyOptimistic, searchFormProps, searchHref} from "jhonstart-forms";
 import {state: {ActionState, writeState, newActionState}, envelope: {parseActionState}} from "actions";
-import {createPostForm} from "create_post";
-import {likeWidget, addLike} from "like";
-import {searchForm} from "search";
+import {create_post.createPostForm};
+import {like.likeWidget, like.addLike};
+import {search.searchForm};
 import {assertForm, assertActionState, assertOptimistic, stubEnvelope} from "jhonstart-test";
 import {testing.snapshots.assertText} from "std";
 

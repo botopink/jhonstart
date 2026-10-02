@@ -5,7 +5,7 @@ pub mod theme;
 pub mod page;
 
 import {renderToString} from "jhonstart";
-import {Post, PostListFrom, RootLayout} from "page";
+import {page.Post, page.PostListFrom, page.RootLayout};
 
 fn main() {
     val posts = [Post(id: "p1", title: "One", likes: 3), Post(id: "p2", title: "Two", likes: 0)];

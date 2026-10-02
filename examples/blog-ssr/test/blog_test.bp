@@ -5,13 +5,13 @@
 // it, never through the frozen `renderToString`, which escapes nothing.
 
 import {Element, RouterState, Boundary, Suspense, holeId, ErrorInfo, catchError, mergeMetadata, renderNode, digestOf} from "jhonstart";
-import {RootLayout, metadata, viewport} from "app/layout";
-import {Loading} from "app/loading";
-import {ErrorPage} from "app/error";
-import {NotFound} from "app/not_found";
-import {GlobalError} from "app/global_error";
-import {PostPage, postPanel} from "app/blog/slug/page";
-import {generateMetadata} from "app/blog/slug/metadata";
+import {app.layout.RootLayout, app.layout.metadata, app.layout.viewport};
+import {app.loading.Loading};
+import {app.error.ErrorPage};
+import {app.not_found.NotFound};
+import {app.global_error.GlobalError};
+import {app.blog.slug.page.PostPage, app.blog.slug.page.postPanel};
+import {app.blog.slug.metadata.generateMetadata};
 import {assertHtml, assertHtmlLines, tagPerLine, assertStream, assertErrorBoundary, assertMetadata, assertViewport, assertRoute, renderToStream, fixtureRouter} from "jhonstart-test";
 import {testing.snapshots.assertText} from "std";
 

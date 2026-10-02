@@ -9,8 +9,8 @@
 // assertion below RUNS there; the commonJS row runs the same assertions
 // against the `.mjs` half of the same cells.
 
-import {RouterState, pairValue, patternSegments, segmentAt, navigationFor, applySignal, resolveRoute, fill, snapshot, router, pathname, params, searchParams, selectedLayoutSegment, selectedLayoutSegments, push, replace, back, forward, refresh, prefetch, lastNavigation} from "router";
-import {Element, ElementBase, div, span, text, renderToString} from "element";
+import {router.RouterState, router.pairValue, router.patternSegments, router.segmentAt, router.navigationFor, router.applySignal, router.resolveRoute, router.fill, router.snapshot, router.router, router.pathname, router.params, router.searchParams, router.selectedLayoutSegment, router.selectedLayoutSegments, router.push, router.replace, router.back, router.forward, router.refresh, router.prefetch, router.lastNavigation};
+import {element.Element, element.ElementBase, element.div, element.span, element.text, element.renderToString};
 import {encoding} from "std";
 import {refresh.refreshValue} from "actions";
 

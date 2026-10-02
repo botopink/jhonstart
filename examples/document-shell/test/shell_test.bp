@@ -1,8 +1,8 @@
 // document-shell — `test-snap-examples.md` § `examples/document-shell/`.
 
 import {Element, text, p, main, h2, el, renderToString} from "jhonstart";
-import {documentShell, doctype} from "shell";
-import {documentBody} from "shell_dsl";
+import {shell.documentShell, shell.doctype};
+import {shell_dsl.documentBody};
 import {assertHtml, assertHtmlLines} from "jhonstart-test";
 import {testing.snapshots.assertText} from "std";
 

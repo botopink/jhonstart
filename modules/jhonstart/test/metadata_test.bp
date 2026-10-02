@@ -4,7 +4,7 @@
 // server render, and every assertion also RUNS on the commonJS row because
 // the module is pure `.bp` over std's `escape`.
 
-import {Metadata, OpenGraph, TwitterCard, Icons, Viewport, emptyMetadata, emptyOpenGraph, emptyViewport, pick, pickList, applyTemplate, mergeMetadata, mergeViewport, renderHead, renderViewport} from "metadata";
+import {metadata.Metadata, metadata.OpenGraph, metadata.TwitterCard, metadata.Icons, metadata.Viewport, metadata.emptyMetadata, metadata.emptyOpenGraph, metadata.emptyViewport, metadata.pick, metadata.pickList, metadata.applyTemplate, metadata.mergeMetadata, metadata.mergeViewport, metadata.renderHead, metadata.renderViewport};
 
 fn rootMetadata() -> Metadata {
     return Metadata(

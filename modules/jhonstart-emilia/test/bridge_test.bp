@@ -9,7 +9,7 @@ import {emilia, flush, Token, defaultTheme, className, cls, clsWith, styled, sty
 import {renderNode, withAttrs, attrValue, classAttr, bracketPair} from "jhonstart";
 import { html } from "jhonstart-html";
 import {io.fs.walk, io.fs.readText} from "std";
-import {plugin, classesIn} from "root";
+import {root.plugin, root.classesIn};
 
 // ── the recorder (the core suite's, per row) ────────────────────────────────
 

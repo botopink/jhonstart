@@ -5,7 +5,7 @@ pub mod index;
 pub mod checkout;
 
 import {RouterState, renderToString} from "jhonstart";
-import {Sidebar} from "sidebar";
+import {sidebar.Sidebar};
 
 fn main() {
     val r = RouterState(path: "/docs/guides/intro", params: [], search: [], pattern: "/docs/guides/[page]", selected: 1);

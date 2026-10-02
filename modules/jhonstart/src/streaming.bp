@@ -45,18 +45,18 @@
 // `Error`, a plugin key clash, a raw-text body that would close its element, a
 // component that crashed with no error boundary around it.
 
-import {Element, ElementBase} from "element";
+import {element.Element, element.ElementBase};
 import {encoding} from "std";
 import {table.parseTable, table.RouteEntry, match.matchPath, match.RouteMatch, navigation.NavKind, navigation.NavOutcome, navigation.signalFromReason} from "routing";
-import {RequestData, enterRequest, leaveRequest} from "server";
-import {fill, renderIsDynamic, markDynamic, resetDynamic} from "router";
-import {ErrorInfo, isSignal, notFoundReason} from "error_boundary";
-import {Boundary} from "suspense";
-import {renderNode, compose, Payload, renderKeys, documentStart, documentEnd, isLangTag, __jhStateReset, __jhTakeBoundaries, __jhIslands, __jhStashedNotFound, componentOutcome, __jhTryValue} from "render";
-import {globals} from "globals";
-import {RenderPlugin, Json} from "plugin";
-import {PageContext, LayoutProps, UiSegment} from "routes";
-import {Metadata, Viewport, emptyMetadata, emptyViewport, mergeMetadata, mergeViewport, renderHead, renderViewport} from "metadata";
+import {server.RequestData, server.enterRequest, server.leaveRequest};
+import {router.fill, router.renderIsDynamic, router.markDynamic, router.resetDynamic};
+import {error_boundary.ErrorInfo, error_boundary.isSignal, error_boundary.notFoundReason};
+import {suspense.Boundary};
+import {render.renderNode, render.compose, render.Payload, render.renderKeys, render.documentStart, render.documentEnd, render.isLangTag, render.__jhStateReset, render.__jhTakeBoundaries, render.__jhIslands, render.__jhStashedNotFound, render.componentOutcome, render.__jhTryValue};
+import {globals.globals};
+import {plugin.RenderPlugin, plugin.Json};
+import {routes.PageContext, routes.LayoutProps, routes.UiSegment};
+import {metadata.Metadata, metadata.Viewport, metadata.emptyMetadata, metadata.emptyViewport, metadata.mergeMetadata, metadata.mergeViewport, metadata.renderHead, metadata.renderViewport};
 import {escape} from "std";
 
 // ── step 2: the chunk and the fill ──────────────────────────────────────────

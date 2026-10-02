@@ -42,16 +42,16 @@
 // and `b` are written verbatim from the strings onze handed in; plugin keys
 // (`s` is the CSS bridge member's) are written verbatim under their key.
 
-import {Element, ElementBase} from "element";
-import {isVoidTag, isRawTextTag} from "elements";
+import {element.Element, element.ElementBase};
+import {elements.isVoidTag, elements.isRawTextTag};
 import {escape, json, encoding} from "std";
-import {fill, snapshot} from "router";
-import {islandId, islandAttr, Island, clientMount, islandEntry} from "client";
-import {ErrorInfo, infoFor, isSignal, notFoundReason, wrap} from "error_boundary";
-import {Boundary, Suspense, holeId} from "suspense";
-import {globals} from "globals";
-import {Json} from "plugin";
-import {PageContext, LayoutProps, UiSegment, segment} from "routes";
+import {router.fill, router.snapshot};
+import {client.islandId, client.islandAttr, client.Island, client.clientMount, client.islandEntry};
+import {error_boundary.ErrorInfo, error_boundary.infoFor, error_boundary.isSignal, error_boundary.notFoundReason, error_boundary.wrap};
+import {suspense.Boundary, suspense.Suspense, suspense.holeId};
+import {globals.globals};
+import {plugin.Json};
+import {routes.PageContext, routes.LayoutProps, routes.UiSegment, routes.segment};
 
 // ── the per-render state (render.mjs / sidecars/jhonstart_render.erl) ───────
 

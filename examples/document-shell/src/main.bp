@@ -6,7 +6,7 @@ pub mod shell;
 pub mod shell_dsl;
 
 import {Element, el, p, text, renderToString} from "jhonstart";
-import {documentShell, doctype} from "shell";
+import {shell.documentShell, shell.doctype};
 
 fn page() -> Element {
     return el("main", [p([text("entry")])], []);

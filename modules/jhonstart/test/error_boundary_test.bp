@@ -9,10 +9,10 @@
 // — a reading convention; the checker defect that forced it (a binding leaking
 // into every later declaration's scope) is closed.
 
-import {ErrorInfo, ErrorBoundary, digestOf, infoFor, serverInfoFor, wrap, resetAttr, outcomeOf, renderBoundary, renderBoundaryChecked, isSignal, notFound, redirect, notFoundReason, redirectReason, catchError} from "error_boundary";
-import {Element, div, p, text, renderToString} from "element";
-import {button, htmlTag, head, body, title, meta, h2} from "elements";
-import {push, lastNavigation} from "router";
+import {error_boundary.ErrorInfo, error_boundary.ErrorBoundary, error_boundary.digestOf, error_boundary.infoFor, error_boundary.serverInfoFor, error_boundary.wrap, error_boundary.resetAttr, error_boundary.outcomeOf, error_boundary.renderBoundary, error_boundary.renderBoundaryChecked, error_boundary.isSignal, error_boundary.notFound, error_boundary.redirect, error_boundary.notFoundReason, error_boundary.redirectReason, error_boundary.catchError};
+import {element.Element, element.div, element.p, element.text, element.renderToString};
+import {elements.button, elements.htmlTag, elements.head, elements.body, elements.title, elements.meta, elements.h2};
+import {router.push, router.lastNavigation};
 import {navigation.signalPrefixes} from "routing";
 
 // ── fixtures ────────────────────────────────────────────────────────────────

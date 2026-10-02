@@ -2,8 +2,8 @@
 //// the payload (front 30).
 
 import {Payload, writePayload, globals} from "jhonstart";
-import {RecordedResponse} from "harness";
-import {tagPerLine} from "assert_html";
+import {harness.RecordedResponse};
+import {assert_html.tagPerLine};
 import {testing.snapshots} from "std";
 
 // The top-level members of a JSON object's text, one per line, in order —

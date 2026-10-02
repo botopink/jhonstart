@@ -13,7 +13,7 @@
 //// class name — merging a static class with a generated one is the styling
 //// library's, in one function there.
 
-import {Element, renderToString} from "element";
+import {element.Element, element.renderToString};
 
 pub fn classAttr(value: string) -> #(string, string) {
     return #("class", value);

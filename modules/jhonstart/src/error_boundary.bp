@@ -60,7 +60,7 @@
 // at hydration, where front 29's `hydrate()` binds it to front 26's
 // `refresh()`.
 
-import {Element} from "element";
+import {element.Element};
 import {hash} from "std";
 import {navigation.NavKind, navigation.NavOutcome, navigation.signalReason, navigation.isSignalReason} from "routing";
 
