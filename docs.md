@@ -940,16 +940,16 @@ pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
 }
 ```
 
-It is an ordinary `@Decl`-first comptime function. It emits **one pure
-declaration** — `pub fn __jhClient_LikeButton() -> string { return
-"LikeButton"; }` — and checks placement.
+It is an ordinary `@Decl`-first comptime function. It records **comptime
+meta** — `decl.setMeta("component", "LikeButton")`, read as
+`@typeinfo(LikeButton).meta.client.component` — and checks placement.
 
-The emitted declaration is a pure function returning a string and **not** a call
-into a runtime registry, deliberately: an `@emit` fires on *every* target, so
-emitting a call into a Node-only cell would make every `#[client]` component
-fail to link during the erlang server render — the exact case the boundary
-exists to support. A pure marker links everywhere and carries the same
-information; front 68 reads the set of `__jhClient_*` names off the graph.
+The marker is a compile-time constant and **not** a call into a runtime
+registry, deliberately: a call into a Node-only cell would make every
+`#[client]` component fail to link during the erlang server render — the exact
+case the boundary exists to support. Meta is the same on every target and
+carries the same information; front 68 reads the set of client components with
+`@typeinfo.all(with: client)`.
 
 `#[client]` is a decorator and the `@Component<ElementBase, Element>` return is
 the effect (decisions 118/128), so the two coexist on one component. A **server**
@@ -958,9 +958,7 @@ client: its reflected `returnType` is `"@Task<Element>"`, which the second check
 below rejects.
 
 Applying it requires importing it — `import { client, clientProps } from
-"jhonstart";` — and **`botopink check` cannot see the emitted name**: `check`
-skips decorator invocation entirely, so `__jhClient_<Name>` reads as unbound
-there. The gate is `botopink test`, never `check`.
+"jhonstart";`. The gate is `botopink test`.
 
 ### `#[clientProps]` — the serializable whitelist
 
@@ -1094,7 +1092,7 @@ All three are module-**graph** predicates and there is no graph here.
 
 | Front 68 input | Produced by |
 |---|---|
-| the set of client component names | the `__jhClient_<Name>` functions `#[client]` emits |
+| the set of client component names | `@typeinfo.all(with: client)` — the meta `#[client]` records |
 | the island rows | `islandEntry` per island, collected into the payload's `i` key by front 23 |
 | the island selector | `islandAttr(ordinal)` — decision 77, the only spelling of the pair |
 | the client module graph | the transitive imports of every module declaring one |
