@@ -668,7 +668,7 @@ here would measure the compiler's windows port; it returns with the
 compiler's). The linux runner is `ubuntu-24.04`, not 22.04: the compiler links
 against a pinned glibc 2.38 and imports `arc4random_buf` (GLIBC_2.36), which
 ubuntu-22.04's glibc 2.35 cannot load. Erlang/OTP 28 **and** Node 20 are
-installed on every row (OTP 28 pinned on both runners — `erlef/setup-beam` on linux, `brew install erlang@28 && brew link --force erlang@28` with its `bin` on `$GITHUB_PATH` on macos (decision 227; Homebrew's plain `erlang` is the latest OTP), and a step after both fails the job unless `erl` reports release 28): `zig build install` runs `erlc` and comptime
+installed on every row (OTP 28 pinned on both runners — the release the root `botopink.json`'s `"otp"` names (`"28"`), read by a step before the installs (decision 228; the compiler refuses any other `erl` on PATH) — `erlef/setup-beam` on linux, `brew install erlang@<release> && brew link --force erlang@<release>` with its `bin` on `$GITHUB_PATH` on macos (decision 227; Homebrew's plain `erlang` is the latest OTP), and a step after both fails the job unless `erl` reports that release): `zig build install` runs `erlc` and comptime
 evaluation spawns `erl` whatever the row's target, so a commonJS row needs OTP
 exactly as an erlang row does.
 
