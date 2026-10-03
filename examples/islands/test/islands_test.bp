@@ -10,9 +10,9 @@ import {testing.snapshots.assertText} from "std";
 test "islands: both markers are emitted" {
     try assertText(
         @src(),
-        @typeinfo(LikeButton).meta.client.component
+        @typeInfo(LikeButton).meta.client.component
             + " "
-            + @typeinfo(ThemeProvider).meta.client.component,
+            + @typeInfo(ThemeProvider).meta.client.component,
     );
 }
 

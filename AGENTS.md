@@ -586,7 +586,7 @@ server pass exactly as it renders in the browser.
 
 | What | Where | Shape |
 |---|---|---|
-| The marker | `#[client]` | a `@Decl`-first comptime fn. Records the meta `component` (`@typeinfo(<Name>).meta.client.component`, decision 216) — a compile-time constant, never a call into a host registry, because a Node-only call would break the erlang server render |
+| The marker | `#[client]` | a `@Decl`-first comptime fn. Records the meta `component` (`@typeInfo(<Name>).meta.client.component`, decision 216) — a compile-time constant, never a call into a host registry, because a Node-only call would break the erlang server render |
 | The props rule | `#[clientProps]` | on the props RECORD, because `@Decl` does not expose a function's parameters. Whitelist: `string` · `i32` · `f64` · `bool` |
 | The island marker | `islandId(n)` · `islandAttrOf(id)` · `islandAttr(n)` | decision 77: `islandAttrOf` is the ONE occurrence of `"data-jh-i"` in this tree. Front 23 fills `RenderHooks.islandAttr` from `islandAttr`; front 68's entry imports the same function |
 | The island | `Island(id, component, props)` · `clientMount(island, children)` | the placeholder carries the id and NOTHING else; the component name and encoded props go to the payload's `i` row |
