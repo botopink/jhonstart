@@ -76,7 +76,7 @@
 // Node-only cell called on every target) — the exact case the boundary exists
 // to support. Meta is a compile-time constant on every target and carries the
 // same information: front 68 reads the set of client components with
-// `@typeInfo.all(with: client)`.
+// `@TypeInfo.all(with: client)`.
 
 import {element.Element};
 import {encoding} from "std";
@@ -301,7 +301,7 @@ pub fn serverOnly() -> i32 {
 //
 //   | Front 68 input              | Produced by |
 //   |-----------------------------|-------------|
-//   | the set of client component names | `@typeInfo.all(with: client)` — the meta `#[client]` records |
+//   | the set of client component names | `@TypeInfo.all(with: client)` — the meta `#[client]` records |
 //   | the island rows             | `islandEntry` per island, collected into the payload's `i` key by front 23 |
 //   | the island selector         | `islandAttr(ordinal)` — decision 77, the only spelling of the pair |
 //   | the client module graph     | the transitive imports of every module declaring one |

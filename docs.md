@@ -949,7 +949,7 @@ registry, deliberately: a call into a Node-only cell would make every
 `#[client]` component fail to link during the erlang server render — the exact
 case the boundary exists to support. Meta is the same on every target and
 carries the same information; front 68 reads the set of client components with
-`@typeInfo.all(with: client)`.
+`@TypeInfo.all(with: client)`.
 
 `#[client]` is a decorator and the `@Component<ElementBase, Element>` return is
 the effect (decisions 118/128), so the two coexist on one component. A **server**
@@ -1092,7 +1092,7 @@ All three are module-**graph** predicates and there is no graph here.
 
 | Front 68 input | Produced by |
 |---|---|
-| the set of client component names | `@typeInfo.all(with: client)` — the meta `#[client]` records |
+| the set of client component names | `@TypeInfo.all(with: client)` — the meta `#[client]` records |
 | the island rows | `islandEntry` per island, collected into the payload's `i` key by front 23 |
 | the island selector | `islandAttr(ordinal)` — decision 77, the only spelling of the pair |
 | the client module graph | the transitive imports of every module declaring one |
