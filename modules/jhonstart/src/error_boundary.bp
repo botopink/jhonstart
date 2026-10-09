@@ -21,7 +21,7 @@
 //
 // `notFound()` and `redirect(url)` are jhonstart's own (decisions 113, 115 and
 // 117): they raise the `nav:not-found` / `nav:redirect:<url>` reasons of
-// `contracts.md § 5b`, spelled by the bundled library `routing`'s
+// `contracts.md § 5b`, spelled by the shared library `routing`'s
 // `navigation.signalReason` — this file writes no `nav:` literal. A signal
 // travels the same channel as a real error, so a boundary tells them apart
 // with `routing`'s `isSignalReason` and RE-RAISES a signal rather than

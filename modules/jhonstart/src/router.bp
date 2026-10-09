@@ -352,7 +352,7 @@ pub fn forward() -> i32 {
 }
 
 // The re-request carries the action header onze names, with the value the
-// bundled library `actions` spells (decision 116 rule 2) — the router writes
+// shared library `actions` spells (decision 116 rule 2) — the router writes
 // no `refresh` literal of its own. On the server `refresh` stays a no-op; in
 // the browser the cell hands the value to the re-request.
 pub fn refresh() -> i32 {

@@ -32,7 +32,7 @@
 // ── The envelope is `actions`' ──────────────────────────────────────────────
 //
 // `ActionState`, `newActionState`, `parseActionState` and `writeRpcBody` are
-// the bundled library `actions`' (decision 116). The submit cell answers the
+// the shared library `actions`' (decisions 116, 326). The submit cell answers the
 // response body AS IT ARRIVED and `parseActionState` reads it — one reader of
 // the envelope in the stack. An envelope with `ok: false` is DATA (front 31):
 // it becomes the form's state, rendered beside its field, and never reaches an
