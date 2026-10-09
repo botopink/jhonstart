@@ -26,7 +26,7 @@ fn slugOf(params: Array<#(string, string)>) -> string {
 
 // A page never propagates an error: a missing post is `notFound()`, and a
 // comment failure renders the article with no comments.
-pub fn PostPage(params: Array<#(string, string)>) -> @Component<ElementBase, Element> {
+pub fn PostPage(params: Array<#(string, string)>) -> @Component<Element> {
     val found = await loadPost(slugOf(params));
     val post = case found {
         Ok(p) -> p;

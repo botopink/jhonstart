@@ -56,15 +56,15 @@ jhonstart is embedded; the compiler core never names it.
 
 ## Component model
 
-A **component** that activates hooks is a `fn(...) -> @Component<ElementBase, Element>`
+A **component** that activates hooks is a `fn(...) -> @Component<Element>`
 (one that activates none is an ordinary `fn … -> Element`). A **hook** is a
 function named by its **noun** — `state`, `effect`, `memo`, `ref`,
 `reducer`, `router`; never a `use` prefix in the name — returning
-`@Component<ElementBase, _>`. There is no annotation: **the return type is the
+`@Component<_>`. There is no annotation: **the return type is the
 effect** (decisions 118 and 128 of botopink 1.0.10-beta). `Element` carries the
-tree: `implement @Context<ElementBase>`. The keyword `use` is the activation:
+tree: `implement @Renderable`. The keyword `use` is the activation:
 `val c = use state(0)` is legal only in a body whose return is
-`@Component<ElementBase, _>` — a component or a custom hook — and every
+`@Component<_>` — a component or a custom hook — and every
 `use` sits in the body's **static prefix** — before any `if`, `case`, `loop` or
 `return`, at any nesting. A body with any other return that activates a hook is
 `use-without-context-effect`. All of this is the language's context-inference
@@ -77,7 +77,7 @@ errors in its own body (`try … catch`, `case`; decision 121). On commonJS ever
 ```bp
 import { ElementBase, div, p, text, state, renderToString } from "jhonstart";
 
-fn Counter() -> @Component<ElementBase, Element> {
+fn Counter() -> @Component<Element> {
     val c = use state(0);
     return div([
         p([text("count: " + c.value.toString(), [])], []),
@@ -115,15 +115,15 @@ deps)`). Client re-render reactivity is the **client runtime**'s job: see
 | `reducer<S,A>(reduce, init)` | `#(state: S, dispatch: fn(action: A))` | reducer state |
 
 Custom hooks compose the primitives — a noun for a name and a
-`@Component<ElementBase, _>` return:
+`@Component<_>` return:
 
 ```bp
-fn counter(start: i32) -> @Component<ElementBase, State<i32>> {
+fn counter(start: i32) -> @Component<State<i32>> {
     val s = use state(start);
     return s;
 }
 
-fn Widget() -> @Component<ElementBase, Element> {
+fn Widget() -> @Component<Element> {
     val c = use counter(5);   // `use` + the noun; never `use useCounter()`
     …
 }
@@ -445,12 +445,12 @@ Next.js splits route state into five hooks over one internal record
 and never a doubled `use usePathname()`.
 
 ```bp
-pub fn router() -> @Component<ElementBase, RouterState>
-pub fn pathname() -> @Component<ElementBase, string>
-pub fn params() -> @Component<ElementBase, Array<#(string, string)>>
-pub fn searchParams() -> @Component<ElementBase, Array<#(string, string)>>
-pub fn selectedLayoutSegment() -> @Component<ElementBase, string>
-pub fn selectedLayoutSegments() -> @Component<ElementBase, Array<string>>
+pub fn router() -> @Component<RouterState>
+pub fn pathname() -> @Component<string>
+pub fn params() -> @Component<Array<#(string, string)>>
+pub fn searchParams() -> @Component<Array<#(string, string)>>
+pub fn selectedLayoutSegment() -> @Component<string>
+pub fn selectedLayoutSegments() -> @Component<Array<string>>
 ```
 
 `searchParams()` is the only way a page reads the query — `PageContext` has no
@@ -459,7 +459,7 @@ payload's `d` is `true` only for a render that read either, so a cache may keep
 every other render as static.
 
 ```bp
-fn ActiveNav() -> @Component<ElementBase, Element> {
+fn ActiveNav() -> @Component<Element> {
     val here = use pathname();
     val seg = use selectedLayoutSegment();
     val ps = use params();
@@ -480,7 +480,7 @@ root-first and `segments` is derived from it by dropping the empty parts —
 nothing on the path reorders.
 
 **`use` is not decoration.** A hook called *without* `use` answers its
-`@Component<ElementBase, T>` — a Promise on commonJS, where every `@Component` body is an
+`@Component<T>` — a Promise on commonJS, where every `@Component` body is an
 `async function` — so an ordinary caller `await`s it (a `@Task` body or a
 test):
 
@@ -629,7 +629,7 @@ there is nothing to look up by name in a single string.
 ```bp
 pub fn enterRequest(req: RequestData) -> i32
 pub fn leaveRequest() -> i32
-pub fn request() -> @Component<ElementBase, RequestData>
+pub fn request() -> @Component<RequestData>
 pub fn cookies() -> Array<#(string, string)>
 pub fn headers() -> Array<#(string, string)>
 ```
@@ -667,9 +667,8 @@ entered once and is constant for the whole render.
 62's and are called from there directly. `cookies()` and `headers()` are the
 only two shortcuts re-exported here.
 
-`request()` is a hook, `pub fn request() -> @Component<ElementBase,
-RequestData>`, activated `val r = use request()` inside a server component whose
-return is `@Component<ElementBase, Element>` (decisions 104/128 of botopink
+`request()` is a hook, `pub fn request() -> @Component<RequestData>`, activated `val r = use request()` inside a server component whose
+return is `@Component<Element>` (decisions 104/128 of botopink
 1.0.10-beta). Called without `use` it answers the same `@Component` — a Promise on
 commonJS — so a `@Task` body or a test `await`s it.
 
@@ -684,11 +683,11 @@ be one — the marker is the return type itself (decision 118 of botopink
 |---|---|
 | `pub fn f() -> i32 { val p = await loadPost("x"); … }` | `effect-await-without-task` — `await` needs a `@Task` return or above |
 | `fn Page() -> @Task<Element> { val c = use state(0); … }` | `use-without-context-effect` — `use` needs a `@Component` return |
-| `fn Page() -> @Component<ElementBase, Element> { val p = try await load(); … }` | `effect-try-without-fallible-channel` — `Element` is not a `@Result` |
+| `fn Page() -> @Component<Element> { val p = try await load(); … }` | `effect-try-without-fallible-channel` — `Element` is not a `@Result` |
 | any of the six removed effect annotations on a fn | `effect-annotation-removed` (decision 127) |
 
 Row two is why the chain matters: a server component that activates a hook
-is `fn … -> @Component<ElementBase, Element>` — `@Component` extends `@Task`, so
+is `fn … -> @Component<Element>` — `@Component` extends `@Task`, so
 the one return grants `use` and `await` (decision 128 of botopink 1.0.10-beta;
 a `@Task` body activates nothing). `renderComponent` renders its thunk. Both are
 asserted in `test/server_test.bp`.
@@ -710,7 +709,7 @@ pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
 
 ```bp
 pub fn renderServerComponent(component: fn() -> @Task<Element>) -> @Task<string>
-pub fn renderComponent(component: fn() -> @Component<ElementBase, Element>) -> @Task<string>
+pub fn renderComponent(component: fn() -> @Component<Element>) -> @Task<string>
 ```
 
 Awaits exactly once and renders synchronously afterwards. The parameter is an
@@ -894,7 +893,7 @@ and one hook are missing, all of them blocked on fronts that have not started:
 |---|---|
 | `__jhLinkMount()` — delegated click interception + an intersection observer over `[data-jh-l]` | front 68's generated client bundle (the module the cell binds to), which calls it once after hydrating the islands |
 | `__jhLinkPrefetch(href, mode)` — warms the client route cache | the same bundle |
-| `__jhLinkStatus() -> string` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__jhLinkStatus());` |
+| `__jhLinkStatus() -> string` and `linkStatus() -> @Component<LinkStatus>` | the same bundle. The hook is then `return linkStatusOf(__jhLinkStatus());` |
 | `__jhLinkRouteKind(href) -> string` | **front 60**'s route-kind table, emitted into that bundle |
 | `reconcile(current, target)` — the transition driver | front 68's DOM primitives (mount/unmount), plus front 60's flag for whether the target payload had to be fetched |
 
@@ -932,7 +931,7 @@ component** (here), and **front 68 walks the module graph** (not here).
 
 ```bp
 #[client]
-pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
+pub fn LikeButton(props: LikeProps) -> @Component<Element> {
     val c = use state(props.likes);
     return button([text(c.value.toString() + " likes", attrs: [])], attrs: [
         #("data-jh-on-click", "LikeButton:like"),
@@ -951,7 +950,7 @@ case the boundary exists to support. Meta is the same on every target and
 carries the same information; front 68 reads the set of client components with
 `@TypeInfo.all(with: client)`.
 
-`#[client]` is a decorator and the `@Component<ElementBase, Element>` return is
+`#[client]` is a decorator and the `@Component<Element>` return is
 the effect (decisions 118/128), so the two coexist on one component. A **server**
 component that only loads data is `fn … -> @Task<Element>` and cannot be marked
 client: its reflected `returnType` is `"@Task<Element>"`, which the second check
@@ -1135,7 +1134,7 @@ with every boundary showing its fallback.
 ### Boundaries and fills
 
 ```bp
-pub type Boundary(id: string, fallback: Element, child: fn() -> @Component<ElementBase, Element>)
+pub type Boundary(id: string, fallback: Element, child: fn() -> @Component<Element>)
 pub fn Suspense(b: Boundary) -> Element      // <div data-jh-h="h1">fallback</div>
 pub fn holeId(index: i32) -> string          // "h1"
 pub fn resolve(b: Boundary) -> @Task<Chunk>  // awaits the child once
@@ -1171,9 +1170,9 @@ the library `routing`'s, and a consumer's flat `import {Segment} from
 
 | File in `app/` | Marker | Signature it accepts |
 |---|---|---|
-| `layout.bp` | `#[layout(seg)]` | `fn(props: LayoutProps) -> @Component<ElementBase, Element>` |
-| `template.bp` | `#[template(seg)]` | `fn(props: LayoutProps) -> @Component<ElementBase, Element>` |
-| `page.bp` | `#[page(seg)]` | `fn(route: PageContext) -> @Component<ElementBase, Element>` (+ `<name>Params(route)`) |
+| `layout.bp` | `#[layout(seg)]` | `fn(props: LayoutProps) -> @Component<Element>` |
+| `template.bp` | `#[template(seg)]` | `fn(props: LayoutProps) -> @Component<Element>` |
+| `page.bp` | `#[page(seg)]` | `fn(route: PageContext) -> @Component<Element>` (+ `<name>Params(route)`) |
 | `default.bp` | `#[defaultView(seg)]` | `fn(props: LayoutProps) -> Element` |
 
 `#[page]`, `#[layout]` and `#[template]` refuse any other return, naming the
@@ -1203,7 +1202,7 @@ contract-1 lines; onze copies it into rakun's table.
 pub type Response(status: fn(code: i32) -> void, header: fn(name: string, value: string) -> void,
                   write: fn(chunk: string) -> @Task<void>, close: fn() -> @Task<void>)
 pub type PageInput(build, pathname, pattern, params, query, table, actions,
-                   chain: Array<UiSegment>, page: fn() -> @Component<ElementBase, Element>,
+                   chain: Array<UiSegment>, page: fn() -> @Component<Element>,
                    metadata: Array<Metadata>, viewports: Array<Viewport>)
 pub fn app(plugins: Array<RenderPlugin>, allowedRedirects: string[] = [], lang: string = "en") -> App
 site.render(input, req, res) -> @Task<@Result<void, string>>
@@ -1435,9 +1434,8 @@ front 66's README.
   (comptime expansion to the builder pipeline). Author trees as `div([…])` or as
   `html """…"""`.
 - **Gated / declarative** (each a generic core gap, none jhonstart-specific):
-  - (closed) `use request()`: `request()` is `fn … -> @Component<ElementBase,
-    RequestData>` (botopink decisions 104/128), activated inside a
-    `@Component<ElementBase, Element>` server component.
+  - (closed) `use request()`: `request()` is `fn … -> @Component<RequestData>` (botopink decisions 104/128), activated inside a
+    `@Component<Element>` server component.
     The server surface itself is no longer gated: `server.bp` is compiled with
     both host halves shipped (see *Server components*). `Link` and the form
     controls are no longer gated on an attribute slot either: `Element` carries

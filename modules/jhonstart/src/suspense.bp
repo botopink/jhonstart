@@ -19,7 +19,7 @@ import {element.Element, element.ElementBase};
 pub type Boundary(
     id: string,
     fallback: Element,
-    child: fn() -> @Component<ElementBase, Element>,
+    child: fn() -> @Component<Element>,
 )
 
 // The boundary is registered with the render as the hole is written: an

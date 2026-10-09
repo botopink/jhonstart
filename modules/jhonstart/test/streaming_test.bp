@@ -119,7 +119,7 @@ val table = "L|/\nP|/blog/[slug]\nP|/login\nP|/blog\nP|/dashboard";
 fn inputOf(
     pattern: string,
     chain: Array<UiSegment>,
-    page: fn() -> @Component<ElementBase, Element>,
+    page: fn() -> @Component<Element>,
 ) -> PageInput {
     return PageInput(
         build: "b1",
@@ -145,12 +145,12 @@ fn outcomeText(r: @Result<void, string>) -> string {
 
 // ── pages and layouts ───────────────────────────────────────────────────────
 
-fn RootLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
+fn RootLayout(props: LayoutProps) -> @Component<Element> {
     val depth = use selectedLayoutSegment();
     return main([props.children], attrs: [#("class", "root")]);
 }
 
-fn BlogPage() -> @Component<ElementBase, Element> {
+fn BlogPage() -> @Component<Element> {
     val slug = use pathname();
     return p([text("post " + slug, attrs: [])], attrs: []);
 }
@@ -165,7 +165,7 @@ val gateBudget = 10000;
 // construction. A 30 ms `delay` said the same only while the machine was
 // idle: on erlang each boundary is its own process, and under load the aside's
 // process could be scheduled after the timer fired.
-fn slowPosts(afterAside: Gate) -> @Component<ElementBase, Element> {
+fn slowPosts(afterAside: Gate) -> @Component<Element> {
     val opened = await async.awaitGate(afterAside, gateBudget);
     val rows = if (opened)
         ["a", "b"]
@@ -177,11 +177,11 @@ fn slowPosts(afterAside: Gate) -> @Component<ElementBase, Element> {
     );
 }
 
-fn fastAside() -> @Component<ElementBase, Element> {
+fn fastAside() -> @Component<Element> {
     return span([text("aside", attrs: [])], attrs: []);
 }
 
-fn StreamedPage(afterAside: Gate) -> @Component<ElementBase, Element> {
+fn StreamedPage(afterAside: Gate) -> @Component<Element> {
     return section(
         [
             h2([text("Blog", attrs: [])], attrs: []),
@@ -204,37 +204,37 @@ fn StreamedPage(afterAside: Gate) -> @Component<ElementBase, Element> {
     );
 }
 
-fn MissingPage() -> @Component<ElementBase, Element> {
+fn MissingPage() -> @Component<Element> {
     notFound();
     return div([], attrs: []);
 }
 
-fn LoginRedirectPage() -> @Component<ElementBase, Element> {
+fn LoginRedirectPage() -> @Component<Element> {
     redirect("/login");
     return div([], attrs: []);
 }
 
-fn NowhereRedirectPage() -> @Component<ElementBase, Element> {
+fn NowhereRedirectPage() -> @Component<Element> {
     redirect("/nowhere");
     return div([], attrs: []);
 }
 
-fn EvilRedirectPage() -> @Component<ElementBase, Element> {
+fn EvilRedirectPage() -> @Component<Element> {
     redirect("https://evil.example");
     return div([], attrs: []);
 }
 
-fn AccountsRedirectPage() -> @Component<ElementBase, Element> {
+fn AccountsRedirectPage() -> @Component<Element> {
     redirect("https://accounts.example/");
     return div([], attrs: []);
 }
 
-fn pageRan() -> @Component<ElementBase, Element> {
+fn pageRan() -> @Component<Element> {
     recPush("page ran");
     return div([], attrs: []);
 }
 
-fn SessionLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
+fn SessionLayout(props: LayoutProps) -> @Component<Element> {
     val jar = cookies();
     if (jar.length == 0) redirect("/login");
     return div([props.children], attrs: [#("class", "dash")]);
@@ -255,11 +255,11 @@ fn LoadingView() -> Element {
     return div([text("loading", attrs: [])], attrs: [#("class", "sk")]);
 }
 
-fn TemplateView(props: LayoutProps) -> @Component<ElementBase, Element> {
+fn TemplateView(props: LayoutProps) -> @Component<Element> {
     return div([props.children], attrs: [#("class", "tpl")]);
 }
 
-fn LayoutView(props: LayoutProps) -> @Component<ElementBase, Element> {
+fn LayoutView(props: LayoutProps) -> @Component<Element> {
     return section([props.children], attrs: [#("class", "layout")]);
 }
 
@@ -326,18 +326,14 @@ test "stream: fills come in completion order, each carrying its own markup" {
 // flight at the same time: a render that resolved them one after the other
 // leaves the first waiting on a gate the second has not opened, and it answers
 // "gate never opened".
-fn loader(
-    mine: Gate,
-    theirs: Gate,
-    value: string,
-) -> @Component<ElementBase, Element> {
+fn loader(mine: Gate, theirs: Gate, value: string) -> @Component<Element> {
     async.openGate(mine);
     val opened = await async.awaitGate(theirs, gateBudget);
     val shown = if (opened) value else "gate never opened: " + value;
     return span([text(shown, attrs: [])], attrs: []);
 }
 
-fn TwoLoaders(a: Gate, b: Gate) -> @Component<ElementBase, Element> {
+fn TwoLoaders(a: Gate, b: Gate) -> @Component<Element> {
     return div(
         [
             Suspense(
@@ -415,7 +411,7 @@ test "compose: a segment with no template contributes no wrapper" {
     );
 }
 
-fn depthLayout(props: LayoutProps) -> @Component<ElementBase, Element> {
+fn depthLayout(props: LayoutProps) -> @Component<Element> {
     val here = use selectedLayoutSegment();
     return div([text("[" + here + "]", attrs: []), props.children], attrs: []);
 }
@@ -459,12 +455,12 @@ test "compose: two renders of one route give the template two keys" {
 
 // ── step 8: the request the render entered ──────────────────────────────────
 
-fn RequestEcho() -> @Component<ElementBase, Element> {
+fn RequestEcho() -> @Component<Element> {
     val r = use request();
     return p([text(r.cookie("session"), attrs: [])], attrs: []);
 }
 
-fn readAfter() -> @Component<ElementBase, Element> {
+fn readAfter() -> @Component<Element> {
     val r = use request();
     return p([], attrs: []);
 }
@@ -609,22 +605,22 @@ test "signal: redirectAllowed checks relative targets against the table only" {
 
 // ── late signals: after the first chunk ─────────────────────────────────────
 
-fn lateMissing() -> @Component<ElementBase, Element> {
+fn lateMissing() -> @Component<Element> {
     notFound();
     return div([], attrs: []);
 }
 
-fn lateLogin() -> @Component<ElementBase, Element> {
+fn lateLogin() -> @Component<Element> {
     redirect("/blog");
     return div([], attrs: []);
 }
 
-fn lateNowhere() -> @Component<ElementBase, Element> {
+fn lateNowhere() -> @Component<Element> {
     redirect("/nowhere");
     return div([], attrs: []);
 }
 
-fn LateNotFoundPage() -> @Component<ElementBase, Element> {
+fn LateNotFoundPage() -> @Component<Element> {
     return div(
         [
             Suspense(
@@ -639,7 +635,7 @@ fn LateNotFoundPage() -> @Component<ElementBase, Element> {
     );
 }
 
-fn LateRedirectPage() -> @Component<ElementBase, Element> {
+fn LateRedirectPage() -> @Component<Element> {
     return div(
         [
             Suspense(
@@ -654,7 +650,7 @@ fn LateRedirectPage() -> @Component<ElementBase, Element> {
     );
 }
 
-fn LateNowherePage() -> @Component<ElementBase, Element> {
+fn LateNowherePage() -> @Component<Element> {
     return div(
         [
             Suspense(
@@ -1040,22 +1036,22 @@ test "chunk writer: notFound() before the first chunk is 404 and the not-found d
 // ── the DYNAMIC mark: the query and the request are read through a marking
 // hook, and `PageContext` carries no `query` field to read around it ────────
 
-fn SortedPage() -> @Component<ElementBase, Element> {
+fn SortedPage() -> @Component<Element> {
     val q = use searchParams();
     return p([text("rows " + q.length.toString(), attrs: [])], attrs: []);
 }
 
-fn CookiePage() -> @Component<ElementBase, Element> {
+fn CookiePage() -> @Component<Element> {
     val r = use request();
     return p([text("hi " + r.cookie("session"), attrs: [])], attrs: []);
 }
 
-fn sortedChild() -> @Component<ElementBase, Element> {
+fn sortedChild() -> @Component<Element> {
     val q = use searchParams();
     return span([text("sorted " + q.length.toString(), attrs: [])], attrs: []);
 }
 
-fn StreamedSortedPage() -> @Component<ElementBase, Element> {
+fn StreamedSortedPage() -> @Component<Element> {
     return section(
         [
             Suspense(

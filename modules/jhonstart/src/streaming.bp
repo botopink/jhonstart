@@ -187,7 +187,7 @@ pub type PageInput(
     table: string,
     actions: Array<#(string, string)>,
     chain: Array<UiSegment>,
-    page: fn() -> @Component<ElementBase, Element>,
+    page: fn() -> @Component<Element>,
     metadata: Array<Metadata>,
     viewports: Array<Viewport>,
 )

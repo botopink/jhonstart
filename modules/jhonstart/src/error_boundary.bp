@@ -27,7 +27,7 @@
 // with `routing`'s `isSignalReason` and RE-RAISES a signal rather than
 // rendering a fallback for it: a redirect is not "something went wrong".
 //
-// A page, layout or template is a `-> @Component<ElementBase, Element>` body
+// A page, layout or template is a `-> @Component<Element>` body
 // and cannot `throw` (decision 121), so the signal is the CALL:
 // `notFound();` raises the reason on the host and never returns. Inside a
 // `-> @Result<…>` thunk `throw notFound();` reads naturally and raises the

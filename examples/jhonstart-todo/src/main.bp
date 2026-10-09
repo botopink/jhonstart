@@ -3,7 +3,7 @@
 // List rendering is ordinary data: `items.map({ it -> li([text(it)]) })`
 // produces an `Element[]` the `ul` builder accepts (the `Children` coercion).
 // `todoView` is pure and directly testable; `toggle` is a custom hook — a noun,
-// no `use` prefix (the keyword is the activation), a `@Component<ElementBase, _>`
+// no `use` prefix (the keyword is the activation), a `@Component<_>`
 // return (the return is the effect) — used by the idiomatic `TodoApp` component
 // (decisions 88, 118 and 128 of 1.0.10-beta).
 
@@ -19,14 +19,14 @@ fn todoView(items: string[]) -> Element {
 }
 
 // A custom hook composing the primitive `state` hook.
-fn toggle(initial: bool) -> @Component<ElementBase, State<bool>> {
+fn toggle(initial: bool) -> @Component<State<bool>> {
     val s = use state(initial);
     return s;
 }
 
 // Idiomatic stateful component: every `use` in the static prefix, before the
 // `if`. Called plainly it is the server pass (the initial cells).
-pub fn TodoApp() -> @Component<ElementBase, Element> {
+pub fn TodoApp() -> @Component<Element> {
     val items = use state(["buy milk", "write docs"]);
     val open = use toggle(true);
     if (open.value) {

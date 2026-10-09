@@ -95,7 +95,7 @@ import {globals.globals};
 //
 // `decl.returnType` is the return type as the source spells it: a
 // `fn … -> Element` reflects as `"Element"`, a component as
-// `"@Component<ElementBase, Element>"`, and a data-loading server component as
+// `"@Component<Element>"` (any `@Component<R>` passes check 2), and a data-loading server component as
 // `"@Task<Element>"`. That is what makes check 2 reject a server component.
 //
 // `botopink check` runs the decorator like `build` and `test` do, so
@@ -104,10 +104,14 @@ pub fn client(comptime decl: @Decl) {
     decl.setMeta("component", decl.name);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[client] must annotate a function");
+    // Decision 354: a component is a `@Component<R>` whose `R` implements
+    // `@Renderable`, whatever `R` is named.
+    // LANGUAGE GAP: a decorator cannot read whether the `R` of a `@Component<R>` return implements `@Renderable` — any `@Component<…>` is accepted here.
     if (decl.returnType != "Element"
-        && decl.returnType != "@Component<ElementBase, Element>")
+        && !(decl.returnType.startsWith("@Component<")
+            && decl.returnType.endsWith(">")))
         decl.fail(
-            "#[client] must annotate a component returning Element or @Component<ElementBase, Element>",
+            "#[client] must annotate a component returning Element or @Component<R>",
         );
 }
 

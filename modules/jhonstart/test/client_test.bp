@@ -77,7 +77,7 @@ import {element.ElementBase};
 // ── step 1: `#[client]` — the marker, and the proof `@emit` fired ───────────
 //
 // A real client component: `#[client]` for the boundary, the
-// `@Component<ElementBase, Element>` return for the effect (decisions 118/128 — the
+// `@Component<Element>` return for the effect (decisions 118/128 — the
 // return is the activation, and `#[client]` is a decorator rather than an effect,
 // so the two coexist). `use state` means
 // nothing on the server; the body renders its first-render value, which is all
@@ -90,7 +90,7 @@ pub type LikeProps(
 )
 
 #[client]
-pub fn LikeButton(props: LikeProps) -> @Component<ElementBase, Element> {
+pub fn LikeButton(props: LikeProps) -> @Component<Element> {
     val c = use state(props.likes);
     return button(
         [
@@ -113,7 +113,7 @@ pub type ThemeProps(theme: string)
 pub fn ThemeProvider(
     props: ThemeProps,
     children: Children,
-) -> @Component<ElementBase, Element> {
+) -> @Component<Element> {
     val current = use state(props.theme);
     return div(children, attrs: [#("class", "theme-" + current.value)]);
 }

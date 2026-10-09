@@ -244,8 +244,8 @@ pub fn snapshot() -> RouterState {
 // `selectedLayoutSegment` and `selectedLayoutSegments`. Never `useRouter`, and
 // never the doubled `use usePathname()`.
 //
-// Each returns `@Component<ElementBase, T>`, which is what makes `use` legal on it
-// inside a `@Component<ElementBase, _>` body — the same capability
+// Each returns `@Component<T>`, which is what makes `use` legal on it
+// inside a `@Component<_>` body — the same capability
 // `hooks.bp` uses for `state`/`memo`. `use f(x)` lowers to `f(x)` on every
 // backend, so each is ALSO an ordinary call: the server render calls them
 // directly, and `test/router_test.bp` exercises the bodies that way, exactly as
@@ -255,15 +255,15 @@ pub fn snapshot() -> RouterState {
 // a hook that did work of its own would be a second place for the route to be
 // interpreted.
 
-pub fn router() -> @Component<ElementBase, RouterState> {
+pub fn router() -> @Component<RouterState> {
     return snapshot();
 }
 
-pub fn pathname() -> @Component<ElementBase, string> {
+pub fn pathname() -> @Component<string> {
     return snapshot().path;
 }
 
-pub fn params() -> @Component<ElementBase, Array<#(string, string)>> {
+pub fn params() -> @Component<Array<#(string, string)>> {
     return snapshot().params;
 }
 
@@ -272,18 +272,18 @@ pub fn params() -> @Component<ElementBase, Array<#(string, string)>> {
 // the ONLY way a page reaches the query: `PageContext` carries no `query`
 // field, so there is no read the mark can miss (`AGENTS.md` § *The `query`
 // hole, closed*).
-pub fn searchParams() -> @Component<ElementBase, Array<#(string, string)>> {
+pub fn searchParams() -> @Component<Array<#(string, string)>> {
     markDynamic();
     return snapshot().search;
 }
 
-pub fn selectedLayoutSegment() -> @Component<ElementBase, string> {
+pub fn selectedLayoutSegment() -> @Component<string> {
     return snapshot().segment();
 }
 
 // Root-first, because `pattern` is root-first and `segments` is derived from it
 // by dropping the empty parts — there is no reordering anywhere on the path.
-pub fn selectedLayoutSegments() -> @Component<ElementBase, Array<string>> {
+pub fn selectedLayoutSegments() -> @Component<Array<string>> {
     return snapshot().segments();
 }
 

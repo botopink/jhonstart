@@ -94,7 +94,7 @@ test "render: renderNode is renderToString on a tree with nothing to escape" {
 
 // ── step 1: the boundary and its hole ───────────────────────────────────────
 
-fn slowList() -> @Component<ElementBase, Element> {
+fn slowList() -> @Component<Element> {
     return ul([text("posts", attrs: [])], attrs: [#("class", "posts")]);
 }
 

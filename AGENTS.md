@@ -7,8 +7,8 @@
 
 botopink's **React/Next-style** UI framework, written *in* botopink on the
 language's own primitives — **no jhonstart-specific compiler features**.
-Components are functions returning `@Component<ElementBase, Element>`; hooks are nouns
-(`state`, `router` — never `useState`) returning the `@Component<ElementBase, _>`
+Components are functions returning `@Component<Element>`; hooks are nouns
+(`state`, `router` — never `useState`) returning the `@Component<_>`
 capability, activated by the `use` keyword (decision 88 of 1.0.10-beta:
 `use f(x)` lowers to `f(x)` on every backend); a server component that only
 loads data is `fn … -> @Task<Element>` (the return type is the effect — botopink
@@ -63,10 +63,10 @@ repository/jhonstart/
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
 │   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; pub mod html_attrs; pub mod node; pub mod prelude; mod client_runtime;`
-│   │   │   ├── element.bp     ← COMPILED CORE: `type ElementBase()` (the empty-record phantom base, decision 138) + type Element + `pub type View = @Component<ElementBase, Element>` (decision 276, front 118) + builders (Children) + renderToString + test {}
+│   │   │   ├── element.bp     ← COMPILED CORE: `type ElementBase()` (the empty-record phantom decision 128's wrapper named, until `ElementContext` retires it — 354 (7)) + type Element (`implement @Renderable`) + `pub type View = @Component<Element>` (decision 276, front 118) + builders (Children) + renderToString + test {}
 │   │   │   ├── node.bp        ← COMPILED (front 118), PURE: `pub type Node = string | i32 | i64 | f32 | f64 | bool | Element | Element[]` — what a template hole and a `children` field hold (decisions 191, 223)
 │   │   │   ├── prelude.bp     ← COMPILED (front 118): the `.bpp` prelude (decision 270) — `import` items of the core's own modules only (`Element`, `ElementBase`, `View`, `Node`, `raw`, `el`, every builder; `timeTag as time`)
-│   │   │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<ElementBase,_>, pure server-pass bodies) + test {} (imports `Element`)
+│   │   │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<_>, pure server-pass bodies) + test {} (imports `Element`)
 │   │   │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │   │   │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
 │   │   │   ├── client_runtime.mjs ← HOST: the client build's hooks (state/effect/memo/ref/reducer + render) over jhonstart's own re-render loop
@@ -124,7 +124,7 @@ repository/jhonstart/
 │   │       ├── template_test.bp ← front 118 steps 1–5 through `renderNode`: attributes, holes, void/self-closing tags, fragments, comments, raw-text bodies, markup in `if`/`case`/lambdas, components and slots, `raw`, `classList`, `#[isRaw]`
 │   │       ├── template_expressions_example_test.bp · components_and_slots_example_test.bp · directives_example_test.bp ← the front's three spec examples, landed
 │   │       ├── defects_test.bp  ← the four defects front 118 measured (static attribute, spaced value, nested self-closing tag, Element hole)
-│   │       ├── view_test.bp     ← `-> View` and `-> @Component<ElementBase, Element>` accept one another (decision 276)
+│   │       ├── view_test.bp     ← `-> View` and `-> @Component<Element>` accept one another (decision 276)
 │   │       └── platform_test.bp ← what a template body may write, on both comptime runtimes (front 118 step 0)
 │   ├── jhonstart-link/ ← MEMBER (front 27's code, relocated by front 95): client navigation's render-time half — what `from "jhonstart-link"` gives a consumer; the core does not depend on it
 │   │   ├── botopink.json  ← name jhonstart-link, src src/, entry root.bp, target commonJS (inherits [commonJS, erlang]), files [root.bp, link.bp, reconcile.bp], dependencies { jhonstart: { workspace: true } }
@@ -246,11 +246,11 @@ were promoted rather than filled in. A host-bound module here is now an ordinary
 - Builders take a `Children` arg (`div([a, b])` / single / `string` — the G4
   coercion); the **list form** is what V1 renders and what `html` emits. The
   trailing-lambda sugar (`div { [a, b] }`) is a recorded follow-up.
-- A hook is `pub fn <noun>(…) -> @Component<ElementBase, R>` — the noun, never a
+- A hook is `pub fn <noun>(…) -> @Component<R>` — the noun, never a
   `use` prefix (`counter`, `router`, `toggle`; not `useCounter`). Activation is
   `val x = use <noun>(…)` in the static prefix of a body whose return is
-  `@Component<ElementBase, _>` (the return is the effect) — a
-  component (`-> @Component<ElementBase, Element>`) or a custom hook (`-> @Component<ElementBase, _>`);
+  `@Component<_>` (the return is the effect) — a
+  component (`-> @Component<Element>`) or a custom hook (`-> @Component<_>`);
   the binding never reuses the hook's name (`val r = use router()`).
 - Hook bodies are pure/synchronous (the server pass / first render): `state`
   yields its initial value, `memo` computes eagerly, `effect` is a no-op. Hook
@@ -318,7 +318,7 @@ all read the answer it produces. This is the surface they may rely on; none of
 it changes without a note here. Everything below is reached by a consumer as
 `import { … } from "jhonstart"` and is green on **both** rows — measured with a
 `path` dependency on `modules/jhonstart/` from a package outside this tree,
-rendering a `@Component<ElementBase, Element>` component through `use pathname()` /
+rendering a `@Component<Element>` component through `use pathname()` /
 `use selectedLayoutSegment()` / `use params()` and asserting the markup.
 
 | What | Where | Shape |
@@ -330,7 +330,7 @@ rendering a `@Component<ElementBase, Element>` component through `use pathname()
 | The segment readers | `patternSegments(pattern)` · `segmentAt(segments, i)` | typed-parameter readers |
 | The build | `snapshot()` | five cells in, the record out. No `?T` unwrap that can fail |
 | **The writer** | `fill(path, params, search, pattern, selected)` | the ONE way route state is installed, and the seam fronts 27/28/29 need. `params`/`search` go in querystring-encoded, exactly as the payload's `m` and `q` carry them. Every field at once — a half-updated snapshot is a component reading the previous route's params against the next route's pattern |
-| The six hooks | `router` · `pathname` · `params` · `searchParams` · `selectedLayoutSegment` · `selectedLayoutSegments` | each `-> @Component<ElementBase, T>`, each one read of `snapshot()`. `selectedLayoutSegments()` is root-first |
+| The six hooks | `router` · `pathname` · `params` · `searchParams` · `selectedLayoutSegment` · `selectedLayoutSegments` | each `-> @Component<T>`, each one read of `snapshot()`. `selectedLayoutSegments()` is root-first |
 | The six verbs | `push` · `replace` · `back` · `forward` · `refresh` · `prefetch` | free functions over one cell, `-> i32` nobody reads. Free and not methods: records are immutable and there is no assignment to a `self` field anywhere in this tree |
 | What a verb recorded | `lastNavigation()` | `"<kind> <href>"`, `""` when nothing has. On erlang this is the 307 front 28's dispatcher writes; in the browser the last href the History API was handed |
 | The host halves | `src/router_runtime.mjs` · `src/sidecars/jhonstart_router.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, the snapshot dies with it, two concurrent renders cannot see each other's route |
@@ -339,7 +339,7 @@ A function-valued record field is called in place (`v.tagOf(e)` applies the
 field on every row).
 
 **One rule that shows on both** — a hook called WITHOUT `use` keeps its
-`@Component<ElementBase, T>` type. The type is transparent to a property or a method
+`@Component<T>` type. The type is transparent to a property or a method
 (`ps.length`, `segs.join("/")`, `r.param("slug")`) and **not** to a typed
 parameter: `pairValue(params(), "slug")` is `type mismatch: expected array, got
 Context`, and binding through a `val` does not change it. Only `use` strips the
@@ -409,14 +409,12 @@ registry (decision 114); `status.md` records it.
 
 `server.d.bp` carried a `behavior Request` with three bodyless methods and a
 phantom `@Context` base called `Http` — "no members … supplied by the host, the
-server-side mirror of `Element`". Front 28 drops both, and the reason is
-the base rather than taste: every hook anchors at `ElementBase`, the base
-`Element` names in `implement @Context<ElementBase>` (botopink decisions 96/128),
-and a server component is `fn Page() -> @Component<ElementBase, Element>`. One base
-serves the whole render tree, a client hook
-is type-legal inside a server component, and the client boundary is front 29's
-`#[client]` rule rather than a type. A second, memberless base would be a base
-nothing implements and a base no `use` could ever resolve against.
+server-side mirror of `Element`". Front 28 dropped both: a server component is
+`fn Page() -> @Component<Element>` (botopink decision 354 — `Element implement
+@Renderable`, no base in the wrapper), a client hook is type-legal inside a server
+component, and the client boundary is front 29's `#[client]` rule rather than a
+type. What a body reads from above it is a context (`use context(…)`), and the
+render's own root context is `ElementContext` (354 (7), front 26).
 
 The `Request` behavior goes with it. A behavior with bodyless methods had no
 verified implementor anywhere in this tree; `RequestData` is a plain record, the
@@ -505,7 +503,7 @@ question, not a code one.
 | The build | `request()` | six cells in, the record out. A plain function, not a hook, until front 19 step 2 |
 | **The writer pair** | `enterRequest(req)` · `leaveRequest()` | the ONE way request state is installed and removed, called by front 30's render once per render. The four pair lists are stored `encoding.formStringify`-encoded. Between the two `request()`/`cookies()`/`headers()` read it; outside them they RAISE |
 | The shortcuts | `cookies()` · `headers()` | the only two re-exported. `after`, `connection`, `draftMode` and memoization are front 62's, called from there |
-| The render entry | `renderServerComponent(component) -> @Task<string>` | takes an **unstarted thunk** `fn() -> @Task<Element>`, awaits exactly once, renders synchronously afterwards; `renderComponent` takes a `fn() -> @Component<ElementBase, Element>` thunk |
+| The render entry | `renderServerComponent(component) -> @Task<string>` | takes an **unstarted thunk** `fn() -> @Task<Element>`, awaits exactly once, renders synchronously afterwards; `renderComponent` takes a `fn() -> @Component<Element>` thunk |
 | The host halves | `src/server_runtime.mjs` · `src/sidecars/jhonstart_server.erl` | cell for cell, so one set of assertions runs on both rows. The BEAM store is the CALLING PROCESS's dictionary: a request is a process, it dies with it, two concurrent renders cannot see each other's cookies |
 
 **Two call-site rules.** The first only shows on the erlang row and is a compiler
@@ -517,7 +515,7 @@ records for the fields of its `ElementView` and it is **reported, not worked
 around**. The second shows on both: a function has one return and so one effect
 (botopink decision 118), so a server component that loads data is
 `fn … -> @Task<Element>`, and one that also activates a hook is
-`fn … -> @Component<ElementBase, Element>` (decision 128: `@Component` extends
+`fn … -> @Component<Element>` (decision 128: `@Component` extends
 `@Task`). Neither is a `@Result`, so neither can propagate a failed load with
 `try` — a component handles the error in its body (`try await load() catch …`,
 `case`, an error screen; decision 121).
@@ -551,7 +549,7 @@ is what the browser half queries on.
 |---|---|---|
 | `__jhLinkMount()` | 68 | delegated click interception + an intersection observer over `[data-jh-l]`. The generated entry calls it ONCE, after hydrating the islands, alongside front 67's `__jhFormMount()`. Front 29 owns the per-island hydrate point, not the entry, and does not call this |
 | `__jhLinkPrefetch(href, mode)` | 68 | warms the client route cache; `mode` is `prefetchMode`'s answer |
-| `__jhLinkStatus()` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | 68 · 26 step 8 | the hook is `return linkStatusOf(__jhLinkStatus());`; `#[clientOnly]` and the deletion of its erlang twin wait on 26 step 8's markers (`01-checker` step 23's `Decl.hooks`), and so does the refusal of a `use linkStatus()` outside a `#[client]` component (decision 363) |
+| `__jhLinkStatus()` and `linkStatus() -> @Component<LinkStatus>` | 68 · 26 step 8 | the hook is `return linkStatusOf(__jhLinkStatus());`; `#[clientOnly]` and the deletion of its erlang twin wait on 26 step 8's markers (`01-checker` step 23's `Decl.hooks`), and so does the refusal of a `use linkStatus()` outside a `#[client]` component (decision 363) |
 | `__jhLinkRouteKind(href)` | 60 | reads the route-kind table front 60 emits into the bundle |
 | the entry's `DomOps` | `07-onze/50` step 6 | the six functions `applyTransition` calls: `replaceChildren` on the segment root the render marks, the route's starters, the route cache (front 22's kind flag says whether the markup had to be fetched), `data-jh-pending` on the links to the target; front 29's `data-jh-s` adoption and front 31's `data-jh-e` re-anchoring are the entry's `replaceSubtree` |
 
@@ -608,7 +606,7 @@ server pass exactly as it renders in the browser.
 **What is enforced today** — four comptime refusals, no flag that turns them off
 (decision 67), each located at the annotation: `#[client]` on a non-`fn`;
 `#[client]` on a fn whose reflected `returnType` is not `Element` or
-`@Component<ElementBase, Element>` (a `-> @Task<Element>` server component
+`@Component<Element>` (a `-> @Task<Element>` server component
 reflects as `"@Task<Element>"`); `#[clientProps]` on an
 enum; a field outside the four-scalar whitelist.
 

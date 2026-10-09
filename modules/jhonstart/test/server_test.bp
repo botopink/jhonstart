@@ -25,10 +25,10 @@
 //
 //   `fn Page() -> @Task<Element> { val here = use pathname(); … }` — `@Task`
 //   grants no `use`; the chain spells the case instead
-//   (`fn Page() -> @Component<ElementBase, Element>`)
+//   (`fn Page() -> @Component<Element>`)
 //     error: use-without-context-effect
 //
-//   `fn Page() -> @Component<ElementBase, Element> { val p = try await load(); … }`
+//   `fn Page() -> @Component<Element> { val p = try await load(); … }`
 //   — `Element` is not a `@Result`, so a component cannot propagate a failed
 //   load; it writes `try await load() catch …`, a `case`, or an error screen
 //     error: effect-try-without-fallible-channel
@@ -414,10 +414,10 @@ test "server: the same page renders from an explicit request, with no host" {
 
 // ── decision 128: a server component that uses and awaits ───────────────────
 //
-// `fn … -> @Component<ElementBase, Element>`: `@Component` extends `@Task`, so the
+// `fn … -> @Component<Element>`: `@Component` extends `@Task`, so the
 // one return grants `use` and `await` (decisions 104/118/128 of 1.0.10-beta —
 // a `@Task` body does not activate a hook). `renderComponent` renders its thunk.
-fn RoutedPage() -> @Component<ElementBase, Element> {
+fn RoutedPage() -> @Component<Element> {
     val here = use pathname();
     val post = await loadPost("hi");
     return div(

@@ -41,7 +41,7 @@ pub fn loadingFallback() -> Element {
     return p([text("Loading…")]);
 }
 
-fn pageOver(shell: Element, child: fn() -> @Component<ElementBase, Element>) -> @Component<ElementBase, Element> {
+fn pageOver(shell: Element, child: fn() -> @Component<Element>) -> @Component<Element> {
     val hole = Suspense(Boundary(id: holeId(1), fallback: loadingFallback(), child: child));
     val kids = shell.children.append([hole]);
     return Element(tag: shell.tag, value: shell.value, children: kids, attrs: shell.attrs);
@@ -50,7 +50,7 @@ fn pageOver(shell: Element, child: fn() -> @Component<ElementBase, Element>) -> 
 // A `PageInput` for `path` with no layout: the page is `shell` with one
 // boundary (`h1`, `loadingFallback()`) over `child` appended to its children;
 // build id `build-0001`, the table the one page.
-pub fn fixturePageOver(path: string, shell: Element, child: fn() -> @Component<ElementBase, Element>) -> PageInput {
+pub fn fixturePageOver(path: string, shell: Element, child: fn() -> @Component<Element>) -> PageInput {
     return PageInput(
         build: "build-0001",
         pathname: path,

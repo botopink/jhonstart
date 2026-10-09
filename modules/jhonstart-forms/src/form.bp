@@ -229,7 +229,7 @@ pub fn formMount(actionHeader: string) -> i32 {
 pub fn actionState(
     actionId: string,
     initial: ActionState,
-) -> @Component<ElementBase, #(ActionState, FormBinding, bool)> {
+) -> @Component<#(ActionState, FormBinding, bool)> {
     val here = snapshot().path;
     val binding = formAction(actionId, here, __jhWireField());
     val envelope = __jhFormState(actionId);
@@ -257,7 +257,7 @@ pub fn formStatusOf(actionId: string) -> FormStatus {
 }
 
 // The hook a nested submit button reads. The server pass is idle.
-pub fn formStatus() -> @Component<ElementBase, FormStatus> {
+pub fn formStatus() -> @Component<FormStatus> {
     return idleFormStatus();
 }
 
@@ -286,7 +286,7 @@ fn noPush<T>(action: T) -> i32 {
 pub fn optimistic<T>(
     base: T,
     apply: fn(current: T, action: T) -> T,
-) -> @Component<ElementBase, #(T, fn(action: T) -> i32)> {
+) -> @Component<#(T, fn(action: T) -> i32)> {
     return #(applyOptimistic(base, [], apply), { action -> noPush(action) });
 }
 

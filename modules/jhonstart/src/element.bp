@@ -1,12 +1,12 @@
 // jhonstart/element — the UI core, implemented in *real* botopink.
 
-// The base every jhonstart hook anchors at (decisions 96 and 128 of botopink
-// 1.0.10-beta): `Element` carries the tree and names it in
-// `implement @Context<ElementBase>`, so a component is
-// `fn … -> @Component<ElementBase, Element>` and a hook
-// `fn … -> @Component<ElementBase, T>` — the return is the effect (decision 118),
-// there is no annotation. A phantom — never constructed — so it is the empty
-// record (decision 138), spelled as the effects guide § 4.1 spells it.
+// `Element` carries the tree and implements `@Renderable` (decision 354 of
+// botopink), so a component is `fn … -> @Component<Element>` and a
+// `@Component` read with `use` is `fn … -> @Component<T>` — the return is the
+// effect (decision 118), there is no annotation. `ElementBase` was the base
+// decision 128's wrapper named; `@Component<R>` names none, and the root
+// context the render provides in its place is `ElementContext` (354 (7),
+// `05-jhonstart/26`), which retires this phantom.
 pub type ElementBase()
 
 pub type Element(
@@ -14,12 +14,12 @@ pub type Element(
     value: string,
     children: Children,
     attrs: Array<#(string, string)>,
-) implement @Context<ElementBase>
+) implement @Renderable
 
 // What a component returns (decision 276): the same type as
-// `@Component<ElementBase, Element>` under a shorter name — each spelling
+// `@Component<Element>` under a shorter name — each spelling
 // accepts the other. `html """…"""` declares `-> @ExprCustom<View>` (275).
-pub type View = @Component<ElementBase, Element>;
+pub type View = @Component<Element>;
 
 pub fn bracketPair(name: string, value: string) -> #(string, string) {
     return #(name, value);

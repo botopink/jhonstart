@@ -109,7 +109,7 @@ fn defaultNotFound() -> Element {
     );
 }
 
-fn noPage(route: PageContext) -> @Component<ElementBase, Element> {
+fn noPage(route: PageContext) -> @Component<Element> {
     notFound();
     return defaultNotFound();
 }

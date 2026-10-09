@@ -54,7 +54,7 @@ fn req() -> RequestData {
     return RequestData(method: "GET", path: "/", params: [], query: [], headers: [], cookies: []);
 }
 
-fn inputOf(page: fn() -> @Component<ElementBase, Element>) -> PageInput {
+fn inputOf(page: fn() -> @Component<Element>) -> PageInput {
     return PageInput(build: "b", pathname: "/", pattern: "/", params: "", query: "", table: "P|/", actions: [], chain: [], page: page, metadata: [], viewports: []);
 }
 
@@ -67,21 +67,21 @@ fn outcomeText(r: @Result<void, string>) -> string {
 
 // ── pages ───────────────────────────────────────────────────────────────────
 
-fn StyledPage() -> @Component<ElementBase, Element> {
+fn StyledPage() -> @Component<Element> {
     val card = emilia([.Gap.All.4]);
     return div([text("card", attrs: [])], attrs: [#("class", card)]);
 }
 
-fn styledAside() -> @Component<ElementBase, Element> {
+fn styledAside() -> @Component<Element> {
     val cls = emilia([.Gap.All.2]);
     return span([text("aside", attrs: [])], attrs: [#("class", cls)]);
 }
 
-fn StreamedStyledPage() -> @Component<ElementBase, Element> {
+fn StreamedStyledPage() -> @Component<Element> {
     return div([Suspense(Boundary(id: holeId(1), fallback: div([], attrs: []), child: { -> styledAside() }))], attrs: []);
 }
 
-fn PlainPage() -> @Component<ElementBase, Element> {
+fn PlainPage() -> @Component<Element> {
     return p([text("plain", attrs: [])], attrs: []);
 }
 
@@ -158,7 +158,7 @@ fn cardTokens() -> Token[] {
     return card;
 }
 
-fn CardPage() -> @Component<ElementBase, Element> {
+fn CardPage() -> @Component<Element> {
     return div([text("card")], attrs: [styled(cardTokens(), defaultTheme())]);
 }
 

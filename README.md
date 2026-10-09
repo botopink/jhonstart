@@ -5,8 +5,8 @@
 > React/Next-style UI framework written in botopink — on the language's own
 > primitives. No compiler-core support; reached via `from "jhonstart"`.
 
-Components are functions returning `@Component<ElementBase, Element>`; hooks are nouns
-(`state`, `memo`, `router` — no `use` prefix) returning the `@Component<ElementBase, _>`
+Components are functions returning `@Component<Element>`; hooks are nouns
+(`state`, `memo`, `router` — no `use` prefix) returning the `@Component<_>`
 capability, activated by the `use` keyword; a server component that only loads data
 is `fn … -> @Task<Element>` — the return type is the effect, there is no annotation
 (botopink decisions 118–128). A component returns `Element`, not a `@Result`, so it
@@ -46,7 +46,7 @@ each depending on its members with `{ "<member>": { "workspace": true } }`. `bot
 ```bp
 import {ElementBase, div, p, text, state, renderToString} from "jhonstart";
 
-fn Counter() -> @Component<ElementBase, Element> {
+fn Counter() -> @Component<Element> {
     val c = use state(0);
     return div([
         p([text("count: " + c.value.toString(), [])], []),

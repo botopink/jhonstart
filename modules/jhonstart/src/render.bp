@@ -106,7 +106,7 @@ pub declare fn __jhTryTask<T>(f: fn() -> @Task<T>) -> @Task<@Result<T, string>>;
 #[@External.Node("./signal_runtime.mjs", "tryTask")]
 #[@External.Erlang("jhonstart_signal", "try_task")]
 pub declare fn __jhTryComponent(
-    f: fn() -> @Component<ElementBase, Element>,
+    f: fn() -> @Component<Element>,
 ) -> @Task<@Result<Element, string>>;
 
 #[@External.Node("./signal_runtime.mjs", "tryValue")]
@@ -142,7 +142,7 @@ pub fn attemptTask<T>(f: fn() -> @Task<T>) -> @Task<@Result<T, string>> {
 // modules instead of the cell: on the commonJS row the cell's rejection is
 // turned into `{ error }` only at a call site in THIS module.
 pub fn componentOutcome(
-    f: fn() -> @Component<ElementBase, Element>,
+    f: fn() -> @Component<Element>,
 ) -> @Task<@Result<Element, string>> {
     val out = await __jhTryComponent(f);
     return try out;
@@ -313,7 +313,7 @@ fn layoutOf(
     seg: UiSegment,
     route: PageContext,
     depth: i32,
-) -> @Component<ElementBase, Element> {
+) -> @Component<Element> {
     enterDepth(route, depth);
     if (seg.hasLayout == false) return childrenMarker();
     val view = seg.layoutView;
@@ -321,10 +321,7 @@ fn layoutOf(
     return tree;
 }
 
-fn templateOf(
-    seg: UiSegment,
-    route: PageContext,
-) -> @Component<ElementBase, Element> {
+fn templateOf(seg: UiSegment, route: PageContext) -> @Component<Element> {
     if (seg.hasTemplate == false) return childrenMarker();
     val view = seg.templateView;
     val tree = await view(propsFor(route));
@@ -341,8 +338,8 @@ fn templateOf(
 pub fn compose(
     chain: Array<UiSegment>,
     route: PageContext,
-    page: fn() -> @Component<ElementBase, Element>,
-) -> @Component<ElementBase, Element> {
+    page: fn() -> @Component<Element>,
+) -> @Component<Element> {
     val tree = await composeAt(chain, 0, route, page);
     return tree;
 }
@@ -351,8 +348,8 @@ fn composeAt(
     chain: Array<UiSegment>,
     i: i32,
     route: PageContext,
-    page: fn() -> @Component<ElementBase, Element>,
-) -> @Component<ElementBase, Element> {
+    page: fn() -> @Component<Element>,
+) -> @Component<Element> {
     if (i >= chain.length) {
         val leaf = await page();
         return leaf;
@@ -373,13 +370,13 @@ fn errorLevel(
     chain: Array<UiSegment>,
     i: i32,
     route: PageContext,
-    page: fn() -> @Component<ElementBase, Element>,
-) -> @Component<ElementBase, Element> {
+    page: fn() -> @Component<Element>,
+) -> @Component<Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasLoading) {
         val loading = seg.loadingView;
         val hole = holeId(nextHoleOrdinal());
-        val child: fn() -> @Component<ElementBase, Element> = { -> caughtBelow(chain, i, route, page) };
+        val child: fn() -> @Component<Element> = { -> caughtBelow(chain, i, route, page) };
         val placeholder = Suspense(
             Boundary(id: hole, fallback: loading(), child: child),
         );
@@ -396,8 +393,8 @@ fn caughtBelow(
     chain: Array<UiSegment>,
     i: i32,
     route: PageContext,
-    page: fn() -> @Component<ElementBase, Element>,
-) -> @Component<ElementBase, Element> {
+    page: fn() -> @Component<Element>,
+) -> @Component<Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasError == false) {
         val plain = await notFoundLevel(chain, i, route, page);
@@ -429,8 +426,8 @@ fn notFoundLevel(
     chain: Array<UiSegment>,
     i: i32,
     route: PageContext,
-    page: fn() -> @Component<ElementBase, Element>,
-) -> @Component<ElementBase, Element> {
+    page: fn() -> @Component<Element>,
+) -> @Component<Element> {
     val seg = segmentOf(chain, i);
     if (seg.hasNotFound == false) {
         val plain = await composeAt(chain, i + 1, route, page);
