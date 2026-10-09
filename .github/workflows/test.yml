@@ -19,7 +19,9 @@
 # Bootstrap: check out this lib + botopink-lang, place this lib under
 # `botopink-lang/repository/jhonstart/`
 # and the sibling libraries its members depend on by `path` next to it
-# (`emilia`), build the compiler,
+# (`emilia`), the shared packages they declare as `git` dependencies
+# (`actions`, `routing` — `actions` itself declares `routing`) next to it,
+# build the compiler,
 # then one `botopink-lib-test --target <row> --strict` call per row, from a
 # scratch directory with `BOTOPINK_LIB_ROOTS` naming this repository: the runner
 # discovers every member the workspace declares (decision 75: the umbrella is
@@ -98,6 +100,24 @@ jobs:
           repository: botopink/emilia
           ref: feat
           path: botopink-lang/repository/emilia
+
+      # The shared packages (decision 326) the members declare as `git`
+      # dependencies resolve by name through botopink-lang/repository, the
+      # walk-up root of every cell: each one, transitively, is checked out
+      # there at `feat` — dependencies, never rows.
+      - name: Checkout actions (dependency — modules/jhonstart, jhonstart-forms, jhonstart-test and examples/forms declare actions)
+        uses: actions/checkout@v5
+        with:
+          repository: botopink/actions
+          ref: feat
+          path: botopink-lang/repository/actions
+
+      - name: Checkout routing (dependency — modules/jhonstart and jhonstart-test declare routing; actions declares routing)
+        uses: actions/checkout@v5
+        with:
+          repository: botopink/routing
+          ref: feat
+          path: botopink-lang/repository/routing
 
       # Both hosts on every row. Building the compiler runs `erlc` (the
       # resident comptime modules are compiled at build time and embedded),

@@ -688,8 +688,11 @@ else. Run from inside the checkout it would add the compiler's `libs/std` and
 every sibling under `repository/` as rows; from the scratch directory the
 emilia checkout `jhonstart-emilia`'s `path` dependency needs
 (`botopink-lang/repository/emilia`, checked out by the workflow the way
-emilia's own CI checks out jhonstart) is a dependency and not a row, so the
-workflow's verdict is jhonstart's. A cell the member's manifest restricts away
+emilia's own CI checks out jhonstart) is a dependency and not a row, and so
+are the shared packages the members declare as `git` dependencies — `actions`
+and `routing` (`actions` itself declares `routing`), checked out at `feat`
+under `botopink-lang/repository/<pkg>`, where every cell's walk-up resolves
+them (decision 326) — so the workflow's verdict is jhonstart's. A cell the member's manifest restricts away
 (`jhonstart-dom-test` on erlang) is not a cell of that row. Nothing about
 jhonstart is commonJS-only but `jhonstart-dom-test`: `renderToString` turns an
 `Element` tree into a string, which is pure string work on either backend.
@@ -773,8 +776,8 @@ todo 3/3; measured 2026-09-26 with the compiler pinned for front 101).
 
 Bootstrap path mirrors the other lib repos: check out this lib + a
 fresh `botopink-lang` clone, place this lib under
-`botopink-lang/repository/jhonstart/` and emilia under
-`botopink-lang/repository/emilia/`, `zig build install`, then the
+`botopink-lang/repository/jhonstart/` and emilia, actions and routing under
+`botopink-lang/repository/<lib>/`, `zig build install`, then the
 `botopink-lib-test` call above. `BOTOPINK_LANG_REF` repo variable pins a
 specific botopink-lang ref (default `feat`).
 
