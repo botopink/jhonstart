@@ -220,7 +220,7 @@ test "error: an event handler is outside the boundary — Ok, handler name kept"
 test "error: the boundary's anchor carries data-jh-e with its id" {
     val anchor = wrap("seg-2", div([], attrs: []));
     assert anchor.attrs.length == 1;
-    assert anchor.attrs.at(0).unwrapOr(#("", ""))._0 == "data-jh-e";
+    assert (anchor.attrs.at(0) ?? #("", ""))._0 == "data-jh-e";
     assert renderToString(anchor)
         == "<div data-jh-e=\"seg-2\"><div></div></div>";
 }

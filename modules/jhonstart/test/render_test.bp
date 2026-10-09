@@ -151,7 +151,7 @@ test "render: the shell carries every placeholder and no child, and no document"
     assert out.contains("<head") == false;
     val registered = registeredBoundaries();
     assert registered.length == 2;
-    assert registered.at(1).unwrapOr(listBoundary(9)).id == "h2";
+    assert (registered.at(1) ?? listBoundary(9)).id == "h2";
 }
 
 test "render: building a boundary runs nothing" {
@@ -285,7 +285,7 @@ test "render: islands take i0, i1 in render order, and the i rows follow" {
     assert renderNode(second) == "<div data-jh-i=\"i1\"><span>x</span></div>";
     val rows = renderedIslands();
     assert rows.length == 2;
-    assert rows.at(0).unwrapOr(#("", "", ""))._1 == "LikeButton";
-    assert rows.at(0).unwrapOr(#("", "", ""))._2 == "postId=7";
-    assert rows.at(1).unwrapOr(#("", "", ""))._0 == "i1";
+    assert (rows.at(0) ?? #("", "", ""))._1 == "LikeButton";
+    assert (rows.at(0) ?? #("", "", ""))._2 == "postId=7";
+    assert (rows.at(1) ?? #("", "", ""))._0 == "i1";
 }

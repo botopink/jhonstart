@@ -216,8 +216,8 @@ fn isAbsolute(to: string) -> bool {
 }
 
 fn pathOf(to: string) -> string {
-    val q = to.split("?").at(0).unwrapOr(to);
-    return q.split("#").at(0).unwrapOr(q);
+    val q = to.split("?").at(0) ?? to;
+    return q.split("#").at(0) ?? q;
 }
 
 // A relative target is accepted when `routing`'s `matchPath` finds it in the
@@ -367,7 +367,7 @@ fn resolveIn(
 // ── the plugins, in the order `app` received them ───────────────────────────
 
 fn pluginAt(ps: Array<RenderPlugin>, i: i32) -> RenderPlugin {
-    var found = ps.at(0).unwrapOr(noPlugin());
+    var found = ps.at(0) ?? noPlugin();
     var n = 0;
     for (ps) { p ->
         if (n == i) found = p;
@@ -919,7 +919,7 @@ fn fillsInOrder(
     i: i32,
 ) -> @Task<string> {
     if (i >= boundaries.length) return "";
-    val id = holeIds(boundaries).at(i).unwrapOr("");
+    val id = holeIds(boundaries).at(i) ?? "";
     val r = resolvedFor(resolved, id);
     val mine = fillHtml(Chunk(id: id, html: r.html), r.css);
     val rest = await fillsInOrder(site, boundaries, resolved, i + 1);

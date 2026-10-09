@@ -10,7 +10,7 @@ fn navLink(href: string, label: string, active: bool) -> Element {
 }
 
 pub fn RootLayout(r: RouterState, page: Element) -> Element {
-    val section = r.segments().at(0).unwrapOr("");
+    val section = r.segments().at(0) ?? "";
     return div([
         header([nav([
             navLink("/", "Home", section == ""),

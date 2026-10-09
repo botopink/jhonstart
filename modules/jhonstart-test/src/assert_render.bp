@@ -57,12 +57,12 @@ pub fn jsonMembers(objectText: string) -> Array<string> {
 pub fn documentText(doc: string) -> string {
     val marker = "<script>window." + globals.payload + " = ";
     val parts = doc.split(marker);
-    val before = parts.at(0).unwrapOr(doc);
-    val after = parts.at(1).unwrapOr("");
-    val json = after.split("</script>").at(0).unwrapOr("");
+    val before = parts.at(0) ?? doc;
+    val after = parts.at(1) ?? "";
+    val json = after.split("</script>").at(0) ?? "";
     val rest = after.split("</script>").drop(1).join("</script>");
     val headAndBody = before.split("<body>");
-    val head = headAndBody.at(0).unwrapOr(before);
+    val head = headAndBody.at(0) ?? before;
     val body = headAndBody.drop(1).join("<body>");
     var lines: string[] = [];
     if (headAndBody.length > 1) {

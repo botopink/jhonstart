@@ -164,8 +164,8 @@ fn fixtureRedirectInput() -> PageInput {
 test "helpers: renderStreamCollect hands over the shell, the fill and the end" {
     val chunks = await renderStreamCollect(app([]), fixturePageOver("/blog", div([], attrs: [#("class", "shell")]), { -> postsChild() }), fixtureRequest("GET", "/blog"));
     assert chunks.length == 3;
-    assert chunks.at(0).unwrapOr("").endsWith("<div class=\"shell\"><div data-jh-h=\"h1\"><p>Loading…</p></div></div></div>");
-    assert chunks.at(1).unwrapOr("") == "<template data-jh-f=\"h1\"><ul><li>one</li></ul></template><script>__bp1(\"h1\")</script>";
+    assert (chunks.at(0) ?? "").endsWith("<div class=\"shell\"><div data-jh-h=\"h1\"><p>Loading…</p></div></div></div>");
+    assert chunks.at(1) ?? "" == "<template data-jh-f=\"h1\"><ul><li>one</li></ul></template><script>__bp1(\"h1\")</script>";
     val doc = documentText(chunks.join(""));
     assert doc.contains("\n--- payload\n\"v\":1\n\"b\":\"build-0001\"\n");
 }

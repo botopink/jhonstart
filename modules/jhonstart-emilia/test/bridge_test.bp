@@ -96,7 +96,7 @@ test "bridge: a styled page has one <style> in <head>, carrying its class" {
     val out = await site.render(inputOf({ -> StyledPage() }), req(), recorder());
     assert outcomeText(out) == "ok";
     val doc = document();
-    val head = doc.split("</head>").at(0).unwrapOr("");
+    val head = doc.split("</head>").at(0) ?? "";
     assert styleCount(head) == 1;
     val cls = emilia([.Gap.All.4]);
     val drained = await flush();
@@ -112,7 +112,7 @@ test "bridge: a streamed boundary's new class is its fill's style, before the ma
     val drained = await flush();
     val doc = document();
     assert doc.contains("<template data-jh-f=\"h1\"><style>");
-    val fill = doc.split("<template data-jh-f=\"h1\">").at(1).unwrapOr("");
+    val fill = doc.split("<template data-jh-f=\"h1\">").at(1) ?? "";
     assert fill.indexOf("." + cls) < fill.indexOf("<span class=\"" + cls + "\">aside</span>");
     assert fill.contains("</template><script>__bp1(\"h1\")</script>");
 }
@@ -169,7 +169,7 @@ test "bridge: the contract-4 literal on a rendered document" {
     val doc = document();
     assert className(cardTokens(), defaultTheme()) == "e_39b87d03";
     assert doc.contains("<div class=\"e_39b87d03\">card</div>");
-    val head = doc.split("</head>").at(0).unwrapOr("");
+    val head = doc.split("</head>").at(0) ?? "";
     assert head.contains(".e_39b87d03{");
     assert head.contains(".e_39b87d03:hover{");
     assert doc.contains("\"s\":[\"e_39b87d03\"]");

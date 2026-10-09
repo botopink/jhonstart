@@ -128,13 +128,13 @@ fn contextOf(r: RouterState) -> PageContext {
 }
 
 fn pathPart(to: string) -> string {
-    return to.split("?").at(0).unwrapOr(to);
+    return to.split("?").at(0) ?? to;
 }
 
 fn queryPart(to: string) -> string {
     val parts = to.split("?");
     if (parts.length < 2) return "";
-    return parts.at(1).unwrapOr("");
+    return parts.at(1) ?? "";
 }
 
 fn kindWord(out: NavOutcome) -> string {

@@ -295,11 +295,11 @@ test "stream: a page with boundaries writes the shell, then each fill, each awai
     assert outcomeText(out) == "ok";
     val w = writes();
     assert w.length == 4;
-    assert w.at(0).unwrapOr("").contains("<body><div data-jh-root=\"\">");
-    assert w.at(0).unwrapOr("").contains("data-jh-h=\"h1\"");
-    assert w.at(0).unwrapOr("").contains("class=\"posts\"") == false;
+    assert (w.at(0) ?? "").contains("<body><div data-jh-root=\"\">");
+    assert (w.at(0) ?? "").contains("data-jh-h=\"h1\"");
+    assert (w.at(0) ?? "").contains("class=\"posts\"") == false;
     assert countOf("close") == 1;
-    assert recEvents().at(0).unwrapOr("") == "status 200";
+    assert recEvents().at(0) ?? "" == "status 200";
 }
 
 test "stream: fills come in completion order, each carrying its own markup" {
@@ -311,18 +311,14 @@ test "stream: fills come in completion order, each carrying its own markup" {
         recorderOpening(afterAside),
     );
     val w = writes();
-    assert w
-        .at(1)
-        .unwrapOr("")
-        .startsWith(
-            "write <template data-jh-f=\"h2\"><span>aside</span></template>",
-        );
-    assert w
-        .at(2)
-        .unwrapOr("")
-        .startsWith("write <template data-jh-f=\"h1\"><ul class=\"posts\">");
-    assert w.at(3).unwrapOr("").contains("<script>window.__bp0 = {\"v\":1,");
-    assert w.at(3).unwrapOr("").contains("\"h\":[\"h1\",\"h2\"]");
+    assert (w.at(1) ?? "").startsWith(
+        "write <template data-jh-f=\"h2\"><span>aside</span></template>",
+    );
+    assert (w.at(2) ?? "").startsWith(
+        "write <template data-jh-f=\"h1\"><ul class=\"posts\">",
+    );
+    assert (w.at(3) ?? "").contains("<script>window.__bp0 = {\"v\":1,");
+    assert (w.at(3) ?? "").contains("\"h\":[\"h1\",\"h2\"]");
 }
 
 // Opens `mine`, then answers `value` once `theirs` is open. The two loaders
@@ -389,7 +385,7 @@ test "compose: layout > template > error > loading > not-found > page, in the ma
         recorder(),
     );
     assert outcomeText(out) == "ok";
-    val shell = writes().at(0).unwrapOr("");
+    val shell = writes().at(0) ?? "";
     val nest = shell.indexOf(
         "<section class=\"layout\"><div class=\"tpl\"><div data-jh-t=",
     );
@@ -399,7 +395,7 @@ test "compose: layout > template > error > loading > not-found > page, in the ma
     assert shell.contains(
         "\"><div class=\"tpl\"><div data-jh-e=\"/blog/[slug]\"><div data-jh-h=\"h1\"><div class=\"sk\">loading</div></div></div></div></div></section>",
     );
-    val fill = writes().at(1).unwrapOr("");
+    val fill = writes().at(1) ?? "";
     assert fill.contains(
         "<template data-jh-f=\"h1\"><div data-jh-n=\"/blog/[slug]\"><p>post /blog/hi</p></div></template>",
     );
@@ -413,7 +409,7 @@ test "compose: a segment with no template contributes no wrapper" {
         req(),
         recorder(),
     );
-    val doc = writes().at(0).unwrapOr("");
+    val doc = writes().at(0) ?? "";
     assert doc.contains(
         "<div data-jh-root=\"\"><section class=\"layout\"><p>post /blog/hi</p></section></div>",
     );
@@ -436,7 +432,7 @@ test "compose: each layout receives its selected depth, root-first" {
         req(),
         recorder(),
     );
-    val doc = writes().at(0).unwrapOr("");
+    val doc = writes().at(0) ?? "";
     assert doc.contains(
         "<div>[blog]<div>[[slug]]<div>[]<p>post /blog/hi</p></div></div></div>",
     );
@@ -450,13 +446,13 @@ test "compose: two renders of one route give the template two keys" {
         req(),
         recorder(),
     );
-    val first = writes().at(0).unwrapOr("");
+    val first = writes().at(0) ?? "";
     val b = await site.render(
         inputOf("/blog", [tpl], { -> BlogPage() }),
         req(),
         recorder(),
     );
-    val second = writes().at(0).unwrapOr("");
+    val second = writes().at(0) ?? "";
     assert first.contains("data-jh-t=\"/blog#");
     assert first != second;
 }
@@ -485,7 +481,7 @@ test "stream: a component reads the req the render received, and nothing after i
         req(),
         recorder(),
     );
-    assert writes().at(0).unwrapOr("").contains("<p>s1</p>");
+    assert (writes().at(0) ?? "").contains("<p>s1</p>");
     val outside = await attemptTask({ -> readRequestOutside() });
     val message = case outside {
         Ok(n) -> "read " + n.toString();
@@ -506,7 +502,7 @@ test "stream: defaultHooks renders a working document with no <script src>; one 
         req(),
         recorder(),
     );
-    val doc = writes().at(0).unwrapOr("");
+    val doc = writes().at(0) ?? "";
     assert doc.contains("<script src") == false;
     assert doc.startsWith(
         "write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">",
@@ -524,7 +520,7 @@ test "stream: defaultHooks renders a working document with no <script src>; one 
         req(),
         recorder(),
     );
-    val withBundle = writes().at(0).unwrapOr("");
+    val withBundle = writes().at(0) ?? "";
     assert withBundle.contains(
         "</script><script src=\"/b.js\"></script></body></html>",
     );
@@ -543,9 +539,9 @@ test "signal: notFound before the first chunk is a 404 with the nearest not-foun
         recorder(),
     );
     assert outcomeText(out) == "ok";
-    assert recEvents().at(0).unwrapOr("") == "status 404";
+    assert recEvents().at(0) ?? "" == "status 404";
     assert writes().length == 1;
-    assert writes().at(0).unwrapOr("").contains("<h2>No such post</h2>");
+    assert (writes().at(0) ?? "").contains("<h2>No such post</h2>");
     assert countOf("close") == 1;
 }
 
@@ -682,8 +678,8 @@ test "late: a notFound after the shell is the last chunk, status 200, no later f
     );
     assert outcomeText(out) == "ok";
     assert countOf("status") == 1;
-    assert recEvents().at(0).unwrapOr("") == "status 200";
-    assert writes().at(1).unwrapOr("")
+    assert recEvents().at(0) ?? "" == "status 200";
+    assert writes().at(1) ?? ""
         == "write <template data-jh-g=\"not-found\"><h1>Not found</h1></template><script>__bp2()</script>";
     assert countOf("close") == 1;
 }
@@ -696,7 +692,7 @@ test "late: a redirect after the shell is data-jh-g markup through escape.attrib
         recorder(),
     );
     assert outcomeText(out) == "ok";
-    assert writes().at(1).unwrapOr("")
+    assert writes().at(1) ?? ""
         == "write <template data-jh-g=\"redirect\" data-jh-to=\"/blog\"></template><script>__bp2()</script>";
     assert countOf("status") == 1;
 }
@@ -826,8 +822,8 @@ test "plugin: head once, chunk per boundary in completion order, close once, pay
         .join("|")
         == "plugin head|plugin close|plugin payload";
     val w = writes();
-    assert w.at(1).unwrapOr("").contains("<style>.h2{}</style>");
-    assert w.at(2).unwrapOr("").contains("<style>.h1{}</style>");
+    assert (w.at(1) ?? "").contains("<style>.h2{}</style>");
+    assert (w.at(2) ?? "").contains("<style>.h1{}</style>");
     assert allText().indexOf("plugin head")
         < allText().indexOf("write <!DOCTYPE");
     assert allText().indexOf("plugin close")
@@ -843,18 +839,14 @@ test "plugin: head lands in <head>, each chunk first inside its fill, the payloa
         recorderOpening(afterAside),
     );
     val w = writes();
-    assert w.at(0).unwrapOr("").contains("<style>.head{}</style></head>");
-    assert w
-        .at(1)
-        .unwrapOr("")
-        .startsWith(
-            "write <template data-jh-f=\"h2\"><style>.h2{}</style><span>aside</span>",
-        );
-    assert w
-        .at(2)
-        .unwrapOr("")
-        .startsWith("write <template data-jh-f=\"h1\"><style>.h1{}</style><ul");
-    assert w.at(3).unwrapOr("").contains("\"x\":[1]}");
+    assert (w.at(0) ?? "").contains("<style>.head{}</style></head>");
+    assert (w.at(1) ?? "").startsWith(
+        "write <template data-jh-f=\"h2\"><style>.h2{}</style><span>aside</span>",
+    );
+    assert (w.at(2) ?? "").startsWith(
+        "write <template data-jh-f=\"h1\"><style>.h1{}</style><ul",
+    );
+    assert (w.at(3) ?? "").contains("\"x\":[1]}");
 }
 
 test "plugin: a render with no plugin writes no <style> and no plugin key" {
@@ -928,20 +920,18 @@ test "stream: app(lang:) is the document's <html lang>, \"en\" when not given" {
         req(),
         recorder(),
     );
-    assert writes()
-        .at(0)
-        .unwrapOr("")
-        .startsWith("write <!DOCTYPE html><html lang=\"en\">");
+    assert (writes().at(0) ?? "").startsWith(
+        "write <!DOCTYPE html><html lang=\"en\">",
+    );
     val site = app([], [], "pt-BR");
     val streamed = await site.renderStream(
         inputOf("/blog", [], { -> BlogPage() }),
         req(),
         recorder(),
     );
-    assert writes()
-        .at(0)
-        .unwrapOr("")
-        .startsWith("write <!DOCTYPE html><html lang=\"pt-BR\"><head>");
+    assert (writes().at(0) ?? "").startsWith(
+        "write <!DOCTYPE html><html lang=\"pt-BR\"><head>",
+    );
 }
 
 fn badLang() -> App {
@@ -1010,17 +1000,13 @@ test "chunk writer: a page is 200, text/html, one document, one close" {
     assert outcomeText(out) == "ok";
     val events = recEvents();
     assert events.length == 4;
-    assert events.at(0).unwrapOr("") == "status 200";
-    assert events.at(1).unwrapOr("")
-        == "header content-type text/html; charset=utf-8";
-    assert events
-        .at(2)
-        .unwrapOr("")
-        .startsWith(
-            "write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><div data-jh-root=\"\">",
-        );
-    assert events.at(2).unwrapOr("").endsWith("</body></html>");
-    assert events.at(3).unwrapOr("") == "close";
+    assert events.at(0) ?? "" == "status 200";
+    assert events.at(1) ?? "" == "header content-type text/html; charset=utf-8";
+    assert (events.at(2) ?? "").startsWith(
+        "write <!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"></head><body><div data-jh-root=\"\">",
+    );
+    assert (events.at(2) ?? "").endsWith("</body></html>");
+    assert events.at(3) ?? "" == "close";
 }
 
 test "chunk writer: redirect(\"/login\") before the first chunk is 307, location, no body" {
@@ -1044,11 +1030,10 @@ test "chunk writer: notFound() before the first chunk is 404 and the not-found d
     );
     assert outcomeText(out) == "ok";
     val events = recEvents();
-    assert events.at(0).unwrapOr("") == "status 404";
-    assert events.at(1).unwrapOr("")
-        == "header content-type text/html; charset=utf-8";
-    assert events.at(2).unwrapOr("").contains("<h2>No such post</h2>");
-    assert events.at(events.length - 1).unwrapOr("") == "close";
+    assert events.at(0) ?? "" == "status 404";
+    assert events.at(1) ?? "" == "header content-type text/html; charset=utf-8";
+    assert (events.at(2) ?? "").contains("<h2>No such post</h2>");
+    assert events.at(events.length - 1) ?? "" == "close";
     assert countOf("close") == 1;
 }
 
@@ -1087,7 +1072,7 @@ fn StreamedSortedPage() -> @Component<ElementBase, Element> {
 
 fn lastWrite() -> string {
     val w = writes();
-    return w.at(w.length - 1).unwrapOr("");
+    return w.at(w.length - 1) ?? "";
 }
 
 test "dynamic: a page that reads neither the query nor the request is static" {

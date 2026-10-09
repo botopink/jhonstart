@@ -42,10 +42,10 @@ test "form: formAttrs is exactly method, action, data-jh-a — the current pathn
         formAction("a_9f2c1b7e0d4a6c8e1f3b5d7a", "/blog/hello", "__bp_action"),
     );
     assert attrs.length == 3;
-    assert attrs.at(0).unwrapOr(#("", ""))._0 == "method";
-    assert attrs.at(0).unwrapOr(#("", ""))._1 == "post";
-    assert attrs.at(1).unwrapOr(#("", ""))._1 == "/blog/hello";
-    assert attrs.at(2).unwrapOr(#("", ""))._0 == "data-jh-a";
+    assert (attrs.at(0) ?? #("", ""))._0 == "method";
+    assert (attrs.at(0) ?? #("", ""))._1 == "post";
+    assert (attrs.at(1) ?? #("", ""))._1 == "/blog/hello";
+    assert (attrs.at(2) ?? #("", ""))._0 == "data-jh-a";
 }
 
 test "form: the hidden field is named by the actionField passed in" {
@@ -213,9 +213,9 @@ test "form: optimistic's server pass is the base and a no-op push" {
 test "form: the search form is method=get with data-jh-sf and no data-jh-a" {
     val attrs = searchFormAttrs(searchFormProps("/search"));
     assert attrs.length == 3;
-    assert attrs.at(0).unwrapOr(#("", ""))._1 == "get";
-    assert attrs.at(1).unwrapOr(#("", ""))._1 == "/search";
-    assert attrs.at(2).unwrapOr(#("", ""))._0 == "data-jh-sf";
+    assert (attrs.at(0) ?? #("", ""))._1 == "get";
+    assert (attrs.at(1) ?? #("", ""))._1 == "/search";
+    assert (attrs.at(2) ?? #("", ""))._0 == "data-jh-sf";
     assert attrs.filter({ a -> a._0 == "data-jh-a" }).length == 0;
 }
 

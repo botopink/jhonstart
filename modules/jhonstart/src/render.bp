@@ -540,7 +540,7 @@ pub fn isLangTag(tag: string) -> bool {
     val chars = tag.split("");
     val letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     val allowed = letters + "0123456789-";
-    val first = chars.at(0).unwrapOr("");
+    val first = chars.at(0) ?? "";
     val startsWithLetter = first != "" && letters.contains(first);
     return startsWithLetter && chars.all({ c -> allowed.contains(c) });
 }

@@ -83,7 +83,7 @@ test "metadata: a string — an empty child inherits, a non-empty child replaces
 test "metadata: a list — a non-empty child replaces wholesale, an empty one inherits" {
     val merged = mergeMetadata(rootMetadata(), pageMetadata());
     assert merged.openGraph.images.length == 1;
-    assert merged.openGraph.images.at(0).unwrapOr("") == "/og/hello.png";
+    assert merged.openGraph.images.at(0) ?? "" == "/og/hello.png";
     val kept = mergeMetadata(rootMetadata(), emptyMetadata());
     assert kept.openGraph.images.length == 3;
     assert pickList(["a", "b"], []).length == 2;

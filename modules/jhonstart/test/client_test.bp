@@ -377,9 +377,9 @@ test "client: propsOf decodes the row islandEntry encoded" {
     );
     val back = propsOf(row._2);
     assert back.length == 2;
-    assert back.at(0).unwrapOr(#("", ""))._0 == "postId";
-    assert back.at(0).unwrapOr(#("", ""))._1 == "7";
-    assert back.at(1).unwrapOr(#("", ""))._1 == "3";
+    assert (back.at(0) ?? #("", ""))._0 == "postId";
+    assert (back.at(0) ?? #("", ""))._1 == "7";
+    assert (back.at(1) ?? #("", ""))._1 == "3";
 }
 
 test "client: propsOf of a component with no props is the empty list" {
@@ -421,7 +421,7 @@ test "client: registerStarter fills the registry's table, in registration order"
     val names = registeredStarters();
     assert names.length == before + 2;
     assert names.contains("StarterA");
-    assert names.at(names.length - 1).unwrapOr("") == "StarterB";
+    assert names.at(names.length - 1) ?? "" == "StarterB";
 }
 
 test "client: a second starter for one component fails, naming it" {
