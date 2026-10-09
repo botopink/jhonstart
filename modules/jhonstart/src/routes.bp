@@ -312,7 +312,7 @@ pub fn ctxRest(route: PageContext) -> string[] {
 // `"@Task<Element>"`, `-> Element` as `"Element"`. The required spelling is in
 // the message.
 
-pub fn page(comptime decl: @Decl, seg: string) {
+pub fn page(comptime decl: @Decl, comptime seg: string) {
     decl.setMeta("seg", seg);
     val kinds = seg
         .split("/")
@@ -360,7 +360,7 @@ pub fn page(comptime decl: @Decl, seg: string) {
         );
 }
 
-pub fn layout(comptime decl: @Decl, seg: string) {
+pub fn layout(comptime decl: @Decl, comptime seg: string) {
     decl.setMeta("seg", seg);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[layout] must annotate a function");
@@ -376,7 +376,7 @@ pub fn layout(comptime decl: @Decl, seg: string) {
         );
 }
 
-pub fn template(comptime decl: @Decl, seg: string) {
+pub fn template(comptime decl: @Decl, comptime seg: string) {
     decl.setMeta("seg", seg);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[template] must annotate a function");
@@ -392,7 +392,7 @@ pub fn template(comptime decl: @Decl, seg: string) {
         );
 }
 
-pub fn defaultView(comptime decl: @Decl, seg: string) {
+pub fn defaultView(comptime decl: @Decl, comptime seg: string) {
     decl.setMeta("seg", seg);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[defaultView] must annotate a function");
