@@ -1,0 +1,2 @@
+error: html: a second `RawBody` on one tag — `#[isRaw]` is written once
+ --> src/main.bp:6:32

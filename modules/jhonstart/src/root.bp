@@ -36,4 +36,6 @@ pub mod error_boundary; // front 31
 pub mod metadata; // front 32
 pub mod elements; // front 94
 pub mod html_attrs; // front 48: the attribute array's shape and order
+pub mod node; // front 118: `Node`, the hole and `children` type (decision 223)
+pub mod prelude; // front 118: the `.bpp` prelude (decision 270)
 mod client_runtime;

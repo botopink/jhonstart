@@ -16,6 +16,11 @@ pub type Element(
     attrs: Array<#(string, string)>,
 ) implement @Context<ElementBase>
 
+// What a component returns (decision 276): the same type as
+// `@Component<ElementBase, Element>` under a shorter name — each spelling
+// accepts the other. `html """…"""` declares `-> @ExprCustom<View>` (275).
+pub type View = @Component<ElementBase, Element>;
+
 pub fn bracketPair(name: string, value: string) -> #(string, string) {
     return #(name, value);
 }

@@ -1,0 +1,106 @@
+// What a template body may write (front 118 step 0). Each test below runs a
+// small template function whose body uses one construct, on both evaluators
+// (`botopink test --target commonJS` evaluates comptime on the wat runtime,
+// `--target erlang` on BEAM). `html.bp`'s header and `../src/AGENTS.md`
+// § Comptime constraints are written from these results.
+//
+// Two constructs are refused, so their test runs the nearest form and the
+// refusal is quoted here (each is a `language-gaps.md` row):
+//
+//   - a call out of the body — a bodied function of the template's own module,
+//     private or `pub`, or one it imports — is
+//       error: the template module did not compile: the BEAM runtime does not
+//       take call to undefined function helper/1 (in probeX/1)
+//     (the wat runtime says the same); a helper is a lambda inside the body;
+//   - recursion: a lambda cannot name itself (`val go = { n -> go(n - 1) }` is
+//     `unbound variable 'go'`), and there is no other function to recurse
+//     through, so a nested grammar is parsed with an explicit stack.
+//
+// A labelled tuple element read by its label (`t.kind`) is `{badmap, …}` on
+// both evaluators; the position (`t.0`) is read instead — also a gap row.
+
+fn probeHelperLambda(comptime t: @Expr<string>) -> @Expr<string> {
+    val helper = { s -> s + "!" };
+    return t.build("\"" + helper(t.text()) + "\"");
+}
+
+fn probeExplicitStack(comptime t: @Expr<string>) -> @Expr<string> {
+    var stack: Array<string> = [];
+    var depth = 0;
+    var deepest = 0;
+    for (t.text().split("")) { c ->
+        if (c == "(") {
+            stack = stack.append([c]);
+            depth = depth + 1;
+            if (depth > deepest) deepest = depth;
+        }
+        if (c == ")") {
+            stack = stack.slice(0, stack.length - 1);
+            depth = depth - 1;
+        }
+    }
+    return t.build("\"" + deepest.toString() + "\"");
+}
+
+fn probeAt(comptime t: @Expr<string>) -> @Expr<string> {
+    val xs = t.text().split("");
+    var out = "";
+    var i = 0;
+    while (i < xs.length) {
+        out = out + (xs.at(xs.length - 1 - i) ?? "");
+        i = i + 1;
+    }
+    return t.build("\"" + out + "\"");
+}
+
+fn probeOptional(comptime t: @Expr<string>) -> @Expr<string> {
+    val o: ?string = if (t.text() == "a") "yes" else null;
+    val r = o ?? "no";
+    return t.build("\"" + r + "\"");
+}
+
+fn probeNestedCounter(comptime t: @Expr<string>) -> @Expr<string> {
+    var n = 0;
+    t
+        .text()
+        .split(",")
+        .forEach({ word ->
+            word
+                .split("")
+                .forEach({ c ->
+                    n = n + 1;
+                });
+        });
+    return t.build("\"" + n.toString() + "\"");
+}
+
+fn probeComment(comptime t: @Expr<string>) -> @Expr<string> {
+    // a comment on its own line
+    val s = t.text().toUpper(); // and a trailing one
+    return t.build("\"" + s + "\"");
+}
+
+test "a template body calls a helper written as a lambda in the body (a module function is refused)" {
+    assert probeHelperLambda "ab" == "ab!";
+}
+
+test "a template body has no recursion; a nested grammar is walked with an explicit stack" {
+    assert probeExplicitStack "(a(b(c))(d))" == "3";
+}
+
+test "a template body reads xs.at(i)" {
+    assert probeAt "abc" == "cba";
+}
+
+test "a template body binds a ?T and reads it with ??" {
+    assert probeOptional "a" == "yes";
+    assert probeOptional "b" == "no";
+}
+
+test "a template body reassigns an i32 inside a nested lambda" {
+    assert probeNestedCounter "ab,cde" == "5";
+}
+
+test "a template body may carry // comments" {
+    assert probeComment "abc" == "ABC";
+}

@@ -23,6 +23,8 @@
     "streaming.bp",
     "client_app.bp",
     "client_runtime.bp",
-    "html_attrs.bp"
+    "html_attrs.bp",
+    "node.bp",
+    "prelude.bp"
   ]
 }

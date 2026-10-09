@@ -57,11 +57,13 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, globals.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, plugin.bp, routes.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp, html_attrs.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, globals.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, plugin.bp, routes.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp, html_attrs.bp, node.bp, prelude.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
-│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; pub mod html_attrs; mod client_runtime;`
-│   │   │   ├── element.bp     ← COMPILED CORE: `type ElementBase()` (the empty-record phantom base, decision 138) + type Element + builders (Children) + renderToString + test {}
+│   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; pub mod html_attrs; pub mod node; pub mod prelude; mod client_runtime;`
+│   │   │   ├── element.bp     ← COMPILED CORE: `type ElementBase()` (the empty-record phantom base, decision 138) + type Element + `pub type View = @Component<ElementBase, Element>` (decision 276, front 118) + builders (Children) + renderToString + test {}
+│   │   │   ├── node.bp        ← COMPILED (front 118), PURE: `pub type Node = string | i32 | i64 | f32 | f64 | bool | Element | Element[]` — what a template hole and a `children` field hold (decisions 191, 223)
+│   │   │   ├── prelude.bp     ← COMPILED (front 118): the `.bpp` prelude (decision 270) — `import` items of the core's own modules only (`Element`, `ElementBase`, `View`, `Node`, `raw`, `el`, every builder; `timeTag as time`)
 │   │   │   ├── hooks.bp       ← COMPILED: State<T> + state/effect/memo/ref/reducer (@Component<ElementBase,_>, pure server-pass bodies) + test {} (imports `Element`)
 │   │   │   ├── elements.bp    ← COMPILED: the element surface (front 94) — `el`/`voidEl`, `isVoidTag`/`isRawTextTag`, and the tags `element.bp` does not declare
 │   │   │   ├── client_runtime.bp  ← COMPILED: the `clientRender` `#[@External.Node("./client_runtime.mjs", "render")]` cell — ships the sidecar
@@ -113,10 +115,15 @@ repository/jhonstart/
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
 │   │   │   ├── root.bp    ← `pub mod html;`
-│   │   │   └── html.bp    ← COMPILED: the JSX-like `html """…"""` markup DSL (lexer → tokens → stack parser → dual lowering → `q.custom` → `@ExprCustom<Element>`); imports `Element` from "jhonstart"
+│   │   │   └── html.bp    ← COMPILED (front 118): the `html """…"""` template language — elements, components (a tag is a call with its attributes as labelled arguments, its content `children`), fragments, `{expr}` holes over core `Node`, rendering attributes, markup inside `if` / `case` / lambdas, slots, comments, raw-text bodies, `#[isRaw]`; one loop over the literal with an explicit frame stack, lowered twice (builder code + `CustomNode` overlay) → `@ExprCustom<Element>`; plus `isRaw`, `classList`, `classIf`, `hasContent`
 │   │   └── test/
-│   │       ├── html_test.bp     ← `botopink test` flat suite: `html` behaviour-parity (renders match the old body) — builders from "jhonstart"
-│   │       └── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
+│   │       ├── html_test.bp     ← `botopink test` flat suite: markup lowers to the builders and renders — builders from "jhonstart"
+│   │       ├── elements_test.bp ← `botopink test` flat suite: a tag from `elements.bp` resolves inside `html """…"""` (the DSL resolves in the CALLER's scope, so the only honest test is written from a consumer's position)
+│   │       ├── template_test.bp ← front 118 steps 1–5 through `renderNode`: attributes, holes, void/self-closing tags, fragments, comments, raw-text bodies, markup in `if`/`case`/lambdas, components and slots, `raw`, `classList`, `#[isRaw]`
+│   │       ├── template_expressions_example_test.bp · components_and_slots_example_test.bp · directives_example_test.bp ← the front's three spec examples, landed
+│   │       ├── defects_test.bp  ← the four defects front 118 measured (static attribute, spaced value, nested self-closing tag, Element hole)
+│   │       ├── view_test.bp     ← `-> View` and `-> @Component<ElementBase, Element>` accept one another (decision 276)
+│   │       └── platform_test.bp ← what a template body may write, on both comptime runtimes (front 118 step 0)
 │   ├── jhonstart-link/ ← MEMBER (front 27's code, relocated by front 95): client navigation's render-time half — what `from "jhonstart-link"` gives a consumer; the core does not depend on it
 │   │   ├── botopink.json  ← name jhonstart-link, src src/, entry root.bp, target commonJS (inherits [commonJS, erlang]), files [root.bp, link.bp, reconcile.bp], dependencies { jhonstart: { workspace: true } }
 │   │   ├── src/
@@ -145,7 +152,8 @@ repository/jhonstart/
 ├── refusals/               ← NOT members: one project per compile-time refusal of the library, each with the `expect.txt` its `botopink check` must print (stage 6 of the gate, `scripts/check-refusals.sh`)
 │   ├── layout_plain_element/   ← `#[layout]` on `-> Element` (decision 117; the guide's `OldLayout`)
 │   ├── page_plain_element/     ← `#[page]` on `-> Element`
-│   └── template_task_element/  ← `#[template]` on `-> @Task<Element>`
+│   ├── template_task_element/  ← `#[template]` on `-> @Task<Element>`
+│   └── html_*/                 ← front 118: the `html """…"""` refusals — a `?T`, a record, a function in a hole; markup as an operand; `[name]={…}`; `class:list`; `set:html`; `slot="…"`; an unbound component and an unbound annotation; content to a component without `children`; a narrower `children`; two `#[isRaw]`; a mismatched closing tag
 ```
 
 `modules/jhonstart-test/` is the `<lib>-test` member
@@ -701,7 +709,7 @@ the pre-commit hook: `botopink test --target <t>` inside each member, the
 | lib | commonJS | erlang |
 |---|---|---|
 | `jhonstart` | ✓ 204/204 | ✓ 204/204 |
-| `jhonstart-html` (member) | ✓ 5/5 | ✓ 5/5 |
+| `jhonstart-html` (member) | ✓ 55/55 | ✓ 55/55 |
 | `jhonstart-link` (member) | ✓ 38/38 | ✓ 38/38 |
 | `jhonstart-emilia` (member) | ✓ 10/10 | ✓ 10/10 |
 | `jhonstart-forms` (member) | ✓ 15/15 | ✓ 15/15 |
@@ -832,7 +840,7 @@ none with a flag, variable or list that turns it off:
 5. **examples** — `botopink build --target <t>` of every `examples/*/` on every
    declared target, into a throwaway `--out` (`runExamplesGate`): 16 builds;
 6. **refusals** — `botopink check` of every `refusals/*/` project
-   (`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): 3 cases.
+   (`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): 17 cases (3 of the route markers, 14 of front 118's `html`).
 
 Stages 1–3 stop the gate at the first red. Stages 4–6 all run: every red cell
 is listed with the tail of its output and a re-run line, and the gate fails at
