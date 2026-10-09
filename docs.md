@@ -528,7 +528,7 @@ A navigation never disturbs the snapshot: `fill` is the only writer of route
 state, and the suite asserts that a `push` leaves the current `path` and
 `params` exactly as they were.
 
-`refresh()` hands the cell the value the bundled library `actions` spells —
+`refresh()` hands the cell the value the library `actions` spells —
 `refreshValue()` (decision 116 rule 2) — so the re-request header value is
 written nowhere in this package.
 
@@ -1166,7 +1166,7 @@ below it in `data-jh-n` and is the tree a not-found signal renders.
 `UiSegment` is one segment's conventions (`segment(pattern)` +
 `withLayout`/`withTemplate`/`withError`/`withLoading`/`withNotFound`, or
 `segmentFor(pattern)` from the registry). It is not `Segment`: that name is
-the bundled `routing`'s, and a consumer's flat `import {Segment} from
+the library `routing`'s, and a consumer's flat `import {Segment} from
 "jhonstart"` would be ambiguous.
 
 | File in `app/` | Marker | Signature it accepts |

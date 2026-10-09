@@ -26,5 +26,15 @@
     "html_attrs.bp",
     "node.bp",
     "prelude.bp"
-  ]
+  ],
+  "dependencies": {
+    "actions": {
+      "git": "https://github.com/botopink/actions.git",
+      "branch": "feat"
+    },
+    "routing": {
+      "git": "https://github.com/botopink/routing.git",
+      "branch": "feat"
+    }
+  }
 }
