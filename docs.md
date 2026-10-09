@@ -1177,10 +1177,25 @@ the bundled `routing`'s, and a consumer's flat `import {Segment} from
 | `default.bp` | `#[defaultView(seg)]` | `fn(props: LayoutProps) -> Element` |
 
 `#[page]`, `#[layout]` and `#[template]` refuse any other return, naming the
-function and the form it needs. The application site imports what a marker
-emits (`jhPage`, `jhLayout`, `jhTemplate`, `jhDefault`, `PageContext`,
-`ctxParam`, `ctxRest`). `uiTable()` answers the registry as contract-1 lines;
-onze copies it into rakun's table.
+function and the form it needs. A marker registers nothing itself: it records
+its segment as meta (`seg`), and the program's entry point registers every
+marked function once, from the program's catalogue:
+
+```bp
+val __jhRoutes = jhRegisterRoutes(
+    @TypeInfo.all(with: page),
+    @TypeInfo.all(with: layout),
+    @TypeInfo.all(with: template),
+    @TypeInfo.all(with: defaultView),
+);
+```
+
+Layouts register first, then templates, pages and default views, each in the
+catalogue's order (module path, then declaration order). The module holding
+that line is imported by nobody — onze's generated `onze_main.bp`, or a test
+file. The application site imports what `#[page]`'s accessor emits
+(`PageContext`, `ctxParam`, `ctxRest`). `uiTable()` answers the registry as
+contract-1 lines; onze copies it into rakun's table.
 
 ### The response and the two entries
 

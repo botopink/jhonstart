@@ -24,13 +24,16 @@
 // `Loading()` / `ErrorPage(info)` / `NotFound()`; onze registers them with
 // `jhLoading` / `jhError` / `jhNotFound` from the scan front 22 performs.
 //
-// Each decorator body `@emit`s its registration — a module-level `val`, so it
-// runs at module load — then the per-route parameter accessor, then enforces
-// placement with `decl.fail`. A decorator body cannot call a sibling function,
-// a `//` comment in it breaks the flattened emit, and nothing optional works in
-// a comptime body, so the segment decoding is inlined in `page`, comment-free.
-// The canonical segment grammar is `routing`'s `parsePath`; `test/routes_test.bp`
-// round-trips `uiTable()` through it, which is what keeps the two equal.
+// Each decorator body records its segment as comptime meta (`seg`, decision
+// 216) — the program's entry point registers every marked function from
+// `@TypeInfo.all` with `jhRegisterRoutes` (below), no module registers itself
+// at load — then `#[page]` emits the per-route parameter accessor, then each
+// enforces placement with `decl.fail`. A decorator body cannot call a sibling
+// function, a `//` comment in it breaks the flattened emit, and nothing
+// optional works in a comptime body, so the segment decoding is inlined in
+// `page`, comment-free. The canonical segment grammar is `routing`'s
+// `parsePath`; `test/routes_test.bp` round-trips `uiTable()` through it, which
+// is what keeps the two equal.
 //
 // The registration is a LAMBDA, never a bare function name: a named function
 // used as a value lowers to an unbound erlang variable.
@@ -192,6 +195,92 @@ pub fn jhNotFound(seg: string, render: fn() -> Element) -> i32 {
     return jhRegisterNotFound(entryLine("N", seg), render);
 }
 
+// ── the reader: the four markers' declarations, registered ─────────────────
+//
+// A marker registers nothing itself (decision 216): it records its segment
+// as meta (`seg`) and the program's entry point hands the catalogue in, once —
+//
+//     val __jhRoutes = jhRegisterRoutes(
+//         @TypeInfo.all(with: page),
+//         @TypeInfo.all(with: layout),
+//         @TypeInfo.all(with: template),
+//         @TypeInfo.all(with: defaultView),
+//     );
+//
+// Layouts, then templates, then pages, then default views; inside each, the
+// catalogue's order (module path, then declaration order). A declaration
+// whose value is not the function its marker accepts, or that carries no
+// `seg`, halts: the marker refused it already, so it cannot be one of the
+// marker's.
+
+fn segOf(d: Declared<unknown>) -> string {
+    var seg = "";
+    var found = false;
+    for (d.meta) { m ->
+        if (m.key == "seg") {
+            seg = m.value;
+            found = true;
+        }
+    }
+    if (found == false)
+        @panic("jhonstart: `" + d.module + "." + d.name + "` carries no route segment");
+    return seg;
+}
+
+fn notMarked(d: Declared<unknown>, marker: string) -> i32 {
+    @panic(
+        "jhonstart: `"
+            + d.module
+            + "."
+            + d.name
+            + "` is not the function #["
+            + marker
+            + "] accepts",
+    );
+}
+
+pub fn jhRegisterRoutes(
+    pages: Declared<unknown>[],
+    layouts: Declared<unknown>[],
+    templates: Declared<unknown>[],
+    defaults: Declared<unknown>[],
+) -> i32 {
+    var n = 0;
+    for (layouts) { d ->
+        val v = d.value;
+        val k = if (v is fn(props: LayoutProps) -> @Component<ElementBase, Element>)
+            jhLayout(segOf(d), { props -> v(props) })
+        else
+            notMarked(d, "layout");
+        n = n + k;
+    }
+    for (templates) { d ->
+        val v = d.value;
+        val k = if (v is fn(props: LayoutProps) -> @Component<ElementBase, Element>)
+            jhTemplate(segOf(d), { props -> v(props) })
+        else
+            notMarked(d, "template");
+        n = n + k;
+    }
+    for (pages) { d ->
+        val v = d.value;
+        val k = if (v is fn(route: PageContext) -> @Component<ElementBase, Element>)
+            jhPage(segOf(d), { route -> v(route) })
+        else
+            notMarked(d, "page");
+        n = n + k;
+    }
+    for (defaults) { d ->
+        val v = d.value;
+        val k = if (v is fn(props: LayoutProps) -> Element)
+            jhDefault(segOf(d), { props -> v(props) })
+        else
+            notMarked(d, "defaultView");
+        n = n + k;
+    }
+    return n;
+}
+
 // This registry's records as contract-1 lines (`L`, `T`, `P`, `D`, `S`, `E`,
 // `N`), in registration order — the blob onze copies into the server's table, so
 // the table the server matches and the payload's `t` are one table.
@@ -218,15 +307,7 @@ pub fn ctxRest(route: PageContext) -> string[] {
 // the message.
 
 pub fn page(comptime decl: @Decl, seg: string) {
-    @emit(
-        "val __jhPage_"
-            + decl.name
-            + " = jhPage(\""
-            + seg
-            + "\", { route -> "
-            + decl.name
-            + "(route) });",
-    );
+    decl.setMeta("seg", seg);
     var lets: Array<string> = [];
     var sigs: Array<string> = [];
     var fields: Array<string> = [];
@@ -274,15 +355,7 @@ pub fn page(comptime decl: @Decl, seg: string) {
 }
 
 pub fn layout(comptime decl: @Decl, seg: string) {
-    @emit(
-        "val __jhLayout_"
-            + decl.name
-            + " = jhLayout(\""
-            + seg
-            + "\", { props -> "
-            + decl.name
-            + "(props) });",
-    );
+    decl.setMeta("seg", seg);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[layout] must annotate a function");
     if (decl.returnType != "@Component<ElementBase, Element>")
@@ -298,15 +371,7 @@ pub fn layout(comptime decl: @Decl, seg: string) {
 }
 
 pub fn template(comptime decl: @Decl, seg: string) {
-    @emit(
-        "val __jhTemplate_"
-            + decl.name
-            + " = jhTemplate(\""
-            + seg
-            + "\", { props -> "
-            + decl.name
-            + "(props) });",
-    );
+    decl.setMeta("seg", seg);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[template] must annotate a function");
     if (decl.returnType != "@Component<ElementBase, Element>")
@@ -322,15 +387,7 @@ pub fn template(comptime decl: @Decl, seg: string) {
 }
 
 pub fn defaultView(comptime decl: @Decl, seg: string) {
-    @emit(
-        "val __jhDefault_"
-            + decl.name
-            + " = jhDefault(\""
-            + seg
-            + "\", { props -> "
-            + decl.name
-            + "(props) });",
-    );
+    decl.setMeta("seg", seg);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[defaultView] must annotate a function");
     if (decl.returnType != "Element")

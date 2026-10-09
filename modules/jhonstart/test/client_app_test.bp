@@ -9,7 +9,7 @@ import {elements.main, elements.h2};
 import {server.cookies};
 import {error_boundary.notFound, error_boundary.redirect};
 import {router.lastNavigation};
-import {routes.page, routes.layout, routes.PageContext, routes.LayoutProps, routes.jhPage, routes.jhLayout, routes.jhNotFound, routes.ctxParam, routes.ctxRest};
+import {routes.page, routes.layout, routes.PageContext, routes.LayoutProps, routes.jhRegisterRoutes, routes.jhNotFound, routes.ctxParam, routes.ctxRest};
 import {client_app.ClientApp, client_app.clientApp, client_app.setClientLocation, client_app.mountedHtml, client_app.replacedLocation};
 
 #[layout("ca")]
@@ -57,6 +57,13 @@ fn CaNotFound() -> Element {
 }
 
 val __caNotFound = jhNotFound("ca", { -> CaNotFound() });
+
+val __caRoutes = jhRegisterRoutes(
+    @TypeInfo.all(with: page),
+    @TypeInfo.all(with: layout),
+    [],
+    [],
+);
 
 val table = "L|/ca\nP|/ca/[id]\nP|/ca/login\nP|/ca/missing\nP|/ca/private\nP|/ca/nowhere\nP|/ca/evil";
 
