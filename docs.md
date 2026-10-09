@@ -1267,14 +1267,14 @@ action id (a string — this front echoes it and never constructs one) and its
 markup is contract 3's exactly, so it submits before the bundle arrives:
 
 ```bp
-val binding = formAction("a_9f2c1b7e", "/blog/new", actionField);
+val binding = formAction("a_9f2c1b7e0d4a6c8e1f3b5d7a", "/blog/new", actionField);
 actionForm(binding, [input([], attrs: [#("name", "title")]), button([text("Save", attrs: [])], attrs: [])])
-// <form method="post" action="/blog/new" data-jh-a="a_9f2c1b7e"><input type="hidden" name="<actionField>" value="a_9f2c1b7e">…
+// <form method="post" action="/blog/new" data-jh-a="a_9f2c1b7e0d4a6c8e1f3b5d7a"><input type="hidden" name="<actionField>" value="a_9f2c1b7e0d4a6c8e1f3b5d7a">…
 ```
 
 | Function | What |
 |---|---|
-| `formAction(id, pathname, actionField)` · `formAttrs` · `hiddenActionField` · `actionForm` | the binding and contract 3's markup; an id not starting with `a_`, or holding `/`, a space or a quote, is refused |
+| `formAction(id, pathname, actionField)` · `formAttrs` · `hiddenActionField` · `actionForm` | the binding and contract 3's markup; an id that is not `actions`' `isActionId` (`a_` + 24 lowercase hex) is refused |
 | `submitForm(binding, fields)` · `invokeAction(id, args, actionHeader)` | the POST / the JSON-RPC call; the answer read by `actions`' `parseActionState`; a redirect in `n` is the router's `push`; `ok: false` is DATA, returned as the state |
 | `formMount(actionHeader)` | one delegated submit listener over `[data-jh-a]`, called once by onze front 68's entry |
 | `actionState(id, initial)` | the hook — `#(state, binding, pending)`, read positionally; server pass: `initial`, `false` |
