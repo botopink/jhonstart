@@ -23,6 +23,8 @@
 // hygiene resolves them here, so a page imports only the tags it writes):
 //
 //   <p a="x" b={v}>t</p>    p([htmlText("t")], attrs: htmlAttrs([[#("a", "x")], htmlAttr("b", v)]))
+//   <p ariaLabel="x">       p([], attrs: [#("aria-label", "x")])   (decision 351's names, HTML's spelling)
+//   <p data-k={s}>          p([], attrs: htmlAttrs([htmlDataAttr("data-k", s)]))
 //   <br/>, <br>             br([], attrs: [])               (in place, void tags need no `/`)
 //   <Card t="x">kid</Card>  Card(t: "x", children: kid)     (labelled arguments; one kid bare, several a list)
 //   {expr}                  htmlNode(expr)                  (191's set: `Node`)
@@ -40,7 +42,15 @@
 // lacks is declared beside the template or written `{el("figure", …)}`.
 //
 // An attribute takes a string, a `bool` (bare when true, absent when false) or
-// a `?string` (absent when null) — `htmlAttr`'s `AttrValue`. A hole takes a
+// a `?string` (absent when null) — `htmlAttr`'s `AttrValue`; a `data-*` one a
+// `string` (`htmlDataAttr`). Its name follows decision 351: a one-word name as
+// HTML writes it, a multi-word one camelCase (`tabIndex`, `httpEquiv`,
+// `ariaLabel`) rendered in HTML's spelling (`htmlName`), `data-*` the one
+// kebab-case family; any other kebab-case name, an event attribute (`onClick`)
+// and a spread `{...expr}` on an element are refused at the attribute. What
+// 351 rests on — each builder taking its element's props record, so an unknown
+// attribute and a value of the wrong type are refused — waits on the props
+// record a template cannot fill (a `language-gaps.md` row). A hole takes a
 // `Node` (core `node.bp`); a `?T`, a record, a function are the checker's
 // type mismatch at the template call (decision 190's interim: `{expr}` is read
 // from the literal's raw text and re-emitted through `build`).
@@ -146,7 +156,13 @@ fn htmlAttr(name: string, value: AttrValue) -> Array<#(string, string)> {
     return [];
 }
 
-// The attribute groups in written order, the spreads last.
+// A `data-*` attribute written `{expr}`: a `string`, nothing else (decision
+// 351 (3)).
+fn htmlDataAttr(name: string, value: string) -> Array<#(string, string)> {
+    return [#(name, value)];
+}
+
+// The attribute groups in written order.
 fn htmlAttrs(
     groups: Array<Array<#(string, string)>>,
 ) -> Array<#(string, string)> {
@@ -184,6 +200,42 @@ fn isNameCh(c: string) -> bool {
 
 fn isWs(c: string) -> bool {
     return c == " " || c == "\n" || c == "\t" || c == "\r";
+}
+
+// Decision 351 (3): `data-` and a suffix, the one kebab-case family.
+fn isDataName(name: string) -> bool {
+    return name.startsWith("data-") && name.length() > 5;
+}
+
+// Decision 351 (5): `on` and an upper-case letter — an event attribute.
+fn isEventName(name: string) -> bool {
+    return name.length() > 2
+        && name.slice(0, 2) == "on"
+        && isUpper(name.slice(2, 3));
+}
+
+// `aria-label` → `ariaLabel`: the camelCase spelling of a kebab-case name.
+fn camelOf(name: string) -> string {
+    val words = name.split("-");
+    var out = words.at(0) ?? "";
+    for (words.slice(1, words.length)) { w ->
+        out = out + w.slice(0, 1).toUpper() + w.slice(1, w.length());
+    }
+    return out;
+}
+
+// An attribute's HTML spelling (decision 351 (3)): `data-*` as written,
+// `ariaLabel` → `aria-label`, React's two hyphenated names (`httpEquiv`,
+// `acceptCharset`), any other name lower-cased (`tabIndex` → `tabindex`).
+fn htmlName(name: string) -> string {
+    if (isDataName(name)) return name;
+    if (name == "httpEquiv") return "http-equiv";
+    if (name == "acceptCharset") return "accept-charset";
+    if (name.length() > 4
+        && name.slice(0, 4) == "aria"
+        && isUpper(name.slice(4, 5)))
+        return "aria-" + name.slice(4, name.length()).toLower();
+    return name.toLower();
 }
 
 // `s` as a botopink string literal.
@@ -225,16 +277,8 @@ fn joinTo(cur: string, v: string) -> string {
     return if (cur == "") v else cur + ", " + v;
 }
 
-fn attrsCode(
-    flat: string,
-    groups: string,
-    dyn: string,
-    spreads: string,
-) -> string {
-    return if (dyn != "" || spreads != "")
-        "htmlAttrs([" + joinTo(groups, spreads) + "])"
-    else
-        "[" + flat + "]";
+fn attrsCode(flat: string, groups: string, dyn: string) -> string {
+    return if (dyn != "") "htmlAttrs([" + groups + "])" else "[" + flat + "]";
 }
 
 fn decode(s: string) -> string {
@@ -401,7 +445,6 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
     var fFlat: Array<string> = [""];
     var fGroups: Array<string> = [""];
     var fDyn: Array<string> = [""];
-    var fSpread: Array<string> = [""];
     var fSeen: Array<string> = ["|"];
     var fFlag: Array<string> = [""];
     var fStart: Array<i32> = [0];
@@ -423,7 +466,6 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
         fFlat = fFlat.append([""]);
         fGroups = fGroups.append([""]);
         fDyn = fDyn.append([""]);
-        fSpread = fSpread.append([""]);
         fSeen = fSeen.append(["|"]);
         fFlag = fFlag.append([flag]);
         fStart = fStart.append([a]);
@@ -440,7 +482,6 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
         fFlat = fFlat.slice(0, last);
         fGroups = fGroups.slice(0, last);
         fDyn = fDyn.slice(0, last);
-        fSpread = fSpread.slice(0, last);
         fSeen = fSeen.slice(0, last);
         fFlag = fFlag.slice(0, last);
         fStart = fStart.slice(0, last);
@@ -455,19 +496,24 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
         fCode = setS(fCode, topS(fCode) + code);
     };
     val addStaticAttr = { name, valueCode ->
+        val shown = lit(htmlName(name));
         fFlat = setS(
             fFlat,
-            joinTo(topS(fFlat), "#(" + lit(name) + ", " + valueCode + ")"),
+            joinTo(topS(fFlat), "#(" + shown + ", " + valueCode + ")"),
         );
         fGroups = setS(
             fGroups,
-            joinTo(topS(fGroups), "[#(" + lit(name) + ", " + valueCode + ")]"),
+            joinTo(topS(fGroups), "[#(" + shown + ", " + valueCode + ")]"),
         );
     };
     val addDynAttr = { name, code ->
+        val helper = if (isDataName(name)) "htmlDataAttr(" else "htmlAttr(";
         fGroups = setS(
             fGroups,
-            joinTo(topS(fGroups), "htmlAttr(" + lit(name) + ", " + code + ")"),
+            joinTo(
+                topS(fGroups),
+                helper + lit(htmlName(name)) + ", " + code + ")",
+            ),
         );
         fDyn = setS(fDyn, "d");
     };
@@ -485,9 +531,6 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
         ifState = 0;
         elsePending = false;
         lastSig = "{H";
-    };
-    val addSpread = { code ->
-        fSpread = setS(fSpread, joinTo(topS(fSpread), code));
     };
     var doClose = false;
 
@@ -781,16 +824,19 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                         endOf(i + 3),
                         "a spread `{...expr}` on a component is refused — write its attributes (props-f)",
                     )
-                else {
-                    push("expr", "", posOf(i), endOf(i), "spread");
-                    exprState();
-                    i = i + 4;
-                }
+                else
+                    failSpan(
+                        posOf(i),
+                        endOf(i + 3),
+                        "a spread `{...expr}` on <"
+                            + name
+                            + "> takes the element's props record (decision 351), which a template cannot build yet — write the attributes",
+                    );
             } else if (c == "{")
                 failSpan(
                     posOf(i),
                     endOf(i),
-                    "a `{` in a tag — an attribute is `name={…}`, a spread `{...expr}`",
+                    "a `{` in a tag — an attribute is `name={…}`",
                 )
             else if (c == "#" && c1 == "[") {
                 j = i + 2;
@@ -984,6 +1030,28 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                             + aname
                             + "` is not a field name — a component's attributes are the fields of its props (decision 192)",
                     )
+                else if (comp == false
+                    && aname.contains("-")
+                    && isDataName(aname) == false)
+                    failSpan(
+                        a,
+                        b,
+                        "`"
+                            + aname
+                            + "` is written `"
+                            + camelOf(aname)
+                            + "` — a multi-word attribute is camelCase, `data-*` the one kebab-case family (decision 351)",
+                    )
+                else if (comp == false && isEventName(aname))
+                    failSpan(
+                        a,
+                        b,
+                        "the event attribute `"
+                            + aname
+                            + "` on <"
+                            + name
+                            + "> is refused — no front declares typed events yet (decision 351)",
+                    )
                 else {
                     fSeen = setS(fSeen, topS(fSeen) + aname + "|");
                     mark("attr", a, b, "property", null);
@@ -1132,7 +1200,6 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                     );
                 if (holeCode != "" && holeRole == "child")
                     addChild("htmlNode(" + holeCode + ")");
-                if (holeCode != "" && holeRole == "spread") addSpread(holeCode);
                 if (holeCode != "" && isAttr)
                     addDynAttr(holeRole.slice(5, holeRole.length()), holeCode);
                 if (holeCode != "" && isProp)
@@ -1229,12 +1296,7 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                 topS(fCode),
                 topI(fCount),
                 topS(fFlat),
-                attrsCode(
-                    topS(fFlat),
-                    topS(fGroups),
-                    topS(fDyn),
-                    topS(fSpread),
-                ),
+                attrsCode(topS(fFlat), topS(fGroups), topS(fDyn)),
             );
             pop();
             addChild(code);

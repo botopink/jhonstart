@@ -3,13 +3,9 @@
 // tags nor raw nodes). Every test runs on both targets.
 
 import {html, isRaw, classList, classIf, hasContent};
-import {Element, Node, a, div, span, p, h1, h2, ul, li, nav, section, article, header, footer, form, input, br, img, hr, title, script, style, textarea, button, raw, renderNode} from "jhonstart";
+import {Element, Node, a, div, span, p, h1, h2, ul, li, nav, section, article, header, footer, form, input, br, img, hr, meta, title, script, style, textarea, button, raw, renderNode} from "jhonstart";
 
 type Status { Draft, Live }
-
-fn extraPairs(id: string) -> Array<#(string, string)> {
-    return [#("data-id", id), #("method", "post")];
-}
 
 // ── step 1: attributes ──────────────────────────────────────────────────────
 
@@ -32,12 +28,24 @@ test "a true bool is a bare attribute; a null ?string is absent, a present one r
     assert renderNode(html "<input required/>") == "<input required=\"\">";
 }
 
-test "a spread on an element appends its pairs after the written attributes" {
+test "a multi-word attribute is camelCase, rendered in HTML's spelling (decision 351)" {
+    val label = "Close";
     val markup = renderNode(
-        html """<form {...extraPairs("f1")} class="f" action="/save"></form>""",
+        html """<form acceptCharset="utf-8" encType="text/plain" autoComplete="off"><button ariaLabel={label} ariaDescribedBy="hint">x</button></form>""",
     );
     assert markup
-        == "<form class=\"f\" action=\"/save\" data-id=\"f1\" method=\"post\"></form>";
+        == "<form accept-charset=\"utf-8\" enctype=\"text/plain\" autocomplete=\"off\"><button aria-label=\"Close\" aria-describedby=\"hint\">x</button></form>";
+    assert renderNode(html """<meta httpEquiv="refresh" content="5"/>""")
+        == "<meta http-equiv=\"refresh\" content=\"5\">";
+}
+
+test "a data-* attribute keeps its kebab-case name and takes a string" {
+    val id = "f1";
+    val markup = renderNode(
+        html """<form data-id={id} data-row-key="r${id}" data-flag></form>""",
+    );
+    assert markup
+        == "<form data-id=\"f1\" data-row-key=\"rf1\" data-flag=\"\"></form>";
 }
 
 test "single quotes, a hole inside a quoted value, and the five decoded entities" {
