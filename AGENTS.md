@@ -32,8 +32,10 @@ are compiled and each ships its own host half on both rows
 front 27 (`link.bp`, `reconcile.bp`, in the `jhonstart-link` member since front
 95's relocation): the render-time half is pure, and the browser half —
 `linkMount`, `linkPrefetch`, `linkRouteKind`, `linkStatus` — sits over four
-dual-target cells whose erlang twins answer the server's idle truth; the
-transition driver and front 60's route-kind table are still to come. The
+dual-target cells whose erlang twins answer the server's idle truth (until
+`linkStatus` becomes `#[clientOnly]`, decision 363); the transition driver
+(`applyTransition` over the entry's `DomOps`) is pure and landed, its adoption
+by onze's entry and front 60's route-kind flag are still to come. The
 server/client BOUNDARY is compiled since front 29 (`client.bp`): `#[client]` and
 `#[clientProps]` are comptime markers with four refusals, and the island, the
 hole and the poison pill are ordinary `.bp`; what ENFORCES the boundary over the
@@ -129,10 +131,10 @@ repository/jhonstart/
 │   │   ├── src/
 │   │   │   ├── root.bp        ← `pub mod link; pub mod reconcile;`
 │   │   │   ├── link.bp        ← COMPILED (front 27): `LinkProps` + `linkProps` + five `with*`, `Link`, `prefetchMode`, `layoutKey`, `LinkStatus`/`linkStatusOf`, and the browser half `linkMount` / `linkPrefetch` / `linkRouteKind` / the `linkStatus` hook over four DUAL-target cells (`link_runtime.mjs` / `sidecars/jhonstart_link.erl`); imports `Element` from "jhonstart"
-│   │   │   └── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` — the remount decision of a client transition, asserted without a DOM
+│   │   │   └── reconcile.bp   ← COMPILED (front 27), PURE: `layoutKeys` + `sharedDepth` + `Navigation`/`navigationOf`/`replaceDepth` — the remount decision of a client transition — and the driver `applyTransition(current, target, dom: DomOps) -> @Task<@Result<Navigation, string>>` over the entry's six functions (`markup`, `replaceSubtree`, `startIslands`, `mountCount`, `scrollTo`, `markPending` — `data-jh-pending`, decision 363); imports `RouterState` from "jhonstart"; no host cell
 │   │   └── test/
-│   │       ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table and the layout key (front 27) — both rows
-│   │       └── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, the whole remount decision without a DOM (front 27) — both rows
+│   │       ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table, the layout key, and `use linkStatus()` read by a `#[client]` component (front 27) — both rows
+│   │       └── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, and `applyTransition` over a RECORDING `DomOps` (inline `put`/`get` · `globalThis` cells; a three-island page counting mounts): the replaced depth, the call order, `data-jh-pending` set first and cleared last, a failed markup (front 27) — both rows
 │   ├── jhonstart-dom-test/ ← MEMBER (front 30's browser half; targets [commonJS]): `src/fake_dom.mjs` — a minimal document (parser for the render's markup, `querySelector(All)` over `tag` / `[attr]` / `[attr="v"]`, `template` content, `replaceChildren`, a serializer; `history` / `location` / `dispatchEvent` recorded) reached through `src/root.bp`'s `#[@External.Node]` cells and its `callFill(name, id)` / `callSignal(name)` wrappers — and `test/dom_test.bp`: the fill function (replaces its hole, idempotent, a missing hole dropped), `readPayload` (the last payload script, a refused text an `Error`), the signal function (relative redirect = `replaceState` + `popstate`, a listed absolute one `location.replace`, an unlisted one nothing, not-found swaps `[data-jh-root]` and drops later fills). No DOM on the BEAM, hence commonJS only (`decisions-pending.md` 30-g) — a structural restriction under `00-gate` gate-d: `botopink build --target erlang` refuses the member with `` `callGlobal` has no `#[@External.<Target>(…)]` for the erlang backend `` at `src/root.bp:37`
 │   └── jhonstart-test/ ← MEMBER (front 95; the helpers of `specs/1.0.10-beta/04-jhonstart/modules.md` § 5): `assert<Subject>(loc, …)` over std's `snapshots.assertAs`, each with a pure `<subject>Text` twin, plus fixtures and the render harness
 │       ├── botopink.json  ← name jhonstart-test, files [root.bp, harness.bp, assert_*.bp], dependencies { jhonstart, jhonstart-link, jhonstart-forms: { workspace: true } }
@@ -524,9 +526,8 @@ around**. The second shows on both: a function has one return and so one effect
 
 `link.bp` and `reconcile.bp` are the RENDER-TIME half of a `<Link>`: the anchor,
 its props, the prefetch decision and the remount decision. Every one of them is
-**pure** — the two files declare no host cell of any target, which is stronger
-than the front's "no `#[@External.Erlang]` cell" acceptance row — so all 35
-assertions run on both rows and `Link` renders during the server pass exactly as
+**pure** — `reconcile.bp` declares no host cell of any target and `link.bp`'s
+four cells are dual-target — so all 46 assertions run on both rows and `Link` renders during the server pass exactly as
 it renders in the browser.
 
 | What | Where | Shape |
@@ -536,7 +537,8 @@ it renders in the browser.
 | The prefetch decision | `prefetchMode(kind, hasLoading, requested) -> string` | `"full"` / `"partial"` / `"skip"`, Next's § 8 table verbatim. BOTH inputs are front 60's; jhonstart computes neither |
 | The layout key | `layoutKey(segments, depth)` | `"/" + segments.take(depth).join("/")`. `segments` is front 26's `RouterState.segments()`, so the client's key and the server's are the same string |
 | The remount decision | `layoutKeys(segments)` · `sharedDepth(current, target)` | root-first keys including the root; the common-prefix length. `[0, keep)` stays mounted, `[keep, n]` is replaced. Never `0` — the root layout is never remounted |
-| The in-flight status | `LinkStatus(pending, href)` · `linkStatusOf(href)` | the pure derivation from the href the browser half reports, `""` being idle |
+| The in-flight status | `LinkStatus(pending, href)` · `linkStatusOf(href)` | the pure derivation from the href the browser half reports, `""` being idle. Read with `use linkStatus()` only inside a `#[client]` component (decision 363); a server-rendered `Link` reads no hook — its pending state is `data-jh-pending`, styled with `[data-jh-pending]` |
+| The driver | `applyTransition(current, target, dom: DomOps)` · `navigationOf` · `replaceDepth` | a navigation to the current path touches nothing; otherwise `markPending(href, true)`, `await markup(href)`, `replaceSubtree(d, html)` and `startIslands(d)` at `d = shared - 1` (the deepest shared segment's root: its CHILDREN are replaced, so the root layout never is), `scrollTo(d)`, `markPending(href, false)`. A failed `markup` replaces nothing, clears the mark and is the answer. Islands above `d` are never started again — `mountCount(name)` is the observable. Adopted by onze's entry in `07-onze/50` step 6 |
 
 **No arbitrary-attribute parameter.** `Link` has no pass-through `attrs` list —
 only `target` and `className`, through `LinkProps`. An anchor that accepts any
@@ -549,9 +551,9 @@ is what the browser half queries on.
 |---|---|---|
 | `__jhLinkMount()` | 68 | delegated click interception + an intersection observer over `[data-jh-l]`. The generated entry calls it ONCE, after hydrating the islands, alongside front 67's `__jhFormMount()`. Front 29 owns the per-island hydrate point, not the entry, and does not call this |
 | `__jhLinkPrefetch(href, mode)` | 68 | warms the client route cache; `mode` is `prefetchMode`'s answer |
-| `__jhLinkStatus()` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | 68 | the hook is then `return linkStatusOf(__jhLinkStatus());` and nothing else in `link.bp` moves |
+| `__jhLinkStatus()` and `linkStatus() -> @Component<ElementBase, LinkStatus>` | 68 · 26 step 8 | the hook is `return linkStatusOf(__jhLinkStatus());`; `#[clientOnly]` and the deletion of its erlang twin wait on 26 step 8's markers (`01-checker` step 23's `Decl.hooks`), and so does the refusal of a `use linkStatus()` outside a `#[client]` component (decision 363) |
 | `__jhLinkRouteKind(href)` | 60 | reads the route-kind table front 60 emits into the bundle |
-| `reconcile(current, target)` | 68 (+ 60) | the transition driver: front 68's DOM primitives for the two ranges, front 60's flag for whether the payload had to be fetched, front 29's `data-jh-s` adoption and front 31's `data-jh-e` re-anchoring |
+| the entry's `DomOps` | `07-onze/50` step 6 | the six functions `applyTransition` calls: `replaceChildren` on the segment root the render marks, the route's starters, the route cache (front 22's kind flag says whether the markup had to be fetched), `data-jh-pending` on the links to the target; front 29's `data-jh-s` adoption and front 31's `data-jh-e` re-anchoring are the entry's `replaceSubtree` |
 
 Two measurements make declaring them today wrong rather than merely early, and
 they point in opposite directions:

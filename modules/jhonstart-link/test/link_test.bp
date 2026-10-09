@@ -15,14 +15,17 @@
 // ── What this file does NOT assert, and why ─────────────────────────────────
 //
 // The browser half's four cells are dual-target (`link_runtime.mjs` /
-// `sidecars/jhonstart_link.erl`), so `linkStatus()` idle and `linkMount()`
-// idempotent are asserted on both rows at the foot of this file; the DOM half
-// (a click, an intersection) is front 53's browser-in-the-loop app.
+// `sidecars/jhonstart_link.erl`) until front 27 step 1's last box makes
+// `linkStatus` `#[clientOnly]` (decision 363), so `use linkStatus()` read by a
+// `#[client]` component and `linkMount()` idempotent are asserted on both rows
+// at the foot of this file; the DOM half (a click, an intersection) is front
+// 53's browser-in-the-loop app.
 //
-// Nor is the transition driver here; see `reconcile_test.bp`.
+// Nor is the transition driver here, nor `data-jh-pending`; see
+// `reconcile_test.bp`.
 
 import {link.LinkProps, link.linkProps, link.withPrefetch, link.withReplace, link.withScroll, link.withTarget, link.withClass, link.Link, link.prefetchMode, link.layoutKey, link.LinkStatus, link.linkStatusOf, link.linkStatus, link.linkMount, link.linkPrefetch, link.linkRouteKind};
-import {Element, text, span, renderToString} from "jhonstart";
+import {Element, ElementBase, text, span, renderToString, client} from "jhonstart";
 
 // ── step 1: the props and their five copy helpers ───────────────────────────
 
@@ -268,10 +271,21 @@ test "link: linkStatusOf is pending for a navigation in flight" {
 
 // ── step 4: the browser cells, both rows ────────────────────────────────────
 
-test "link: linkStatus is idle when nothing is in flight" {
-    val s = await linkStatus();
-    assert s.pending == false;
-    assert s.href == "";
+// Step 2 (decisions 354, 363): `linkStatus` is read with `use`, and only in a
+// `#[client]` component — the browser's island; a server-rendered `Link`
+// reads no hook (its pending state is `data-jh-pending`, `reconcile_test.bp`).
+// The component's return type is spelled `@Component<ElementBase, Element>`
+// until front 134 step 6's codemod drops the base (354 (1)).
+#[client]
+fn Pending() -> @Component<ElementBase, Element> {
+    val s = use linkStatus();
+    val label = if (s.pending) "Loading " + s.href else "Idle";
+    return span([text(label, attrs: [])], attrs: [#("class", "progress")]);
+}
+
+test "link: a #[client] component reads use linkStatus() and renders idle" {
+    val el = await Pending();
+    assert renderToString(el) == "<span class=\"progress\">Idle</span>";
 }
 
 test "link: linkMount is idempotent — a second call registers nothing" {
