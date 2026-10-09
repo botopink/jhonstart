@@ -29,11 +29,11 @@
 // `@TypeInfo.all` with `jhRegisterRoutes` (below), no module registers itself
 // at load — then `#[page]` emits the per-route parameter accessor, then each
 // enforces placement with `decl.fail`. A decorator body cannot call a sibling
-// function, a `//` comment in it breaks the flattened emit, and nothing
-// optional works in a comptime body, so the segment decoding is inlined in
-// `page`, comment-free. The canonical segment grammar is `routing`'s
-// `parsePath`; `test/routes_test.bp` round-trips `uiTable()` through it, which
-// is what keeps the two equal.
+// function and a `//` comment in it breaks the flattened emit, so `page` reads
+// a segment's parameters from `routing` — `segment.paramNamesOf` for the names,
+// `parseSegment` / `kindName` for which of them is a list (front 102) — and
+// stays comment-free. `routing` owns the segment grammar; `test/routes_test.bp`
+// round-trips `uiTable()` through its `parsePath`.
 //
 // The registration is a LAMBDA, never a bare function name: a named function
 // used as a value lowers to an unbound erlang variable.
@@ -46,7 +46,7 @@
 import {element.Element, element.ElementBase};
 import {router.pairValue};
 import {error_boundary.ErrorInfo};
-import {segment.parsePath, segment.patternOf, segment.slotOf, table.RouteEntry, table.writeTable} from "routing";
+import {segment.kindName, segment.paramNamesOf, segment.parsePath, segment.parseSegment, segment.patternOf, segment.slotOf, table.RouteEntry, table.writeTable} from "routing";
 
 // NO `query` FIELD. The query is per-request input, and reading it marks the
 // render dynamic; a public field is a read nothing can intercept, so the only
@@ -223,7 +223,13 @@ fn segOf(d: Declared<unknown>) -> string {
         }
     }
     if (found == false)
-        @panic("jhonstart: `" + d.module + "." + d.name + "` carries no route segment");
+        @panic(
+            "jhonstart: `"
+                + d.module
+                + "."
+                + d.name
+                + "` carries no route segment",
+        );
     return seg;
 }
 
@@ -308,27 +314,27 @@ pub fn ctxRest(route: PageContext) -> string[] {
 
 pub fn page(comptime decl: @Decl, seg: string) {
     decl.setMeta("seg", seg);
+    val kinds = seg
+        .split("/")
+        .map({ raw -> kindName(parseSegment(raw).kind) })
+        .filter(
+            { k -> k == "Dynamic" || k == "CatchAll" || k == "OptionalCatchAll" },
+        );
     var lets: Array<string> = [];
     var sigs: Array<string> = [];
     var fields: Array<string> = [];
-    seg
-        .split("/")
-        .forEach({ raw ->
-            if (raw.startsWith("[")) {
-                val bare = raw
-                    .replaceAll("[", "")
-                    .replaceAll("]", "")
-                    .replaceAll(".", "");
-                val isList = raw.startsWith("[[") || raw.startsWith("[.");
-                val reader = if (isList)
-                    "ctxRest(route)"
-                else
-                    "ctxParam(route, \"" + bare + "\")";
-                val shown = if (isList) "string[]" else "string";
-                lets.push("val " + bare + " = " + reader + ";");
-                sigs.push(bare + ": " + shown);
-                fields.push(bare);
-            }
+    paramNamesOf(seg)
+        .zip(kinds)
+        .forEach({ p ->
+            val isList = p._1 != "Dynamic";
+            val reader = if (isList)
+                "ctxRest(route)"
+            else
+                "ctxParam(route, \"" + p._0 + "\")";
+            val shown = if (isList) "string[]" else "string";
+            lets.push("val " + p._0 + " = " + reader + ";");
+            sigs.push(p._0 + ": " + shown);
+            fields.push(p._0);
         });
     @emit(
         "pub fn "
