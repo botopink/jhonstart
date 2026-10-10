@@ -53,6 +53,7 @@ One more, met while writing the body (a `language-gaps.md` row):
   parser's state is the body's own `var`s, so nested markup is walked with an
   explicit frame stack written by such lambdas (`push`, `pop`, …).
 
-The built code is padded to start at the literal's own line and column: two
-expansions in one module otherwise share the locations of their calls, and a
-default argument filled for one lands on a call of the other (also a row).
+The built code is the markup's code alone: the compiler locates it by its
+expansion (decision 429), so two expansions in one module keep their own plans
+— a default argument filled for one never lands on a call of the other — and a
+diagnostic in it points at the literal.

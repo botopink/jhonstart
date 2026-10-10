@@ -1362,18 +1362,5 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
         ref: null,
         children: nodes,
     );
-    // LANGUAGE GAP: Two template expansions in one module share the locations of their built code — a loc-keyed plan of one (a default argument filled, C-04) lands on a call of the other; the code is padded to start at the literal's own line and column.
-    val origin = template.source();
-    var pad = "";
-    var padLine = 1;
-    while (padLine < origin.line) {
-        pad = pad + "\n";
-        padLine = padLine + 1;
-    }
-    var padCol = 1;
-    while (padCol < origin.col) {
-        pad = pad + " ";
-        padCol = padCol + 1;
-    }
-    return template.custom(root, template.build(pad + code));
+    return template.custom(root, template.build(code));
 }
