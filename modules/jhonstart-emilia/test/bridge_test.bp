@@ -147,7 +147,7 @@ test "bridge: classesIn reads the e_ classes of a flushed document, once each, i
 // ── front 48's rendered cells — contract 4 on markup ────────────────────────
 //
 // The shared fixture (`contracts.md § 4`): emilia's front-48 suite pins the
-// class of `cardTokens()` under `defaultTheme()` as `e_39b87d03` without HTML;
+// class of `cardTokens()` under `defaultTheme()` as `e_f51c2501` without HTML;
 // the cells below assert the same literal on a rendered document, and the
 // builders, the `html` DSL, `withAttrs` / `attrValue` and the static-first
 // merge over it.
@@ -167,12 +167,12 @@ test "bridge: the contract-4 literal on a rendered document" {
     val out = await site.render(inputOf({ -> CardPage() }), req(), recorder());
     assert outcomeText(out) == "ok";
     val doc = document();
-    assert className(cardTokens(), defaultTheme()) == "e_39b87d03";
-    assert doc.contains("<div class=\"e_39b87d03\">card</div>");
+    assert className(cardTokens(), defaultTheme()) == "e_f51c2501";
+    assert doc.contains("<div class=\"e_f51c2501\">card</div>");
     val head = doc.split("</head>").at(0) ?? "";
-    assert head.contains(".e_39b87d03{");
-    assert head.contains(".e_39b87d03:hover{");
-    assert doc.contains("\"s\":[\"e_39b87d03\"]");
+    assert head.contains(".e_f51c2501{");
+    assert head.contains(".e_f51c2501:hover{");
+    assert doc.contains("\"s\":[\"e_f51c2501\"]");
 }
 
 test "bridge: the builders and the html DSL render the class slot byte for byte the same" {
@@ -180,22 +180,22 @@ test "bridge: the builders and the html DSL render the class slot byte for byte 
     val built = div([p([text("hi")])], attrs: [styled(cardTokens(), defaultTheme())]);
     val dsl = html """<div class={c}><p>hi</p></div>""";
     val drained = await flush();
-    assert renderNode(built) == "<div class=\"e_39b87d03\"><p>hi</p></div>";
+    assert renderNode(built) == "<div class=\"e_f51c2501\"><p>hi</p></div>";
     assert renderNode(dsl) == renderNode(built);
-    assert attrValue(built.attrs, "class") == "e_39b87d03";
-    assert attrValue(dsl.attrs, "class") == "e_39b87d03";
+    assert attrValue(built.attrs, "class") == "e_f51c2501";
+    assert attrValue(dsl.attrs, "class") == "e_f51c2501";
     val tagged = withAttrs([#("id", "card")], [classAttr(c)]);
-    assert attrValue(tagged, "class") == "e_39b87d03";
-    assert renderNode(div([], attrs: tagged)) == "<div id=\"card\" class=\"e_39b87d03\"></div>";
+    assert attrValue(tagged, "class") == "e_f51c2501";
+    assert renderNode(div([], attrs: tagged)) == "<div id=\"card\" class=\"e_f51c2501\"></div>";
 }
 
 test "bridge: a static and an emilia class render static first, one space, in array order" {
     val pair = styledWith("card", cardTokens(), defaultTheme());
     val drained = await flush();
-    assert pair._1 == mergeClass("card", "e_39b87d03");
+    assert pair._1 == mergeClass("card", "e_f51c2501");
     val el = div([], attrs: [#("id", "x"), pair, #("role", "note")]);
-    assert renderNode(el) == "<div id=\"x\" class=\"card e_39b87d03\" role=\"note\"></div>";
-    assert clsWith("card rounded", cardTokens(), defaultTheme()) == "card rounded e_39b87d03";
+    assert renderNode(el) == "<div id=\"x\" class=\"card e_f51c2501\" role=\"note\"></div>";
+    assert clsWith("card rounded", cardTokens(), defaultTheme()) == "card rounded e_f51c2501";
 }
 
 test "bridge: one token list is one class on both rows" {
