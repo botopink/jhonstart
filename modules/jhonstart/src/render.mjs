@@ -19,6 +19,7 @@
 //    derived.
 
 let boundaries = [];
+let treeNodes = [];
 let islandRows = [];
 let islandBase = 0;
 let stash = null;
@@ -32,6 +33,7 @@ let styledSheetValue = null;
 
 export function stateReset() {
   boundaries = [];
+  treeNodes = [];
   islandRows = [];
   islandBase = 0;
   stash = null;
@@ -82,6 +84,17 @@ export function nextHoleOrdinal() {
 export function pushBoundary(b) {
   boundaries.push(b);
   return boundaries.length;
+}
+
+// The boundary nodes a composition placed in its tree (decision 414): an
+// error or a not-found boundary, its placeholder carrying the index.
+export function pushNode(n) {
+  treeNodes.push(n);
+  return treeNodes.length - 1;
+}
+
+export function nodeAt(index) {
+  return treeNodes[Number(index)];
 }
 
 export function takeBoundaries() {

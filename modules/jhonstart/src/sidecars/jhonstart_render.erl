@@ -14,7 +14,7 @@
 %% The three browser cells answer the empty value: there is no DOM here.
 -module(jhonstart_render).
 
--export([state_reset/0, push_boundary/1, take_boundaries/0,
+-export([state_reset/0, push_boundary/1, take_boundaries/0, push_node/1, node_at/1,
          next_island_ordinal/0, push_island/1, islands/0, set_island_base/1,
          stash_not_found/1, stashed_not_found/1, has_stash/0,
          mark_write/0, writes/0, next_nav/0, set_hooks/1, hooks/1,
@@ -33,6 +33,7 @@
 -define(L, jhonstart_render_late).
 -define(R, jhonstart_render_resolved).
 -define(SS, jhonstart_render_styled_sheet).
+-define(N, jhonstart_render_nodes).
 
 get_or(Key, Default) ->
     case get(Key) of
@@ -41,7 +42,7 @@ get_or(Key, Default) ->
     end.
 
 state_reset() ->
-    put(?B, []), put(?I, []), put(?IB, 0), erase(?S), put(?W, 0), put(?H, 0), erase(?L), erase(?SS),
+    put(?B, []), put(?N, []), put(?I, []), put(?IB, 0), erase(?S), put(?W, 0), put(?H, 0), erase(?L), erase(?SS),
     0.
 
 %% The render's `styled` sheet (front 119): what the components computed at
@@ -57,6 +58,16 @@ push_boundary(B) ->
     L = get_or(?B, []) ++ [B],
     put(?B, L),
     length(L).
+
+%% The boundary nodes a composition placed in its tree (decision 414): an
+%% error or a not-found boundary, its placeholder carrying the index.
+push_node(N) ->
+    L = get_or(?N, []) ++ [N],
+    put(?N, L),
+    length(L) - 1.
+
+node_at(Index) ->
+    lists:nth(binary_to_integer(Index) + 1, get_or(?N, [])).
 
 take_boundaries() ->
     L = get_or(?B, []),

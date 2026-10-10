@@ -54,7 +54,7 @@ import {plugin.Json};
 import {routes.PageContext, routes.LayoutProps, routes.UiSegment, routes.segment};
 import {styled_sheet.renderSheet};
 import {StyledContext} from "styled";
-import {context.provide} from "std";
+import {context.provide, context.RenderScope} from "std";
 
 // ── the per-render state (render.mjs / sidecars/jhonstart_render.erl) ───────
 
@@ -106,11 +106,13 @@ declare fn __jhHooks(fallback: RenderHooks) -> RenderHooks;
 #[@External.Erlang("jhonstart_signal", "try_task")]
 pub declare fn __jhTryTask<T>(f: fn() -> @Task<T>) -> @Task<@Result<T, string>>;
 
-#[@External.Node("./signal_runtime.mjs", "tryTask")]
-#[@External.Erlang("jhonstart_signal", "try_task")]
-pub declare fn __jhTryComponent(
-    f: fn() -> @Component<Element>,
-) -> @Task<@Result<Element, string>>;
+#[@External.Node("./render.mjs", "pushNode")]
+#[@External.Erlang("jhonstart_render", "push_node")]
+declare fn __jhPushNode(n: fn(scope: RenderScope) -> @Task<Walked>) -> i32;
+
+#[@External.Node("./render.mjs", "nodeAt")]
+#[@External.Erlang("jhonstart_render", "node_at")]
+declare fn __jhNodeAt(index: string) -> fn(scope: RenderScope) -> @Task<Walked>;
 
 #[@External.Node("./signal_runtime.mjs", "tryValue")]
 #[@External.Erlang("jhonstart_signal", "try_value")]
@@ -141,14 +143,174 @@ pub fn attemptTask<T>(f: fn() -> @Task<T>) -> @Task<@Result<T, string>> {
     return try out;
 }
 
-// A component thunk's outcome — `Error(reason)` for a raise. Called from other
-// modules instead of the cell: on the commonJS row the cell's rejection is
-// turned into `{ error }` only at a call site in THIS module.
+// A component's run walked with `scope`, inside the host's try —
+// `Error(reason)` for a raise. Called from other modules instead of the cell:
+// on the commonJS row the cell's rejection is turned into `{ error }` only at
+// a call site in THIS module.
 pub fn componentOutcome(
     f: fn() -> @Component<Element>,
-) -> @Task<@Result<Element, string>> {
-    val out = await __jhTryComponent(f);
+    scope: RenderScope,
+) -> @Task<@Result<Walked, string>> {
+    val out = await __jhTryTask({ -> renderComponent(f(), scope) });
     return try out;
+}
+
+// ── the renderer holds the scope (decisions 388, 414) ───────────────────────
+//
+// A component at run time is a lambda over a `RenderScope` (388): calling one
+// runs nothing, `c.run(scope)` runs it, so a try catches a component only
+// around its run, and only a function holding the scope can write one. The
+// composition's error and not-found boundaries are therefore NODES of the tree
+// (`ErrorBoundaryNode`, `NotFoundBoundaryNode`, beside `suspense.Boundary`):
+// `caughtBelow` / `notFoundLevel` answer a placeholder (`#node`, the node
+// registered per render) and call no host try, and the plain functions below
+// run each inside the host's try with the scope its parent's `run` answered.
+// A `Suspense` boundary a run registers is kept with that run's children
+// scope (`Fill`), and the stream fills it with that scope.
+
+// The error boundary of a segment: `child` runs inside the host's try; a
+// signal is re-raised, any other failure renders `view` (wrapped in
+// `data-jh-e` unless the segment streams, `wrapped`).
+pub type ErrorBoundaryNode(
+    id: string,
+    child: fn() -> @Component<Element>,
+    view: fn(info: ErrorInfo) -> Element,
+    wrapped: bool,
+)
+
+// The not-found level of a segment: `data-jh-n` around `child`, and `view`
+// stashed as the nearest not-found tree when a not-found signal leaves it.
+pub type NotFoundBoundaryNode(
+    pattern: string,
+    child: fn() -> @Component<Element>,
+    view: fn() -> Element,
+)
+
+// A `Suspense` boundary with the scope its fill runs with.
+pub type Fill(boundary: Boundary, scope: RenderScope)
+
+// A run walked: its tree, every boundary node resolved, and the fills the run
+// and the nodes below it registered.
+pub type Walked(tree: Element, fills: Fill[])
+
+// An application's error boundary around a component (decision 414 (3)): it
+// writes no try around its children — it places this node, and the renderer
+// runs `child` inside the host's try with the scope its parent answered,
+// rendering `fallback` (in `data-jh-e="ID"`) for an ordinary failure and
+// re-raising a signal.
+pub fn errorBoundaryNode(
+    id: string,
+    child: fn() -> @Component<Element>,
+    fallback: fn(info: ErrorInfo) -> Element,
+) -> Element {
+    return errorNode(
+        ErrorBoundaryNode(id: id, child: child, view: fallback, wrapped: true),
+    );
+}
+
+// A boundary node is its own renderer: the placeholder carries the index of
+// the function that runs it with the scope its parent's run answered.
+fn errorNode(b: ErrorBoundaryNode) -> Element {
+    return nodePlaceholder({ scope -> renderErrorBoundary(b, scope) });
+}
+
+fn notFoundNode(b: NotFoundBoundaryNode) -> Element {
+    return nodePlaceholder({ scope -> renderNotFound(b, scope) });
+}
+
+fn nodePlaceholder(n: fn(scope: RenderScope) -> @Task<Walked>) -> Element {
+    val index = __jhPushNode(n);
+    return Element(
+        tag: "#node",
+        value: index.toString(),
+        children: [],
+        attrs: [],
+    );
+}
+
+// Run `c` with `scope`, then every boundary node of its tree with the scope
+// its run answered.
+pub fn renderComponent(
+    c: @Component<Element>,
+    scope: RenderScope,
+) -> @Task<Walked> {
+    val r = await c.run(scope);
+    val own = __jhTakeBoundaries().map(
+        { b -> Fill(boundary: b, scope: r.scope) },
+    );
+    val inner = await resolveTree(r.value, r.scope);
+    return Walked(tree: inner.tree, fills: own.append(inner.fills));
+}
+
+fn resolveTree(e: Element, scope: RenderScope) -> @Task<Walked> {
+    if (e.tag == "#node") {
+        val run = __jhNodeAt(e.value);
+        val walked = await run(scope);
+        return walked;
+    }
+    var kids: Element[] = [];
+    var fills: Fill[] = [];
+    for (e.children) { c ->
+        val w = await resolveTree(c, scope);
+        kids.push(w.tree);
+        fills = fills.append(w.fills);
+    }
+    return Walked(
+        tree: Element(
+            tag: e.tag,
+            value: e.value,
+            children: kids,
+            attrs: e.attrs,
+        ),
+        fills: fills,
+    );
+}
+
+fn failureOf(outcome: @Result<Walked, string>) -> string {
+    return case outcome {
+        Ok(w) -> "";
+        Error(message) -> message;
+    };
+}
+
+pub fn renderErrorBoundary(
+    b: ErrorBoundaryNode,
+    scope: RenderScope,
+) -> @Task<Walked> {
+    val outcome = await componentOutcome(b.child, scope);
+    val failure = failureOf(outcome);
+    if (isSignal(failure))
+        return Walked(tree: __jhRaiseElement(failure), fills: []);
+    val view = b.view;
+    val walked = case outcome {
+        Ok(w) -> w;
+        Error(message) -> Walked(tree: view(infoFor(message)), fills: []);
+    };
+    if (b.wrapped)
+        return Walked(tree: wrap(b.id, walked.tree), fills: walked.fills);
+    return walked;
+}
+
+pub fn renderNotFound(
+    b: NotFoundBoundaryNode,
+    scope: RenderScope,
+) -> @Task<Walked> {
+    val outcome = await componentOutcome(b.child, scope);
+    val failure = failureOf(outcome);
+    if (failure == notFoundReason()) {
+        val view = b.view;
+        __jhStashNotFound(notFoundAnchor(b.pattern, view()));
+    }
+    if (failure != "")
+        return Walked(tree: __jhRaiseElement(failure), fills: []);
+    val walked = case outcome {
+        Ok(w) -> w;
+        Error(message) -> Walked(tree: childrenMarker(), fills: []);
+    };
+    return Walked(
+        tree: notFoundAnchor(b.pattern, walked.tree),
+        fills: walked.fills,
+    );
 }
 
 pub fn attemptRender<T>(f: fn() -> T) -> @Result<T, string> {
@@ -394,8 +556,9 @@ fn errorLevel(
     return tree;
 }
 
-// The error boundary of segment `i` around its not-found level. A signal is
-// re-raised; an ordinary failure renders the segment's error view.
+// The error boundary of segment `i` around its not-found level, as a node
+// the renderer runs (`renderErrorBoundary`): a signal is re-raised, an
+// ordinary failure renders the segment's error view.
 fn caughtBelow(
     chain: Array<UiSegment>,
     i: i32,
@@ -407,28 +570,19 @@ fn caughtBelow(
         val plain = await notFoundLevel(chain, i, route, page);
         return plain;
     }
-    val outcome = await __jhTryComponent(
-        { -> notFoundLevel(chain, i, route, page) },
+    return errorNode(
+        ErrorBoundaryNode(
+            id: errorId(seg),
+            child: { -> notFoundLevel(chain, i, route, page) },
+            view: seg.errorView,
+            wrapped: seg.hasLoading == false,
+        ),
     );
-    val failure = case outcome {
-        Ok(tree) -> "";
-        Error(message) -> message;
-    };
-    if (isSignal(failure)) return __jhRaiseElement(failure);
-    if (seg.hasLoading) return errorTree(seg, outcome);
-    return wrap(errorId(seg), errorTree(seg, outcome));
 }
 
-fn errorTree(seg: UiSegment, outcome: @Result<Element, string>) -> Element {
-    val view = seg.errorView;
-    return case outcome {
-        Ok(tree) -> tree;
-        Error(message) -> view(infoFor(message));
-    };
-}
-
-// The not-found level: `data-jh-n` around the rest, and the nearest not-found
-// tree for a not-found signal raised below it.
+// The not-found level, as a node the renderer runs (`renderNotFound`):
+// `data-jh-n` around the rest, and the nearest not-found tree for a not-found
+// signal raised below it.
 fn notFoundLevel(
     chain: Array<UiSegment>,
     i: i32,
@@ -440,23 +594,13 @@ fn notFoundLevel(
         val plain = await composeAt(chain, i + 1, route, page);
         return plain;
     }
-    val outcome = await __jhTryComponent(
-        { -> composeAt(chain, i + 1, route, page) },
+    return notFoundNode(
+        NotFoundBoundaryNode(
+            pattern: seg.pattern,
+            child: { -> composeAt(chain, i + 1, route, page) },
+            view: seg.notFoundView,
+        ),
     );
-    val failure = case outcome {
-        Ok(tree) -> "";
-        Error(message) -> message;
-    };
-    if (failure == notFoundReason()) {
-        val view = seg.notFoundView;
-        __jhStashNotFound(notFoundAnchor(seg.pattern, view()));
-    }
-    if (failure != "") return __jhRaiseElement(failure);
-    val tree = case outcome {
-        Ok(t) -> t;
-        Error(message) -> childrenMarker();
-    };
-    return notFoundAnchor(seg.pattern, tree);
 }
 
 // The not-found anchor: the client swaps a late not-found into the nearest one.

@@ -52,12 +52,13 @@ import {server.RequestData, server.enterRequest, server.leaveRequest};
 import {router.fill, router.renderIsDynamic, router.markDynamic, router.resetDynamic};
 import {error_boundary.ErrorInfo, error_boundary.isSignal, error_boundary.notFoundReason};
 import {suspense.Boundary};
-import {render.renderNode, render.compose, render.Payload, render.renderKeys, render.documentStart, render.documentEnd, render.isLangTag, render.__jhStateReset, render.__jhTakeBoundaries, render.__jhIslands, render.__jhStashedNotFound, render.componentOutcome, render.__jhTryValue};
+import {render.renderNode, render.compose, render.Payload, render.renderKeys, render.documentStart, render.documentEnd, render.isLangTag, render.__jhStateReset, render.__jhIslands, render.__jhStashedNotFound, render.componentOutcome, render.__jhTryValue, render.Fill};
 import {globals.globals};
 import {plugin.RenderPlugin, plugin.Json};
 import {routes.PageContext, routes.LayoutProps, routes.UiSegment};
 import {metadata.Metadata, metadata.Viewport, metadata.emptyMetadata, metadata.emptyViewport, metadata.mergeMetadata, metadata.mergeViewport, metadata.renderHead, metadata.renderViewport};
 import {escape} from "std";
+import {context.RenderScope} from "std";
 
 // ── step 2: the chunk and the fill ──────────────────────────────────────────
 
@@ -280,8 +281,9 @@ fn resolveIn(
     req: RequestData,
     route: PageContext,
     query: string,
-    b: Boundary,
+    f: Fill,
 ) -> @Task<Resolved> {
+    val b = f.boundary;
     enterRequest(req);
     fill(
         route.pathname,
@@ -290,10 +292,9 @@ fn resolveIn(
         route.pattern,
         0,
     );
-    val child = b.child;
-    val outcome = await componentOutcome(child);
+    val outcome = await componentOutcome(b.child, f.scope);
     val failure = case outcome {
-        Ok(tree) -> "";
+        Ok(w) -> "";
         Error(message) -> message;
     };
     if (failure == notFoundReason()) {
@@ -339,7 +340,7 @@ fn resolveIn(
             dynamic: renderIsDynamic(),
         );
     val tree = case outcome {
-        Ok(t) -> t;
+        Ok(w) -> w.tree;
         Error(message) -> defaultNotFound();
     };
     val html = renderOrFail(tree);
@@ -617,9 +618,12 @@ pub fn renderWith(
     fill(route.pathname, input.params, input.query, route.pattern, 0);
     val page = input.page;
     val chain = input.chain;
-    val outcome = await componentOutcome({ -> compose(chain, route, page) });
+    val outcome = await componentOutcome(
+        { -> compose(chain, route, page) },
+        RenderScope.root(),
+    );
     val failure = case outcome {
-        Ok(tree) -> "";
+        Ok(w) -> "";
         Error(message) -> message;
     };
     if (failure != "") {
@@ -627,7 +631,7 @@ pub fn renderWith(
         return try e;
     }
     val tree = case outcome {
-        Ok(t) -> t;
+        Ok(w) -> w.tree;
         Error(message) -> defaultNotFound();
     };
     val shell = renderOrFail(tree);
@@ -643,7 +647,10 @@ pub fn renderWith(
         Ok(h) -> h;
         Error(message) -> "";
     };
-    val boundaries = __jhTakeBoundaries();
+    val boundaries = case outcome {
+        Ok(w) -> w.fills;
+        Error(message) -> [];
+    };
     if (streaming) {
         val streamOutcome = await streamed(
             site,
@@ -668,8 +675,8 @@ pub fn renderWith(
     return try wholeOutcome;
 }
 
-fn holeIds(boundaries: Array<Boundary>) -> string[] {
-    return boundaries.map({ b -> b.id });
+fn holeIds(boundaries: Array<Fill>) -> string[] {
+    return boundaries.map({ f -> f.boundary.id });
 }
 
 fn thunksOf(
@@ -677,7 +684,7 @@ fn thunksOf(
     req: RequestData,
     route: PageContext,
     query: string,
-    boundaries: Array<Boundary>,
+    boundaries: Array<Fill>,
 ) -> Array<fn() -> @Task<Resolved>> {
     return boundaries.map(
         { b -> boundaryThunk(plugins, req, route, query, b) },
@@ -689,9 +696,9 @@ fn boundaryThunk(
     req: RequestData,
     route: PageContext,
     query: string,
-    b: Boundary,
+    f: Fill,
 ) -> fn() -> @Task<Resolved> {
-    return { -> resolveIn(plugins, req, route, query, b) };
+    return { -> resolveIn(plugins, req, route, query, f) };
 }
 
 // The late half: after the first write a signal is markup, a failure ends the
@@ -794,7 +801,7 @@ fn streamed(
     route: PageContext,
     res: Response,
     shellHtml: string,
-    boundaries: Array<Boundary>,
+    boundaries: Array<Fill>,
 ) -> @Task<@Result<void, string>> {
     val pluginHead = await headsFrom(site.plugins, 0);
     val status = res.status;
@@ -829,7 +836,7 @@ fn whole(
     route: PageContext,
     res: Response,
     shellHtml: string,
-    boundaries: Array<Boundary>,
+    boundaries: Array<Fill>,
 ) -> @Task<@Result<void, string>> {
     await __jhEachCompleted(
         thunksOf(site.plugins, req, route, input.query, boundaries),
@@ -914,7 +921,7 @@ fn resolvedFor(resolved: Array<Resolved>, id: string) -> Resolved {
 
 fn fillsInOrder(
     site: App,
-    boundaries: Array<Boundary>,
+    boundaries: Array<Fill>,
     resolved: Array<Resolved>,
     i: i32,
 ) -> @Task<string> {

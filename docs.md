@@ -1317,6 +1317,23 @@ component that crashed all reach the fallback. No client-visible `ErrorInfo`
 ever carries a message — the digest is what the reader reports and what the log
 line carries.
 
+**A boundary around a component is a node** (decisions 388, 414). A component at run
+time is a lambda over a `RenderScope`: calling it runs nothing, so a try catches a
+component only around its run, and only a function holding the scope can write one.
+A composition's `error` and `not-found` segments, and an application's
+`errorBoundaryNode(id, { -> Panel() }, fallback)`, place a node in the tree
+(`render.bp` `ErrorBoundaryNode`, `NotFoundBoundaryNode`, beside `suspense.Boundary`);
+the renderer's plain functions — `renderComponent(c, scope)`, `renderErrorBoundary`,
+`renderNotFound` — run each inside the host's try with the scope its parent's `run`
+answered, and the stream fills each `Suspense` hole with the scope it was registered
+under (`Fill`). The root runs with `RenderScope.root()`.
+
+```bp
+pub fn renderComponent(c: @Component<Element>, scope: RenderScope) -> @Task<Walked>
+pub fn errorBoundaryNode(id: string, child: fn() -> @Component<Element>,
+                         fallback: fn(info: ErrorInfo) -> Element) -> Element
+```
+
 **Signals are not errors.** `notFound()` and `redirect(url)` raise the `nav:`
 reasons of `contracts.md § 5b`, spelled by `routing`'s `navigation` (this file
 writes no `nav:` literal). A page, layout or template writes the call
