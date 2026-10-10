@@ -157,7 +157,7 @@ repository/jhonstart/
 │   ├── layout_plain_element/   ← `#[layout]` on `-> Element` (decision 117; the guide's `OldLayout`)
 │   ├── page_plain_element/     ← `#[page]` on `-> Element`
 │   ├── template_task_element/  ← `#[template]` on `-> @Task<Element>`
-│   └── html_*/                 ← front 118: the `html """…"""` refusals — a `?T`, a record, a function in a hole; markup as an operand; `[name]={…}`; `class:list`; `set:html`; `slot="…"`; an unbound component and an unbound annotation; content to a component without `children`; a narrower `children`; two `#[isRaw]`; a mismatched closing tag; a kebab-case attribute but `data-*`, an event attribute, a spread on an element and a non-`string` `data-*` value (decision 351)
+│   └── html_*/                 ← front 118: the `html """…"""` refusals — a `?T`, a record, a function in a hole; markup as an operand; `[name]={…}`; `class:list`; `set:html`; `slot="…"`; an unbound component and an unbound annotation; content to a component without `children`; a narrower `children`; two `#[isRaw]`; a mismatched closing tag; a kebab-case attribute but `data-*`, an event attribute, a spread on an element and a non-`string` `data-*` value (decision 351); `<style>` in markup (decision 338)
 ```
 
 `modules/jhonstart-test/` is the `<lib>-test` member
@@ -848,7 +848,7 @@ none with a flag, variable or list that turns it off:
 5. **examples** — `botopink build --target <t>` of every `examples/*/` on every
    declared target, into a throwaway `--out` (`runExamplesGate`): 16 builds;
 6. **refusals** — `botopink check` of every `refusals/*/` project
-   (`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): 21 cases (3 of the route markers, 18 of front 118's `html`).
+   (`runRefusalsGate`; `scripts/check-refusals.sh` runs it alone): 22 cases (3 of the route markers, 19 of front 118's `html`).
 
 Stages 1–3 stop the gate at the first red. Stages 4–6 all run: every red cell
 is listed with the tail of its output and a re-run line, and the gate fails at

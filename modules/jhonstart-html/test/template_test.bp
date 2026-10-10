@@ -3,7 +3,7 @@
 // tags nor raw nodes). Every test runs on both targets.
 
 import {html, isRaw, classList, classIf, hasContent};
-import {Element, Node, a, div, span, p, h1, h2, ul, li, nav, section, article, header, footer, form, input, br, img, hr, meta, title, script, style, textarea, button, raw, renderNode} from "jhonstart";
+import {Element, Node, a, div, span, p, h1, h2, ul, li, nav, section, article, header, footer, form, input, br, img, hr, meta, title, script, textarea, button, raw, renderNode} from "jhonstart";
 
 type Status { Draft, Live }
 
@@ -116,10 +116,10 @@ test "whitespace between tags on separate lines is dropped; text keeps its inner
 
 test "a raw-text element keeps its body unparsed" {
     val markup = renderNode(
-        html "<div><script>if (a < b && c > d) { go({x: 1}); }</script><style>p > a { color: red; }</style></div>",
+        html "<div><script>if (a < b && c > d) { go({x: 1}); }</script></div>",
     );
     assert markup
-        == "<div><script>if (a < b && c > d) { go({x: 1}); }</script><style>p > a { color: red; }</style></div>";
+        == "<div><script>if (a < b && c > d) { go({x: 1}); }</script></div>";
     assert renderNode(html "<textarea><b>{x}</b></textarea>")
         == "<textarea>&lt;b&gt;{x}&lt;/b&gt;</textarea>";
 }

@@ -31,6 +31,7 @@
 //   ${expr}                 htmlText(expr)                  (a string hole stays text)
 //   <!-- c -->, <!doctype>  htmlRaw("<!-- c -->")           (rendered verbatim)
 //   <script>…</script>      script([htmlText("…")], …)     (raw-text bodies are not parsed)
+//   <style>…</style>        refused at the tag (decision 338: the style section or `use styled`)
 //   <slot/>                 htmlNode(children)
 //   <slot>fb</slot>         htmlSlot(children, htmlFragment([fb]))
 //
@@ -694,7 +695,8 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                     )
                 else if (name == "Fragment"
                     || name == "slot"
-                    || name == "html") {
+                    || name == "html"
+                    || name == "style") {
                     mark("tag", a, b, "tag", null);
                     push("tag", name, a, b, "");
                 } else {
@@ -755,7 +757,13 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                 val selfClose = c == "/";
                 val step = if (selfClose) 2 else 1;
                 i = i + step;
-                if (name == "slot") {
+                if (name == "style")
+                    failSpan(
+                        topI(fStart),
+                        topI(fEnd),
+                        "`<style>` in markup is refused — a component's style is its `.bpp` file's `--- style ---` section, or `use styled \"\"\"…\"\"\";` in its body (decision 338)",
+                    )
+                else if (name == "slot") {
                     if (selfClose) {
                         pop();
                         addChild("htmlNode(children)");
