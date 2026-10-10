@@ -12,7 +12,7 @@
 //     template-built code cannot build an inline props type, so the
 //     components take their props as parameters (language-gaps.md).
 
-import {html, hasContent};
+import {html, html.hasContent};
 import {Element, Node, article, aside, div, footer, h1, h2, header, li, p, ul, el, renderNode} from "jhonstart";
 
 fn small(children: Children, attrs: Array<#(string, string)> = []) -> Element {

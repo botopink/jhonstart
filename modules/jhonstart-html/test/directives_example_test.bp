@@ -9,7 +9,7 @@
 // annotation's name, refuses an unbound one at its span, acts on its own
 // `isRaw`, and refuses any other by name.
 
-import {html, isRaw, classList, classIf};
+import {html, html.isRaw, html.classList, html.classIf};
 import {Element, Node, article, div, p, span, el, raw, renderNode} from "jhonstart";
 
 fn pre(children: Children, attrs: Array<#(string, string)> = []) -> Element {

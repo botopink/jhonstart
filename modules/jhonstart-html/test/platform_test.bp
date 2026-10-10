@@ -10,7 +10,7 @@
 // 1) }` is `unbound variable 'go'`, a `language-gaps.md` row); a recursion
 // goes through a function.
 
-import {classIf};
+import {html.classIf};
 
 fn bang(s: string) -> string {
     return s + "!";
