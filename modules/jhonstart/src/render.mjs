@@ -28,6 +28,7 @@ let hooksValue = null;
 let holeCounter = 0;
 let lateState = "";
 let resolvedRows = [];
+let styledSheetValue = null;
 
 export function stateReset() {
   boundaries = [];
@@ -37,6 +38,19 @@ export function stateReset() {
   writeCount = 0;
   holeCounter = 0;
   lateState = "";
+  styledSheetValue = null;
+  return 0;
+}
+
+// The render's `styled` sheet (front 119): what the components computed at
+// render registered through `StyledContext`, a `styled` `Sheet` value kept
+// opaquely — `styled_root.bp` adds to it, the sink reads it.
+export function styledSheet(fallback) {
+  return styledSheetValue === null ? fallback : styledSheetValue;
+}
+
+export function setStyledSheet(s) {
+  styledSheetValue = s;
   return 0;
 }
 

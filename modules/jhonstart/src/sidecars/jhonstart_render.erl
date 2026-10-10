@@ -19,7 +19,8 @@
          stash_not_found/1, stashed_not_found/1, has_stash/0,
          mark_write/0, writes/0, next_nav/0, set_hooks/1, hooks/1,
          each_completed/2, next_hole_ordinal/0, set_late/1, late/0, collect_resolved/1, take_resolved/0,
-         payload_text/1, register_fill/2, register_signal/2]).
+         payload_text/1, register_fill/2, register_signal/2,
+         styled_sheet/1, set_styled_sheet/1]).
 
 -define(B, jhonstart_render_boundaries).
 -define(I, jhonstart_render_islands).
@@ -31,6 +32,7 @@
 -define(H, jhonstart_render_holes).
 -define(L, jhonstart_render_late).
 -define(R, jhonstart_render_resolved).
+-define(SS, jhonstart_render_styled_sheet).
 
 get_or(Key, Default) ->
     case get(Key) of
@@ -39,7 +41,16 @@ get_or(Key, Default) ->
     end.
 
 state_reset() ->
-    put(?B, []), put(?I, []), put(?IB, 0), erase(?S), put(?W, 0), put(?H, 0), erase(?L),
+    put(?B, []), put(?I, []), put(?IB, 0), erase(?S), put(?W, 0), put(?H, 0), erase(?L), erase(?SS),
+    0.
+
+%% The render's `styled` sheet (front 119): what the components computed at
+%% render registered through `StyledContext`, a `styled` `Sheet` value kept
+%% opaquely — `styled_root.bp` adds to it, the sink reads it.
+styled_sheet(Fallback) -> get_or(?SS, Fallback).
+
+set_styled_sheet(S) ->
+    put(?SS, S),
     0.
 
 push_boundary(B) ->

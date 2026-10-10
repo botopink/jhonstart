@@ -28,6 +28,7 @@ pub mod server; // front 28, replacing server.d.bp
 pub mod client; // front 29
 pub mod suspense; // front 30
 pub mod streaming; // front 30
+pub mod styled_sheet; // front 119: the render's `styled` sheet, `StyledContext`'s provider (361)
 pub mod render; // front 30
 pub mod plugin; // front 30
 pub mod globals; // front 30

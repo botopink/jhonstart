@@ -59,7 +59,7 @@ repository/jhonstart/
 ├── docs.md            ← user-facing reference
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
-│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, globals.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, plugin.bp, routes.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp, html_attrs.bp, node.bp, prelude.bp] (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
+│   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, globals.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, plugin.bp, routes.bp, styled_sheet.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp, html_attrs.bp, node.bp, prelude.bp], dependencies { actions, routing, styled: git `feat` } (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
 │   │   ├── src/
 │   │   │   ├── AGENTS.md
 │   │   │   ├── root.bp        ← module-tree root: `pub mod element; pub mod hooks; pub mod router; pub mod server; pub mod client; pub mod suspense; pub mod streaming; pub mod render; pub mod plugin; pub mod globals; pub mod routes; pub mod error_boundary; pub mod metadata; pub mod elements; pub mod html_attrs; pub mod node; pub mod prelude; mod client_runtime;`
@@ -81,7 +81,8 @@ repository/jhonstart/
 │   │   │   ├── html_attrs.bp  ← COMPILED (front 48 of the CSS track), PURE: `classAttr` (the `class` pair spelled once), `withAttrs` (append, base first — `renderToString` writes attrs in array order), `attrValue` (the last pair of a name, `""` when absent). Imports only `element` and names no styling library: the styling side hands over a `#(string, string)` pair and merges its own class names
 │   │   │   ├── client.bp      ← COMPILED (front 29): `#[client]` + `#[clientProps]` (comptime markers, four refusals), `islandId`/`islandAttrOf`/`islandAttr` (decision 77 — the ONE spelling of `data-jh-i`), `Island` + `clientMount` + `islandEntry` + `propsOf`, `serverSlotAttr`/`serverSlot`, `serverOnly`, `hydrate()` / `propsFor(name)` and the starter table (`registerStarter`, `registerRouteStarters`, `registeredStarters`, `registeredRouteStarters` into `globals.starters`) over dual-target cells (`island_runtime.mjs` / `sidecars/jhonstart_island.erl`). The graph walk is front 68's
 │   │   │   ├── suspense.bp    ← COMPILED (front 30): `Boundary(id, fallback, child: fn() -> @Component<…>)` (an UNSTARTED thunk), `Suspense` (the `data-jh-h` hole; registers the boundary with the render), `holeId`
-│   │   │   ├── render.bp      ← COMPILED (front 30): `renderNode` (the escaping, void-aware walker over std `escape`), `raw`, `shellHtml`, `mountIsland` (i0, i1 … through front 29's `islandAttr`), `compose` (layout > template > error > loading > not-found > page; layouts run first), `Payload`/`writePayload` (std `json` + `escape.scriptJson`), `RenderHooks`/`setHooks`, the document
+│   │   │   ├── styled_sheet.bp ← COMPILED (front 119 step 1, decisions 352, 354 (7), 361): the render's `styled` sheet — `renderSheet()` (the `StyledSheet` `compose` provides as `styled`'s `StyledContext`, writing to layer `styled`), `renderedStyles()`, `styledLayer()`; the `Sheet` value kept in the per-render state (`render.mjs` / `jhonstart_render.erl`), so a component rendered twenty times is written once
+│   │   │   ├── render.bp      ← COMPILED (front 30): `renderNode` (the escaping, void-aware walker over std `escape`), `raw`, `shellHtml`, `mountIsland` (i0, i1 … through front 29's `islandAttr`), `compose` (layout > template > error > loading > not-found > page; layouts run first; the root of a page render, it provides `StyledContext`), `Payload`/`writePayload` (std `json` + `escape.scriptJson`), `RenderHooks`/`setHooks`, the document
 │   │   │   ├── streaming.bp   ← COMPILED (front 30): `Chunk`/`resolve`/`fillHtml`, the late-signal markup, `Response` + `guarded`, `PageInput`, `App`/`app` with `render` / `renderStream` (→ `@Task<@Result<void, string>>`), the signal translation and the redirect-target check
 │   │   │   ├── plugin.bp      ← COMPILED (front 30): `RenderPlugin(name, head, chunk, close, payload)` — a record of async functions, called in `app`'s order
 │   │   │   ├── globals.bp     ← COMPILED (front 30): the registry `payload, fill, signal, starters` → `__bp0/1/2/3`, the fields of `pub val globals`; `readPayload` (std `json.decode`), `registerFill`, `registerSignal`
@@ -96,6 +97,7 @@ repository/jhonstart/
 │   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same cells
 │   │   └── test/
 │   │       ├── render_test.bp ← `botopink test` flat suite: the walker, the hole, the fill, the globals, the payload (front 30) — both rows
+│   │       ├── styled_sheet_test.bp ← `botopink test`: `compose` provides `StyledContext` — a `styled` component computed at render, rendered twenty times, written once to `renderedStyles()`; `resetRender()` empties it (front 119 step 1) — both rows
 │   │       ├── streaming_test.bp ← `botopink test` flat suite: `render`/`renderStream` over a recording `Response`, composition, signals before and after the first chunk, the plugin order (front 30) — both rows; the fill order and the boundaries' concurrency are told by std `async` gates (the posts boundary answers once the recorder has WRITTEN the aside's fill; two loaders cross a pair of gates), never by `delay`s under an elapsed-time budget
 │   │       ├── routes_test.bp ← `botopink test` flat suite: the four markers, `uiTable()` through `routing`, the params accessors (front 30) — both rows
 │   │       ├── metadata_test.bp ← `botopink test` flat suite: the merge rule row by row, the head's order and escaping, the viewport (front 32) — both rows
@@ -691,8 +693,8 @@ every sibling under `repository/` as rows; from the scratch directory the
 emilia checkout `jhonstart-emilia`'s `path` dependency needs
 (`botopink-lang/repository/emilia`, checked out by the workflow the way
 emilia's own CI checks out jhonstart) is a dependency and not a row, and so
-are the shared packages the members declare as `git` dependencies — `actions`
-and `routing` (`actions` itself declares `routing`), checked out at `feat`
+are the shared packages the members declare as `git` dependencies — `actions`,
+`routing` and `styled` (`actions` itself declares `routing`, `styled` declares `css`), checked out at `feat`
 under `botopink-lang/repository/<pkg>`, where every cell's walk-up resolves
 them (decision 326) — so the workflow's verdict is jhonstart's. A cell the member's manifest restricts away
 (`jhonstart-dom-test` on erlang) is not a cell of that row. Nothing about

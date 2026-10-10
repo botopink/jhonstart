@@ -1,0 +1,54 @@
+// `botopink test` suite for `src/styled_sheet.bp` (front 119 step 1;
+// decisions 352, 354 (7), 361): `compose`, the root of a page render, provides
+// `StyledContext`, so a `styled` component computed at render below it writes
+// its class and rules to this render's sheet — once, however many times it
+// renders — and `resetRender()` starts the next render's sheet empty.
+
+import {element.Element, element.text, element.div, element.span};
+import {render.compose, render.renderNode, render.resetRender};
+import {routes.PageContext, routes.UiSegment};
+import {styled_sheet.renderedStyles};
+import styled, {StyledView} from "styled";
+
+fn badge(c: string) -> StyledView {
+    return styled "color: ${c};";
+}
+
+fn Badge(c: string) -> @Component<Element> {
+    val s = await badge(c);
+    return span([text(c, attrs: [])], attrs: [#("class", s.className)]);
+}
+
+// Twenty red badges and a blue one.
+fn Page() -> @Component<Element> {
+    var items: Element[] = [];
+    var k = 0;
+    while (k < 20) {
+        val b = await Badge("red");
+        items = items.append([b]);
+        k = k + 1;
+    }
+    val other = await Badge("blue");
+    return div(items.append([other]), attrs: []);
+}
+
+fn route() -> PageContext {
+    return PageContext(pathname: "/", pattern: "/", params: [], rest: []);
+}
+
+test "styled: a component rendered twenty times writes its sheet once" {
+    val _r = resetRender();
+    val chain: UiSegment[] = [];
+    val tree = await compose(chain, route(), { -> Page() });
+    assert renderedStyles()
+        == "@layer styled{.s_c9b86112{color:red}.s_ffa7179f{color:blue}}";
+    assert renderNode(tree).split("class=\"s_c9b86112\"").length == 21;
+}
+
+test "styled: the next render's sheet starts empty" {
+    val _r = resetRender();
+    assert renderedStyles() == "";
+    val chain: UiSegment[] = [];
+    val _t = await compose(chain, route(), { -> Badge("blue") });
+    assert renderedStyles() == "@layer styled{.s_ffa7179f{color:blue}}";
+}

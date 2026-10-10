@@ -20,7 +20,8 @@
 # `botopink-lang/repository/jhonstart/`
 # and the sibling libraries its members depend on by `path` next to it
 # (`emilia`), the shared packages they declare as `git` dependencies
-# (`actions`, `routing` — `actions` itself declares `routing`) next to it,
+# (`actions`, `routing`, `styled` — `actions` itself declares `routing`,
+# `styled` declares `css`) next to it,
 # build the compiler,
 # then one `botopink-lib-test --target <row> --strict` call per row, from a
 # scratch directory with `BOTOPINK_LIB_ROOTS` naming this repository: the runner
@@ -118,6 +119,20 @@ jobs:
           repository: botopink/routing
           ref: feat
           path: botopink-lang/repository/routing
+
+      - name: Checkout styled (dependency — modules/jhonstart declares styled, front 119)
+        uses: actions/checkout@v5
+        with:
+          repository: botopink/styled
+          ref: feat
+          path: botopink-lang/repository/styled
+
+      - name: Checkout css (dependency — styled declares css)
+        uses: actions/checkout@v5
+        with:
+          repository: botopink/css
+          ref: feat
+          path: botopink-lang/repository/css
 
       # Both hosts on every row. Building the compiler runs `erlc` (the
       # resident comptime modules are compiled at build time and embedded),

@@ -19,6 +19,7 @@
     "suspense.bp",
     "plugin.bp",
     "routes.bp",
+    "styled_sheet.bp",
     "render.bp",
     "streaming.bp",
     "client_app.bp",
@@ -34,6 +35,10 @@
     },
     "routing": {
       "git": "https://github.com/botopink/routing.git",
+      "branch": "feat"
+    },
+    "styled": {
+      "git": "https://github.com/botopink/styled.git",
       "branch": "feat"
     }
   }

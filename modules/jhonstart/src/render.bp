@@ -52,6 +52,9 @@ import {suspense.Boundary, suspense.Suspense, suspense.holeId};
 import {globals.globals};
 import {plugin.Json};
 import {routes.PageContext, routes.LayoutProps, routes.UiSegment, routes.segment};
+import {styled_sheet.renderSheet};
+import {StyledContext} from "styled";
+import {context.provide} from "std";
 
 // ── the per-render state (render.mjs / sidecars/jhonstart_render.erl) ───────
 
@@ -335,11 +338,15 @@ fn templateOf(seg: UiSegment, route: PageContext) -> @Component<Element> {
 }
 
 // The page, composed through `chain`: root-first, layouts before the page.
+// The root of every page render: it provides `StyledContext` (decisions 352,
+// 354 (7)), so a `styled` component computed at render below it writes to
+// this render's sheet (`styled_sheet.bp`).
 pub fn compose(
     chain: Array<UiSegment>,
     route: PageContext,
     page: fn() -> @Component<Element>,
 ) -> @Component<Element> {
+    use provide(StyledContext, renderSheet());
     val tree = await composeAt(chain, 0, route, page);
     return tree;
 }
