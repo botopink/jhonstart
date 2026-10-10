@@ -1,7 +1,7 @@
 //// jhonstart-test/assert_island — the payload `i` rows and the placeholders (front 29).
 
 import {Island, islandEntry, clientMount, renderToString} from "jhonstart";
-import {testing.snapshots} from "std";
+import {assertAs} from "snap";
 
 // `--- payload i`, one `<id> <component> <props>` line per island (the
 // `islandEntry` tuple, space-joined), then `--- markup` and each island's
@@ -20,6 +20,6 @@ pub fn clientBundleEntryText(islands: Array<Island>) -> string {
 }
 
 pub fn assertClientBundleEntry(loc: SourceLocation, islands: Array<Island>) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "island", clientBundleEntryText(islands));
+    try assertAs(loc, "island", clientBundleEntryText(islands));
     return;
 }

@@ -5,7 +5,7 @@
 //// is the shipping renderer, snapshotted through `assertText`).
 
 import {Element, renderToString} from "jhonstart";
-import {testing.snapshots} from "std";
+import {assertAs} from "snap";
 
 // `renderToString(e)`, one line.
 pub fn htmlText(e: Element) -> string {
@@ -24,11 +24,11 @@ pub fn tagPerLine(markup: string) -> string {
 }
 
 pub fn assertHtml(loc: SourceLocation, e: Element) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "html", htmlText(e));
+    try assertAs(loc, "html", htmlText(e));
     return;
 }
 
 pub fn assertHtmlLines(loc: SourceLocation, e: Element) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "html", htmlLinesText(e));
+    try assertAs(loc, "html", htmlLinesText(e));
     return;
 }

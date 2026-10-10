@@ -6,14 +6,15 @@
 //// pure halves a test snapshots (`renderToStream`, `simulateNavigation`) and
 //// front 30's render over a recording `Response` (`renderStreamCollect`,
 //// `renderRecorded`). Nothing from std is re-exported: a value already rendered
-//// to a string is snapshotted with std's own `testing.snapshots.assertText`.
+//// to a string is snapshotted with `snap`'s `assertText`.
 
 import {Element, ElementBase, p, text, RouterState, RequestData, Boundary, Suspense, holeId} from "jhonstart";
 import {Chunk, resolve, fillHtml, shellHtml, Response, PageInput, App} from "jhonstart";
 import {layoutKeys, sharedDepth} from "jhonstart-link";
 import {envelope: {ActionEnvelope, writeEnvelope}} from "actions";
 import {navigation: {NavKind, NavOutcome, signalToWire}} from "routing";
-import {testing.snapshots, encoding} from "std";
+import {encoding} from "std";
+import {} from "snap";
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 

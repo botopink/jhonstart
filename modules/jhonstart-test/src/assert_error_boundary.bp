@@ -1,7 +1,7 @@
 //// jhonstart-test/assert_error_boundary — a boundary's outcome (front 31).
 
 import {ErrorBoundary, renderBoundaryChecked, renderToString} from "jhonstart";
-import {testing.snapshots} from "std";
+import {assertAs} from "snap";
 
 // `outcome: ok` and the markup on the next line, or `outcome: error <reason>`.
 pub fn errorBoundaryText(b: ErrorBoundary) -> string {
@@ -13,6 +13,6 @@ pub fn errorBoundaryText(b: ErrorBoundary) -> string {
 }
 
 pub fn assertErrorBoundary(loc: SourceLocation, b: ErrorBoundary) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "boundary", errorBoundaryText(b));
+    try assertAs(loc, "boundary", errorBoundaryText(b));
     return;
 }

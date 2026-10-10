@@ -13,7 +13,7 @@ import {app.global_error.GlobalError};
 import {app.blog.slug.page.PostPage, app.blog.slug.page.postPanel};
 import {app.blog.slug.metadata.generateMetadata};
 import {assertHtml, assertHtmlLines, tagPerLine, assertStream, assertErrorBoundary, assertMetadata, assertViewport, assertRoute, renderToStream, fixtureRouter} from "jhonstart-test";
-import {testing.snapshots.assertText} from "std";
+import {assertText} from "snap";
 
 test "blog: the post page ---- hello" {
     val tree = await PostPage([#("slug", "hello")]);

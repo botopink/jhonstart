@@ -12,6 +12,7 @@
     "jhonstart-link": { "workspace": true },
     "jhonstart-forms": { "workspace": true },
     "jhonstart-test": { "workspace": true },
-    "actions": { "git": "https://github.com/botopink/actions.git", "branch": "feat" }
+    "actions": { "git": "https://github.com/botopink/actions.git", "branch": "feat" },
+    "snap": { "git": "https://github.com/botopink/snap.git", "branch": "feat" }
   }
 }

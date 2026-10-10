@@ -1,6 +1,6 @@
 //// jhonstart-test/assert_stream — the chunks of a streamed render (front 30).
 
-import {testing.snapshots} from "std";
+import {assertAs} from "snap";
 
 // For each chunk `--- chunk <n>` (`--- chunk 0 (shell)` for the first), then
 // the chunk.
@@ -17,6 +17,6 @@ pub fn streamText(chunks: Array<string>) -> string {
 }
 
 pub fn assertStream(loc: SourceLocation, chunks: Array<string>) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "stream", streamText(chunks));
+    try assertAs(loc, "stream", streamText(chunks));
     return;
 }

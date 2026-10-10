@@ -6,7 +6,7 @@ import {sidebar.Sidebar};
 import {index.DocsIndex, index.Page};
 import {checkout.CheckoutLink};
 import {assertActiveLink, assertHtml, assertHtmlLines, assertNavigation, simulateNavigation, fixtureRouter} from "jhonstart-test";
-import {testing.snapshots.assertText} from "std";
+import {assertText} from "snap";
 
 test "nav: sidebar ---- guides selected" {
     val r = RouterState(path: "/docs/guides/intro", params: [], search: [], pattern: "/docs/guides/[page]", selected: 1);

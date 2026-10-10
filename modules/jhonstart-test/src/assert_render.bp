@@ -4,7 +4,7 @@
 import {Payload, writePayload, globals} from "jhonstart";
 import {harness.RecordedResponse};
 import {assert_html.tagPerLine};
-import {testing.snapshots} from "std";
+import {assertAs} from "snap";
 
 // The top-level members of a JSON object's text, one per line, in order —
 // split at the commas outside every string and every nested value.
@@ -93,17 +93,17 @@ pub fn responseText(r: RecordedResponse) -> string {
 }
 
 pub fn assertDocument(loc: SourceLocation, doc: string) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "document", documentText(doc));
+    try assertAs(loc, "document", documentText(doc));
     return;
 }
 
 pub fn assertResponse(loc: SourceLocation, r: RecordedResponse) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "response", responseText(r));
+    try assertAs(loc, "response", responseText(r));
     return;
 }
 
 // `writePayload(p)`.
 pub fn assertPayload(loc: SourceLocation, p: Payload) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "payload", writePayload(p));
+    try assertAs(loc, "payload", writePayload(p));
     return;
 }

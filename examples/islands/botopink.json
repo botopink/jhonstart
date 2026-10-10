@@ -9,6 +9,7 @@
   "files": ["main.bp", "like_button.bp", "theme.bp", "page.bp"],
   "dependencies": {
     "jhonstart": { "workspace": true },
-    "jhonstart-test": { "workspace": true }
+    "jhonstart-test": { "workspace": true },
+    "snap": { "git": "https://github.com/botopink/snap.git", "branch": "feat" }
   }
 }

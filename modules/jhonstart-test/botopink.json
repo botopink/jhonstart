@@ -36,6 +36,10 @@
     "routing": {
       "git": "https://github.com/botopink/routing.git",
       "branch": "feat"
+    },
+    "snap": {
+      "git": "https://github.com/botopink/snap.git",
+      "branch": "feat"
     }
   }
 }

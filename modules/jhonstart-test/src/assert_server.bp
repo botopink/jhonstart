@@ -4,7 +4,8 @@
 //// `val tree = await Page(params); try assertHtml(@src(), tree);`.
 
 import {RequestData} from "jhonstart";
-import {testing.snapshots, encoding} from "std";
+import {encoding} from "std";
+import {assertAs} from "snap";
 
 // Six `key: value` lines: `method`, `path`, then `params`, `query`,
 // `headers`, `cookies` as querystrings.
@@ -21,6 +22,6 @@ pub fn requestText(r: RequestData) -> string {
 }
 
 pub fn assertRequest(loc: SourceLocation, r: RequestData) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "request", requestText(r));
+    try assertAs(loc, "request", requestText(r));
     return;
 }

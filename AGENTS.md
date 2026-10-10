@@ -138,7 +138,7 @@ repository/jhonstart/
 │   │       ├── link_test.bp     ← `botopink test` flat suite: the props, the anchor's seven attribute rows, the prefetch table, the layout key, and `use linkStatus()` read by a `#[client]` component (front 27) — both rows
 │   │       └── reconcile_test.bp ← `botopink test` flat suite: `layoutKeys`/`sharedDepth`, and `applyTransition` over a RECORDING `DomOps` (inline `put`/`get` · `globalThis` cells; a three-island page counting mounts): the replaced depth, the call order, `data-jh-pending` set first and cleared last, a failed markup (front 27) — both rows
 │   ├── jhonstart-dom-test/ ← MEMBER (front 30's browser half; targets [commonJS]): `src/fake_dom.mjs` — a minimal document (parser for the render's markup, `querySelector(All)` over `tag` / `[attr]` / `[attr="v"]`, `template` content, `replaceChildren`, a serializer; `history` / `location` / `dispatchEvent` recorded) reached through `src/root.bp`'s `#[@External.Node]` cells and its `callFill(name, id)` / `callSignal(name)` wrappers — and `test/dom_test.bp`: the fill function (replaces its hole, idempotent, a missing hole dropped), `readPayload` (the last payload script, a refused text an `Error`), the signal function (relative redirect = `replaceState` + `popstate`, a listed absolute one `location.replace`, an unlisted one nothing, not-found swaps `[data-jh-root]` and drops later fills). No DOM on the BEAM, hence commonJS only (`decisions-pending.md` 30-g) — a structural restriction under `00-gate` gate-d: `botopink build --target erlang` refuses the member with `` `callGlobal` has no `#[@External.<Target>(…)]` for the erlang backend `` at `src/root.bp:37`
-│   └── jhonstart-test/ ← MEMBER (front 95; the helpers of `specs/1.0.10-beta/04-jhonstart/modules.md` § 5): `assert<Subject>(loc, …)` over std's `snapshots.assertAs`, each with a pure `<subject>Text` twin, plus fixtures and the render harness
+│   └── jhonstart-test/ ← MEMBER (front 95; the helpers of `specs/1.0.10-beta/04-jhonstart/modules.md` § 5): `assert<Subject>(loc, …)` over `snap`'s `assertAs`, each with a pure `<subject>Text` twin, plus fixtures and the render harness
 │       ├── botopink.json  ← name jhonstart-test, files [root.bp, harness.bp, assert_*.bp], dependencies { jhonstart, jhonstart-link, jhonstart-forms: { workspace: true } }
 │       ├── src/root.bp    ← `pub mod` per helper file + one inline `test` proving the core resolves
 │       ├── src/harness.bp ← `fixtureRouter`, `fixtureRequest(method, path, lists = "")`, `fixturePageOver`, `stubEnvelope` (actions' `writeEnvelope`), `renderToStream` (declaration order), `Navigation` + `simulateNavigation(current, target)`, `recordingResponse` / `RecordedResponse` / `renderRecorded` / `renderStreamCollect` (inline recording cells: `put`/`get`, a `globalThis` entry)
@@ -161,10 +161,11 @@ repository/jhonstart/
 ```
 
 `modules/jhonstart-test/` is the `<lib>-test` member
-(`specs/1.0.10-beta/02-packaging/README.md` § 5): it stands on std's
-`snapshots` — a helper computes its text (the `<subject>Text` twin) and hands it
-to `snapshots.assertAs(loc, "<subject>", text)` with the CALLER's `@src()` — and
-re-exports nothing from std. A snapshot is accepted by renaming its `.snap.new`
+(`specs/1.0.10-beta/02-packaging/README.md` § 5): it stands on the
+`snap` library (`import {assertAs} from "snap"`, a git dependency of the member and of every
+example that records a snapshot; decision 391) — a helper computes its text (the `<subject>Text`
+twin) and hands it to `assertAs(loc, "<subject>", text)` with the CALLER's `@src()` — and
+re-exports nothing from std or `snap`. A snapshot is accepted by renaming its `.snap.new`
 after comparing it with `test-snap.md`'s literal; never by a flag.
 
 `modules/jhonstart-link/` holds front 27's `link.bp` and `reconcile.bp` and

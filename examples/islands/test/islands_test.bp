@@ -5,7 +5,7 @@ import {like_button.LikeProps, like_button.LikeButton, like_button.likeIsland};
 import {theme.ThemeProps, theme.ThemeProvider, theme.themeIsland};
 import {page.Post, page.PostList, page.PostListFrom, page.RootLayout};
 import {assertHtml, assertHtmlLines, assertClientBundleEntry} from "jhonstart-test";
-import {testing.snapshots.assertText} from "std";
+import {assertText} from "snap";
 
 test "islands: both markers are emitted" {
     try assertText(

@@ -10,6 +10,7 @@
   "dependencies": {
     "jhonstart": { "workspace": true },
     "jhonstart-html": { "workspace": true },
-    "jhonstart-test": { "workspace": true }
+    "jhonstart-test": { "workspace": true },
+    "snap": { "git": "https://github.com/botopink/snap.git", "branch": "feat" }
   }
 }

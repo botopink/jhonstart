@@ -4,7 +4,7 @@ import {Element, text, p, main, h2, el, renderToString} from "jhonstart";
 import {shell.documentShell, shell.doctype};
 import {shell_dsl.documentBody};
 import {assertHtml, assertHtmlLines} from "jhonstart-test";
-import {testing.snapshots.assertText} from "std";
+import {assertText} from "snap";
 
 test "shell: constructors ---- head before body" {
     val content = main([h2([text("Welcome")])]);

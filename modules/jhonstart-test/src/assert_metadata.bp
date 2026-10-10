@@ -2,7 +2,7 @@
 
 import {Metadata, Viewport, renderHead, renderViewport} from "jhonstart";
 import {assert_html.tagPerLine};
-import {testing.snapshots} from "std";
+import {assertAs} from "snap";
 
 // `renderHead(m)`, one tag per line; an empty head is the empty text.
 pub fn metadataText(m: Metadata) -> string {
@@ -14,11 +14,11 @@ pub fn viewportText(v: Viewport) -> string {
 }
 
 pub fn assertMetadata(loc: SourceLocation, m: Metadata) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "metadata", metadataText(m));
+    try assertAs(loc, "metadata", metadataText(m));
     return;
 }
 
 pub fn assertViewport(loc: SourceLocation, v: Viewport) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "viewport", viewportText(v));
+    try assertAs(loc, "viewport", viewportText(v));
     return;
 }

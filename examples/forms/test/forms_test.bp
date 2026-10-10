@@ -7,7 +7,7 @@ import {create_post.createPostForm};
 import {like.likeWidget, like.addLike};
 import {search.searchForm};
 import {assertForm, assertActionState, assertOptimistic, stubEnvelope} from "jhonstart-test";
-import {testing.snapshots.assertText} from "std";
+import {assertText} from "snap";
 
 val actionId = "a_9f31c0d7a4b2e5081c6fa3d2";
 val failedState = writeState("Title must be at least 3 characters", [#("title", "Too short")]);

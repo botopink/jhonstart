@@ -1,7 +1,8 @@
 //// jhonstart-test/assert_route — a route snapshot and an active nav (front 26).
 
 import {Element, RouterState} from "jhonstart";
-import {testing.snapshots, encoding} from "std";
+import {encoding} from "std";
+import {assertAs} from "snap";
 
 // Seven `key: value` lines: `path`, `pattern`, `params` and `search`
 // (querystring), `selected`, `segments` (space-joined, the bracket spelling
@@ -54,11 +55,11 @@ pub fn activeLinkText(nav: Element, path: string) -> string {
 }
 
 pub fn assertRoute(loc: SourceLocation, r: RouterState) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "route", routeText(r));
+    try assertAs(loc, "route", routeText(r));
     return;
 }
 
 pub fn assertActiveLink(loc: SourceLocation, nav: Element, path: string) -> @Result<void, string> {
-    try snapshots.assertAs(loc, "route", activeLinkText(nav, path));
+    try assertAs(loc, "route", activeLinkText(nav, path));
     return;
 }
