@@ -20,8 +20,11 @@ reason_of({jh_signal, Reason}) -> Reason;
 reason_of({bp_assert, Msg, _Where}) when is_binary(Msg) -> Msg;
 reason_of(Other) -> iolist_to_binary(io_lib:format("~p", [Other])).
 
-%% A `@Component` thunk takes the hidden context map first (botopink decision
-%% 354): a host that calls one passes the empty map, `undefined` (`null`).
+%% A `@Component` lambda written as a host cell's argument takes no map: it
+%% reads the map where it is written (botopink decision 374). A `@Component`
+%% value handed on — `componentOutcome`'s parameter, a `Suspense` child —
+%% still takes the hidden context map first (decision 354): this host passes
+%% the empty map, `undefined` (`null`).
 call(Child) when is_function(Child, 1) -> Child(undefined);
 call(Child) -> Child().
 
