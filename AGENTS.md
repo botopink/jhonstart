@@ -265,6 +265,8 @@ were promoted rather than filled in. A host-bound module here is now an ordinary
   surface is flat and a second `state` shadows `hooks.state` for every consumer
   (last module wins, silently, even from a non-`pub` `mod` — measured).
 - `renderToString` is **synchronous** (`.bp`); SSR needs no async.
+- A decorator's parameters are `comptime x: @Expr<T>` (decision 364) and the body reads
+  `x.value` — `#[page("blog/[slug]")]`'s `seg.value` in `routes.bp`.
 - Components are PascalCase (`Counter`, `Page`); fns/builders camelCase.
 - Not embedded: do **not** wire jhonstart into `comptime/stdlib/prelude.zig` or
   `build.zig`.

@@ -312,9 +312,9 @@ pub fn ctxRest(route: PageContext) -> string[] {
 // `"@Task<Element>"`, `-> Element` as `"Element"`. The required spelling is in
 // the message.
 
-pub fn page(comptime decl: @Decl, comptime seg: string) {
-    decl.setMeta("seg", seg);
-    val kinds = seg
+pub fn page(comptime decl: @Decl, comptime seg: @Expr<string>) {
+    decl.setMeta("seg", seg.value);
+    val kinds = seg.value
         .split("/")
         .map({ raw -> kindName(parseSegment(raw).kind) })
         .filter(
@@ -323,7 +323,7 @@ pub fn page(comptime decl: @Decl, comptime seg: string) {
     var lets: Array<string> = [];
     var sigs: Array<string> = [];
     var fields: Array<string> = [];
-    paramNamesOf(seg)
+    paramNamesOf(seg.value)
         .zip(kinds)
         .forEach({ p ->
             val isList = p._1 != "Dynamic";
@@ -360,8 +360,8 @@ pub fn page(comptime decl: @Decl, comptime seg: string) {
         );
 }
 
-pub fn layout(comptime decl: @Decl, comptime seg: string) {
-    decl.setMeta("seg", seg);
+pub fn layout(comptime decl: @Decl, comptime seg: @Expr<string>) {
+    decl.setMeta("seg", seg.value);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[layout] must annotate a function");
     if (decl.returnType != "@Component<Element>")
@@ -376,8 +376,8 @@ pub fn layout(comptime decl: @Decl, comptime seg: string) {
         );
 }
 
-pub fn template(comptime decl: @Decl, comptime seg: string) {
-    decl.setMeta("seg", seg);
+pub fn template(comptime decl: @Decl, comptime seg: @Expr<string>) {
+    decl.setMeta("seg", seg.value);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[template] must annotate a function");
     if (decl.returnType != "@Component<Element>")
@@ -392,8 +392,8 @@ pub fn template(comptime decl: @Decl, comptime seg: string) {
         );
 }
 
-pub fn defaultView(comptime decl: @Decl, comptime seg: string) {
-    decl.setMeta("seg", seg);
+pub fn defaultView(comptime decl: @Decl, comptime seg: @Expr<string>) {
+    decl.setMeta("seg", seg.value);
     if (decl.kind != DeclKind.Fn)
         decl.fail("#[defaultView] must annotate a function");
     if (decl.returnType != "Element")
