@@ -1,5 +1,7 @@
 # jhonstart
 
+`decisions-taken.md` is generated — from the meta repository's `specs/<milestone>/decisions-taken.md` by `scripts/decisions-split.py`; edit it there, never here.
+
 > Path: `repository/jhonstart/`
 > Parent (workspace): [`../../AGENTS.md`](../../AGENTS.md) · Sibling (core): [`../botopink-lang/AGENTS.md`](../botopink-lang/AGENTS.md)
 > Track: [`../../specs/1.0.10-beta/04-jhonstart/README.md`](../../specs/1.0.10-beta/04-jhonstart/README.md)
