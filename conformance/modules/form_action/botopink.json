@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "src": "src/",
   "entry": "main.bp",
+  "targets": ["commonJS", "erlang", "beam"],
   "dependencies": {
     "jhonstart": { "path": "../../../modules/jhonstart" },
     "jhonstart-forms": { "path": "../../../modules/jhonstart-forms" },
