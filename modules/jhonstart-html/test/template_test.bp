@@ -2,7 +2,7 @@
 // escaping walker `renderNode` (the frozen `renderToString` knows neither void
 // tags nor raw nodes). Every test runs on both targets.
 
-import {html, isRaw, classList, classIf, hasContent};
+import {html, html.isRaw, html.classList, html.classIf, html.hasContent};
 import {Element, Node, a, div, span, p, h1, h2, ul, li, nav, section, article, header, footer, form, input, br, img, hr, meta, title, script, textarea, button, raw, renderNode} from "jhonstart";
 
 type Status { Draft, Live }
