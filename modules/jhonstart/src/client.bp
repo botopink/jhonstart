@@ -20,7 +20,7 @@
 // (decision 67 — a boundary that warns is a boundary that is ignored):
 //
 //   1. `#[client]` on anything but a `fn` — refused, located at the annotation.
-//   2. `#[client]` on a fn whose return type is not `Element` — refused. A
+//   2. `#[client]` on a fn whose return type is neither `Element` nor `@Component<Element>` — refused. A
 //      server component that only loads data is `fn … -> @Task<Element>`,
 //      whose reflected `returnType` is `"@Task<Element>"`, so it cannot be
 //      marked client.
@@ -48,7 +48,7 @@
 // So today a secret read on the server still reaches the browser if someone
 // writes it into an `Island`'s props, and nothing in this file notices. What
 // closes it is front 68's walk over the client module graph, and this file's
-// § *The front-68 contract* (mirrored in `../../../docs.md`) is the input it
+// § *The front-68 contract* (mirrored in `../../../conformance/docs.md`) is the input it
 // walks. Nothing here is written as if the decorator were a sandbox.
 //
 // ── The hydrate point and the props cell — dual-target ──────────────────────
@@ -300,7 +300,7 @@ pub fn serverOnly() -> i32 {
 // ── the front-68 contract ───────────────────────────────────────────────────
 //
 // Everything front 68 needs from this front, and where each row comes from.
-// Mirrored in `../../../docs.md` § *The client boundary*; front 68's README
+// Mirrored in `../../../conformance/docs.md` § *The client boundary*; front 68's README
 // cites it there.
 //
 //   | Front 68 input              | Produced by |

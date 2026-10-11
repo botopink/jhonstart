@@ -74,7 +74,7 @@ See [AGENTS.md](AGENTS.md) for the architectural status notes.
 
 - [AGENTS.md](AGENTS.md) — architecture, conventions, the "no compiler-core
   coupling" rule.
-- [docs.md](docs.md) — full reference.
+- [conformance/docs.md](conformance/docs.md) — full reference.
 - [examples/](examples/) — runnable demos (counter, todo, blog).
 
 ## License

@@ -34,10 +34,7 @@ a dependency — `dependencies` is the object form, exactly one source per entry
 { "dependencies": { "jhonstart": { "workspace": true } } }
 ```
 
-```bp
-import { div, p, text, state, effect, renderToString } from "jhonstart";
-import { html } from "jhonstart-html";   // the markup DSL is its own member
-```
+<!-- example: imports_surface -->
 
 The loader walks up from `cwd` and, at each ancestor, considers these roots
 (nearest-first): the ancestor itself when its `botopink.json` is a workspace,
@@ -74,20 +71,7 @@ only when its `T` is a `@Result` — a component returns `Element`, so it handle
 errors in its own body (`try … catch`, `case`; decision 121). On commonJS every
 `@Component` body is an `async function`: a component's caller `await`s it.
 
-```bp
-import { ElementBase, div, p, text, state, renderToString } from "jhonstart";
-
-fn Counter() -> @Component<Element> {
-    val c = use state(0);
-    return div([
-        p([text("count: " + c.value.toString(), [])], []),
-    ], []);
-}
-
-fn main() -> @Task<void> {
-    @print(renderToString(await Counter()));   // SSR — a pure string
-}
-```
+<!-- example: counter_ssr -->
 
 Children are written as a **list** (`div([a, b])`). A hook yields its value via
 `use`: `val c = use state(0)` binds `c : State<i32>` (`c.value`, `c.set(n)`); the
@@ -117,17 +101,7 @@ deps)`). Client re-render reactivity is the **client runtime**'s job: see
 Custom hooks compose the primitives — a noun for a name and a
 `@Component<_>` return:
 
-```bp
-fn counter(start: i32) -> @Component<State<i32>> {
-    val s = use state(start);
-    return s;
-}
-
-fn Widget() -> @Component<Element> {
-    val c = use counter(5);   // `use` + the noun; never `use useCounter()`
-    …
-}
-```
+<!-- example: hook_noun_custom -->
 
 ## Client runtime
 
@@ -161,10 +135,7 @@ type-checks but its render is a recorded follow-up.
 
 `renderToString(e)` serializes a tree to HTML, purely and synchronously:
 
-```bp
-renderToString(div([p([text("hi", attrs: [])], attrs: []), text("!", attrs: [])], attrs: []))
-// "<div><p>hi</p>!</div>"
-```
+<!-- example: render_nested -->
 
 **Every call spells `attrs:`, inner ones included.** The declared default
 (`attrs: Array<#(string, string)> = []`) is part of every builder's signature,
@@ -177,7 +148,7 @@ today, so omitting the argument is an arity error rather than an empty list.
 the tag set in exactly the same shape, so a reader cannot tell from a call site
 which of the two a tag came from:
 
-```bp
+```text
 pub fn <tag>(children: Children, attrs: Array<#(string, string)> = []) -> Element
 ```
 
@@ -260,21 +231,7 @@ the markup (tags, attributes, text), with each `<div>` tied to the builder it
 resolves to. `val page = html """…"""` compiles straight to the builder calls;
 `html` never reaches codegen.
 
-```bp
-import { html } from "jhonstart-html";
-import { Element, div, p, text, renderToString } from "jhonstart";
-
-val name = "world";
-val page = html """
-<div>
-  <p>hello, ${name}</p>
-</div>
-""";
-
-fn main() {
-    @print(renderToString(page));   // <div><p>hello, world</p></div>
-}
-```
+<!-- example: html_dsl_hole -->
 
 The expansion is:
 
@@ -292,12 +249,7 @@ The expansion is:
 import and no implicit prelude, so the consumer names every tag the markup
 uses:
 
-```bp
-import { html } from "jhonstart-html";                                    // the DSL
-import { bracketPair, nav, span, text, renderToString } from "jhonstart";  // the tags
-
-val bar = html """<nav><span>home</span></nav>""";
-```
+<!-- example: html_dsl_prelude -->
 
 (`bracketPair` is named because a `[attr]={expr}` hole lowers to a call to it.)
 A tag that is not imported is an unbound-name diagnostic at the call site,
@@ -325,7 +277,7 @@ gone. What a component asks for is a **route snapshot**: a five-field record
 the server fills before the render and the client rebuilds after a client-side
 navigation, so the same component code produces the same markup on both sides.
 
-```bp
+```text
 pub type RouterState(
     path: string,                       // "/blog/hi"
     params: Array<#(string, string)>,   // [#("slug", "hi")]
@@ -334,6 +286,8 @@ pub type RouterState(
     selected: i32,                      // the layout depth, root layout 0
 )
 ```
+
+<!-- example: router_state -->
 
 Field names and method names are **disjoint** — `params` is the field,
 `param(name)` the method — so a field read never shadows a method.
@@ -356,7 +310,7 @@ nobody tested.
 
 ### `pairValue` — the package's one pair-list decoder
 
-```bp
+```text
 pub fn pairValue(pairs: Array<#(string, string)>, name: string) -> string
 ```
 
@@ -384,7 +338,7 @@ its own.
 
 ### The snapshot, the five cells and `fill`
 
-```bp
+```text
 pub fn snapshot() -> RouterState
 pub fn fill(path, params, search, pattern, selected) -> i32
 ```
@@ -444,7 +398,7 @@ Next.js splits route state into five hooks over one internal record
 `use` is the activation and the name is the noun — so there is no `useRouter`
 and never a doubled `use usePathname()`.
 
-```bp
+```text
 pub fn router() -> @Component<RouterState>
 pub fn pathname() -> @Component<string>
 pub fn params() -> @Component<Array<#(string, string)>>
@@ -458,18 +412,7 @@ pub fn selectedLayoutSegments() -> @Component<Array<string>>
 payload's `d` is `true` only for a render that read either, so a cache may keep
 every other render as static.
 
-```bp
-fn ActiveNav() -> @Component<Element> {
-    val here = use pathname();
-    val seg = use selectedLayoutSegment();
-    val ps = use params();
-    return div([
-            span([text(here, attrs: [])], attrs: []),
-            span([text(seg, attrs: [])], attrs: [#("class", "active")]),
-            span([text(pairValue(ps, "slug"), attrs: [])], attrs: []),
-        ], attrs: []);
-}
-```
+<!-- example: router_hooks -->
 
 The binding never reuses the hook's name (`val r = use router()`, never
 `val router = …`): a local that shadows a module-level `pub fn` shadows it for
@@ -484,7 +427,7 @@ nothing on the path reorders.
 `async function` — so an ordinary caller `await`s it (a `@Task` body or a
 test):
 
-```bp
+```text
 val ps = await params();
 pairValue(ps, "slug")
 ```
@@ -498,7 +441,7 @@ anywhere in the tree, so navigation cannot be a method on `RouterState`. It is a
 call against host state, and the record is a read-only snapshot of that state.
 The six are free functions over one cell:
 
-```bp
+```text
 pub fn push(href) -> i32       pub fn back() -> i32      pub fn refresh() -> i32
 pub fn replace(href) -> i32    pub fn forward() -> i32   pub fn prefetch(href) -> i32
 ```
@@ -515,7 +458,7 @@ The `-> i32` is the ecosystem's shape for a host cell whose value is not used
 (`rakun/src/runtime.bp` does the same for `rkScan`/`rkEnter`/`rkDone`). It is
 not a status code and callers ignore it.
 
-```bp
+```text
 pub fn lastNavigation() -> string
 ```
 
@@ -534,7 +477,7 @@ written nowhere in this package.
 
 ### The envelope's navigation signal, and the route a URL is
 
-```bp
+```text
 pub fn navigationFor(wire: string) -> string   // "" · "not-found" · "replace <location>"
 pub fn applySignal(wire: string) -> i32        // performs it through the navigation cell
 pub fn resolveRoute(table: string, path: string, search: string) -> RouterState
@@ -555,7 +498,7 @@ answers `pattern == ""` and no params.
 
 ### `clientApp` — a client-only app (`client_app.bp`)
 
-```bp
+```text
 clientApp(routes: routeTable, mount: "#root", allowedRedirects: []).start()   // -> @Task<@Result<void, string>>
 ```
 
@@ -584,7 +527,7 @@ it is gone*).
 
 ### `RequestData` — the request as a record
 
-```bp
+```text
 pub type RequestData(
     method: string,
     path: string,
@@ -594,6 +537,8 @@ pub type RequestData(
     cookies: Array<#(string, string)>,
 )
 ```
+
+<!-- example: request_data -->
 
 Six fields, every plural one an `Array<#(string, string)>` — the shape the route
 snapshot uses, the shape `encoding.formParse` produces and the shape `Element.attrs`
@@ -626,7 +571,7 @@ there is nothing to look up by name in a single string.
 
 ### The six cells, and where they point
 
-```bp
+```text
 pub fn enterRequest(req: RequestData) -> i32
 pub fn leaveRequest() -> i32
 pub fn request() -> @Component<RequestData>
@@ -697,17 +642,9 @@ propagate errors** (decision 121). Only `@Result` fails, and a component returns
 `Element`, so a failed load is handled in the component's own body — `try … catch`
 with a fallback, a `case` over the `@Result`, or an error screen:
 
-```bp
-fn loadPost(slug: string) -> @Task<@Result<Post, string>> { … }   // may fail
+<!-- example: server_component_catch -->
 
-pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
-    val post = try await loadPost(pairValue(params, "slug"))
-        catch Post(id: "", title: "not found");
-    return h1([text(post.title, attrs: [])], attrs: []);
-}
-```
-
-```bp
+```text
 pub fn renderServerComponent(component: fn() -> @Task<Element>) -> @Task<string>
 pub fn renderComponent(component: fn() -> @Component<Element>) -> @Task<string>
 ```
@@ -739,18 +676,7 @@ implicit-return expression and no file in this tree awaits inside one. So a
 component that needs N rows awaits **one** loader returning `Array<T>` and maps
 synchronously afterwards — not N awaits inside a `map`.
 
-```bp
-fn loadPost(slug: string) -> @Task<Post> { … }
-
-pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
-    val post = await loadPost(pairValue(params, "slug"));
-    val comments = await loadComments(post.id);
-    return article([
-            h1([text(post.title, attrs: [])], attrs: []),
-            ul(comments.map({ c -> commentRow(c); }), attrs: []),
-        ], attrs: []);
-}
-```
+<!-- example: server_component_sequential -->
 
 **`@Task` is EAGER on the erlang row** (decision 120 of botopink 1.0.10-beta;
 `libs/std/src/http.bp:16-18`): a `@Task<T>` resolves to `T` and the caller's
@@ -814,10 +740,7 @@ changes several at once writes the update form itself.
 | `linkProps(href)` | Next's defaults: `prefetch` true, `replace` false, `scroll` true, no `target`, no `className` |
 | `withPrefetch` · `withReplace` · `withScroll` · `withTarget` · `withClass` | `(p, value) -> LinkProps` — each changes one field and copies the other five |
 
-```bp
-Link(linkProps("/about"), [text("About", attrs: [])])
-Link(withPrefetch(linkProps("/blog/" + slug), false), [text(title, attrs: [])])
-```
+<!-- example: link_props -->
 
 ### The anchor
 
@@ -929,15 +852,7 @@ component** (here), and **front 68 walks the module graph** (not here).
 
 ### `#[client]` — the marker
 
-```bp
-#[client]
-pub fn LikeButton(props: LikeProps) -> @Component<Element> {
-    val c = use state(props.likes);
-    return button([text(c.value.toString() + " likes", attrs: [])], attrs: [
-        #("data-jh-on-click", "LikeButton:like"),
-    ]);
-}
-```
+<!-- example: client_marker -->
 
 It is an ordinary `@Decl`-first comptime function. It records **comptime
 meta** — `decl.setMeta("component", "LikeButton")`, read as
@@ -967,10 +882,7 @@ component, because `@Decl` exposes `fields`/`variants`/`methods`/`returnType`
 and **does not expose a function's parameters** — so `#[client]` alone can check
 nothing about props. That one omission is why the marker is split in two.
 
-```bp
-#[clientProps]
-pub type LikeProps(postId: string, likes: i32)
-```
+<!-- example: client_props_whitelist -->
 
 The whitelist is **closed**: `string`, `i32`, `f64`, `bool`. Anything else is
 refused rather than guessed at, with a message located at the declaration.
@@ -1051,7 +963,7 @@ Three rules follow, and **front 68** enforces all three:
 
 ### `serverOnly` — the poison pill
 
-```bp
+```text
 pub fn serverOnly() -> i32
 ```
 
@@ -1133,7 +1045,7 @@ with every boundary showing its fallback.
 
 ### Boundaries and fills
 
-```bp
+```text
 pub type Boundary(id: string, fallback: Element, child: fn() -> @Component<Element>)
 pub fn Suspense(b: Boundary) -> Element      // <div data-jh-h="h1">fallback</div>
 pub fn holeId(index: i32) -> string          // "h1"
@@ -1141,6 +1053,8 @@ pub fn resolve(b: Boundary) -> @Task<Chunk>  // awaits the child once
 pub fn fillHtml(c: Chunk, css: string) -> string
 //   <template data-jh-f="h1">css…markup…</template><script>__bp1("h1")</script>
 ```
+
+<!-- example: suspense_boundary -->
 
 The child is an **unstarted thunk**: `@Task` is eager on erlang, so a started
 Task would already have run. `Suspense` registers the boundary with the render
@@ -1180,7 +1094,7 @@ function and the form it needs. A marker registers nothing itself: it records
 its segment as meta (`seg`), and the program's entry point registers every
 marked function once, from the program's catalogue:
 
-```bp
+```text
 val __jhRoutes = jhRegisterRoutes(
     @TypeInfo.all(with: page),
     @TypeInfo.all(with: layout),
@@ -1198,7 +1112,7 @@ contract-1 lines; onze copies it into rakun's table.
 
 ### The response and the two entries
 
-```bp
+```text
 pub type Response(status: fn(code: i32) -> void, header: fn(name: string, value: string) -> void,
                   write: fn(chunk: string) -> @Task<void>, close: fn() -> @Task<void>)
 pub type PageInput(build, pathname, pattern, params, query, table, actions,
@@ -1248,7 +1162,7 @@ fill and signal functions (called only by onze front 68's entry).
 
 ### `RenderPlugin`
 
-```bp
+```text
 pub type RenderPlugin(name: string, head: fn() -> @Task<string>, chunk: fn(holeId: string) -> @Task<string>,
                       close: fn() -> @Task<@Result<void, string>>, payload: fn() -> @Task<Array<#(string, Json)>>)
 ```
@@ -1265,11 +1179,7 @@ Front 67, `import {…} from "jhonstart-forms"`. A form is bound to front 24's
 action id (a string — this front echoes it and never constructs one) and its
 markup is contract 3's exactly, so it submits before the bundle arrives:
 
-```bp
-val binding = formAction("a_9f2c1b7e0d4a6c8e1f3b5d7a", "/blog/new", actionField);
-actionForm(binding, [input([], attrs: [#("name", "title")]), button([text("Save", attrs: [])], attrs: [])])
-// <form method="post" action="/blog/new" data-jh-a="a_9f2c1b7e0d4a6c8e1f3b5d7a"><input type="hidden" name="<actionField>" value="a_9f2c1b7e0d4a6c8e1f3b5d7a">…
-```
+<!-- example: form_action -->
 
 | Function | What |
 |---|---|
@@ -1292,7 +1202,7 @@ which does not carry them.
 Front 31. A boundary is a recovery point: its child is a **thunk** answering
 `@Result<Element, string>`, and the boundary is a `case` over what it answered.
 
-```bp
+```text
 pub type ErrorInfo(message: string, digest: string)
 pub type ErrorBoundary(id: string, fallback: fn(info: ErrorInfo) -> Element,
                        child: fn() -> @Result<Element, string>)
@@ -1309,6 +1219,8 @@ pub fn notFound() -> string                 // raises nav:not-found
 pub fn redirect(url) -> string              // raises nav:redirect:<url>
 pub fn isSignal(message) -> bool            // routing's isSignalReason
 ```
+
+<!-- example: error_boundary -->
 
 The thunk is called **exactly once**, through the one host cell that turns a
 raise into a value (`__jhCapture`, `signal_runtime.mjs` /
@@ -1328,7 +1240,7 @@ the renderer's plain functions — `renderComponent(c, scope)`, `renderErrorBoun
 answered, and the stream fills each `Suspense` hole with the scope it was registered
 under (`Fill`). The root runs with `RenderScope.root()`.
 
-```bp
+```text
 pub fn renderComponent(c: @Component<Element>, scope: RenderScope) -> @Task<Walked>
 pub fn errorBoundaryNode(id: string, child: fn() -> @Component<Element>,
                          fallback: fn(info: ErrorInfo) -> Element) -> Element
@@ -1373,7 +1285,7 @@ Front 32. Metadata is the one part of a page **composed** down the layout chain
 rather than nested: each segment declares a `Metadata`, and front 30's render
 merges them root-first and splices `renderHead` into `<head>`.
 
-```bp
+```text
 pub type Metadata(title, titleTemplate, description, openGraph: OpenGraph, twitter: TwitterCard, icons: Icons)
 pub type OpenGraph(title, description, url, ogType, siteName, images: string[])
 pub type TwitterCard(card, title, description, images: string[])
@@ -1387,6 +1299,8 @@ pub fn renderHead(m: Metadata) -> string  // one tag per line, fixed order, esca
 pub fn renderViewport(v: Viewport) -> string
 pub fn pick / pickList / applyTemplate
 ```
+
+<!-- example: metadata_merge -->
 
 No field is optional: an absent string is `""`, an absent list `[]`, and a
 `""` field emits no tag. Every value goes through std's `escape.html` (the

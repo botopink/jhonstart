@@ -62,7 +62,7 @@
 // gathered by index, it takes **unstarted tasks** (`Array<fn() -> @Task<T>>`,
 // i.e. `[{ -> loadPost(slug) }, { -> loadSidebar() }]`) rather than Tasks that
 // have already run, and it is **front 02's**. This file ships no `awaitAll`,
-// no `race` and no `allSettled`, and `docs.md` § *Server components* says who
+// no `race` and no `allSettled`, and `conformance/docs.md` § *Server components* says who
 // owns them.
 //
 // ── Where an `await` may stand ──────────────────────────────────────────────

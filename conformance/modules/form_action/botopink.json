@@ -1,0 +1,11 @@
+{
+  "name": "form_action",
+  "version": "0.0.1",
+  "src": "src/",
+  "entry": "main.bp",
+  "dependencies": {
+    "jhonstart": { "path": "../../../modules/jhonstart" },
+    "jhonstart-forms": { "path": "../../../modules/jhonstart-forms" },
+    "jhonstart-link": { "path": "../../../modules/jhonstart-link" }
+  }
+}

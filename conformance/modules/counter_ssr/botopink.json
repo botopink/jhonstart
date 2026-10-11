@@ -1,0 +1,9 @@
+{
+  "name": "counter_ssr",
+  "version": "0.0.1",
+  "src": "src/",
+  "entry": "main.bp",
+  "dependencies": {
+    "jhonstart": { "path": "../../../modules/jhonstart" }
+  }
+}

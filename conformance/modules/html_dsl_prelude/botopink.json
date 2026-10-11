@@ -1,0 +1,10 @@
+{
+  "name": "html_dsl_prelude",
+  "version": "0.0.1",
+  "src": "src/",
+  "entry": "main.bp",
+  "dependencies": {
+    "jhonstart": { "path": "../../../modules/jhonstart" },
+    "jhonstart-html": { "path": "../../../modules/jhonstart-html" }
+  }
+}

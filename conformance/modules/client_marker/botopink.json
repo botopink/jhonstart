@@ -1,0 +1,9 @@
+{
+  "name": "client_marker",
+  "version": "0.0.1",
+  "src": "src/",
+  "entry": "main.bp",
+  "dependencies": {
+    "jhonstart": { "path": "../../../modules/jhonstart" }
+  }
+}

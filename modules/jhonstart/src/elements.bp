@@ -86,7 +86,7 @@ pub fn isRawTextTag(tag: string) -> bool {
 // sectioning and flow
 //
 // The document's structural tags. `main` ships under its own name because the
-// consuming fronts import it that way — see the caveat in `docs.md`: a module
+// consuming fronts import it that way — see the caveat in `conformance/docs.md`: a module
 // that declares the program entry point `fn main()` must not also import `main`
 // from "jhonstart" in that same module; `el("main", kids, attrs: [])` is the
 // remedy.

@@ -56,7 +56,7 @@ is what `from "jhonstart"` resolves to.
 repository/jhonstart/
 ├── AGENTS.md          ← you are here
 ├── botopink.json      ← WORKSPACE: name, version, description, targets [commonJS, erlang], workspaces [modules/*, examples/*]
-├── docs.md            ← user-facing reference
+├── conformance/       ← the reference and its examples (decision 463): `docs.md` (the user-facing reference) and `modules/<example>/` cells run by `botopink cell check conformance/`
 ├── modules/
 │   ├── jhonstart/     ← CORE — what `from "jhonstart"` gives a consumer
 │   │   ├── botopink.json  ← name jhonstart, src src/, entry root.bp, target commonJS, files [root.bp, element.bp, hooks.bp, router.bp, server.bp, globals.bp, client.bp, error_boundary.bp, metadata.bp, elements.bp, suspense.bp, plugin.bp, routes.bp, styled_sheet.bp, render.bp, streaming.bp, client_app.bp, client_runtime.bp, html_attrs.bp, node.bp, prelude.bp], dependencies { actions, routing, styled: git `feat` } (DEPENDENCY order — a dependent loads the files in this order, so a module comes after every module it imports; `root.bp` keeps front-number order)
