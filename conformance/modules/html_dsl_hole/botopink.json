@@ -1,11 +1,6 @@
 {
   "name": "html_dsl_hole",
-  "version": "0.0.1",
-  "src": "src/",
-  "entry": "main.bp",
-  "targets": ["commonJS", "erlang", "beam"],
   "dependencies": {
-    "jhonstart": { "path": "../../../modules/jhonstart" },
     "jhonstart-html": { "path": "../../../modules/jhonstart-html" }
   }
 }

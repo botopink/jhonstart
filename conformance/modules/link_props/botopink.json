@@ -1,11 +1,6 @@
 {
   "name": "link_props",
-  "version": "0.0.1",
-  "src": "src/",
-  "entry": "main.bp",
-  "targets": ["commonJS", "erlang", "beam"],
   "dependencies": {
-    "jhonstart": { "path": "../../../modules/jhonstart" },
     "jhonstart-link": { "path": "../../../modules/jhonstart-link" }
   }
 }

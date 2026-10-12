@@ -1,10 +1,1 @@
-{
-  "name": "router_hooks",
-  "version": "0.0.1",
-  "src": "src/",
-  "entry": "main.bp",
-  "targets": ["commonJS", "erlang", "beam"],
-  "dependencies": {
-    "jhonstart": { "path": "../../../modules/jhonstart" }
-  }
-}
+{ "name": "router_hooks" }
