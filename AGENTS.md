@@ -674,8 +674,8 @@ the rule is a reading convention, and the files that state it say so.
 
 `.github/workflows/test.yml` runs on every push / PR to `feat`/`master`/`main`.
 Its rows are the manifests' target set (1.0.11-beta `00-gate` gate-j) on the
-runners the compiler is gated on: `{ubuntu-24.04, macos-14} × {commonJS,
-erlang}` — the workspace declares `["commonJS", "erlang"]` and every member
+runners the compiler is gated on: `ubuntu-24.04 × {commonJS,
+erlang}` (no macos row) — the workspace declares `["commonJS", "erlang"]` and every member
 inherits or restricts it. Every row is hard: no `allow_fail`, no
 `continue-on-error`. There is no `beam` row (`botopink test` cannot run beam)
 and no windows row (gate-f: botopink-lang's own workflow has none, so a row
@@ -683,7 +683,7 @@ here would measure the compiler's windows port; it returns with the
 compiler's). The linux runner is `ubuntu-24.04`; the compiler links against a
 pinned glibc 2.35 (decision 219, ubuntu-22.04's), so it starts on either
 runner — the 22.04 floor is the compiler's own workflow's. Erlang/OTP 28 **and** Node 22 are
-installed on every row (OTP 28 pinned on both runners — the release the root `botopink.json`'s `"otp"` names (`"28"`), read by a step before the installs (decision 228; the compiler refuses any other `erl` on PATH) — `erlef/setup-beam` on linux, `brew install erlang@<release> && brew link --force erlang@<release>` with its `bin` on `$GITHUB_PATH` on macos (decision 227; Homebrew's plain `erlang` is the latest OTP), and a step after both fails the job unless `erl` reports that release): `zig build install` runs `erlc` and comptime
+installed on every row (OTP 28 pinned on the runner — the release the root `botopink.json`'s `"otp"` names (`"28"`), read by a step before the installs (decision 228; the compiler refuses any other `erl` on PATH) — `erlef/setup-beam` (decision 227), and a step after it fails the job unless `erl` reports that release): `zig build install` runs `erlc` and comptime
 evaluation spawns `erl` whatever the row's target, so a commonJS row needs OTP
 exactly as an erlang row does.
 
