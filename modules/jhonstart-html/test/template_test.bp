@@ -195,9 +195,9 @@ test "an expression attribute may hold an if expression" {
 
 // ── step 4: components and slots ────────────────────────────────────────────
 
-// LANGUAGE GAP: Template-built code cannot build an inline props type — a component written `props: type(…)` (207) is refused when a tag calls it; the components here take their props as parameters.
-fn Greeting(name: string, greeting: string = "Hello") -> Element {
-    return html "<h2>{greeting}, {name}!</h2>";
+// A component's props are an inline type (207): each attribute a field.
+fn Greeting(props: type(name: string, greeting: string = "Hello")) -> Element {
+    return html "<h2>{props.greeting}, {props.name}!</h2>";
 }
 
 fn Card(title: string, children: Node = []) -> Element {
