@@ -3,7 +3,7 @@
 //// 361; front 119 step 1).
 ////
 //// A `styled` component computed at render reads `use
-//// context(StyledContext)` and hands its class and rules to the sheet's
+//// context(StyledSheet)` and hands its class and rules to the sheet's
 //// writer; `compose` (`render.bp`), the root of every page render, provides
 //// `renderSheet()`, so a page's components write to this render's sheet. The
 //// sheet is a `styled` `Sheet` value kept in the per-render state
