@@ -52,7 +52,7 @@ import {server.RequestData, server.enterRequest, server.leaveRequest};
 import {router.fill, router.renderIsDynamic, router.markDynamic, router.resetDynamic};
 import {error_boundary.ErrorInfo, error_boundary.isSignal, error_boundary.notFoundReason};
 import {suspense.Boundary};
-import {render.renderNode, render.compose, render.Payload, render.renderKeys, render.documentStart, render.documentEnd, render.isLangTag, render.__jhStateReset, render.__jhIslands, render.__jhStashedNotFound, render.componentOutcome, render.__jhTryValue, render.Fill};
+import {render.renderNode, render.compose, render.Payload, render.renderKeys, render.documentStart, render.documentEnd, render.isLangTag, render.__jhStateReset, render.__jhIslands, render.__jhStashedNotFound, render.componentOutcome, render.attemptRender, render.Fill};
 import {globals.globals};
 import {plugin.RenderPlugin, plugin.Json};
 import {routes.PageContext, routes.LayoutProps, routes.UiSegment};
@@ -268,7 +268,7 @@ fn defaultNotFound() -> Element {
 }
 
 fn renderOrFail(tree: Element) -> @Result<string, string> {
-    val out = __jhTryValue({ -> renderNode(tree) });
+    val out = attemptRender({ -> renderNode(tree) });
     return try out;
 }
 
@@ -298,7 +298,7 @@ fn resolveIn(
         Error(message) -> message;
     };
     if (failure == notFoundReason()) {
-        val nf = __jhTryValue(
+        val nf = attemptRender(
             { -> renderNode(__jhStashedNotFound(defaultNotFound())) },
         );
         val nfCss = await chunksFrom(plugins, 0, b.id);

@@ -29,9 +29,9 @@
 //
 // A page, layout or template is a `-> @Component<Element>` body
 // and cannot `throw` (decision 121), so the signal is the CALL:
-// `notFound();` raises the reason on the host and never returns. Inside a
-// `-> @Result<…>` thunk `throw notFound();` reads naturally and raises the
-// same way. Both forms reach the boundary through `__jhCapture`, the one host
+// `notFound();` raises the reason (an abort, `@panic(reason)`) and never
+// returns. Inside a `-> @Result<…>` thunk `throw notFound();` reads naturally
+// and raises the same way. Both forms reach the boundary through `__jhCapture`, the one host
 // cell that turns a raise into an `Error(reason)` value — botopink's own
 // `try … catch` unwraps a `@Result` and nothing else, so no `.bp` construct
 // can swallow a signal (`contracts.md § 5b`).
@@ -119,11 +119,13 @@ declare fn __jhCapture(
     child: fn() -> @Result<Element, string>,
 ) -> @Result<Element, string>;
 
-// Raise a reason on the host; never returns. Typed `-> string` so that
-// `throw notFound();` type-checks inside a `@Result` thunk.
-#[@External.Node("./signal_runtime.mjs", "raise")]
-#[@External.Erlang("jhonstart_signal", "raise")]
-declare fn __jhRaise(reason: string) -> string;
+// Raise a reason; never returns. Typed `-> string` so that `throw
+// notFound();` type-checks inside a `@Result` thunk. An abort whose message is
+// the reason: `__jhCapture` and std's `failure.attempt` read it back as that
+// text on every target.
+fn raiseReason(reason: string) -> string {
+    @panic(reason);
+}
 
 // The child's outcome, through the capture cell. The function-valued field is
 // read into a local before it is handed on (the erlang row lowers `b.child()`
@@ -149,7 +151,7 @@ pub fn renderBoundary(b: ErrorBoundary) -> Element {
 }
 
 fn caughtOrRaised(b: ErrorBoundary, message: string) -> Element {
-    if (isSignal(message)) __jhRaise(message);
+    if (isSignal(message)) raiseReason(message);
     return fallbackFor(b, message);
 }
 
@@ -178,14 +180,14 @@ pub fn redirectReason(url: string) -> string {
 // and the nearest not-found boundary (front 30), `clientApp` with that boundary
 // in `mount` (front 26).
 pub fn notFound() -> string {
-    return __jhRaise(notFoundReason());
+    return raiseReason(notFoundReason());
 }
 
 // The page signal: raises `nav:redirect:<url>`. The render answers a 307 with
 // `location: <url>` before the first chunk and `data-jh-g` markup after it,
 // once the target passed the check (front 30).
 pub fn redirect(url: string) -> string {
-    return __jhRaise(redirectReason(url));
+    return raiseReason(redirectReason(url));
 }
 
 // What front 30's `compose` calls around every segment: `Ok` of the wrapped

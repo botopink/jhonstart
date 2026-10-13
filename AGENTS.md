@@ -95,8 +95,8 @@ repository/jhonstart/
 │   │   │   ├── sidecars/jhonstart_routes.erl ← HOST (BEAM): the UI registry, an ETS table with an owner process
 │   │   │   ├── error_boundary.bp ← COMPILED (front 31): `ErrorInfo`/`ErrorBoundary`, `renderBoundary`/`renderBoundaryChecked`/`catchError`, the digest (std `hash.contentHash`), `notFound`/`redirect` raising `routing`'s `nav:` reasons, `isSignal`
 │   │   │   ├── metadata.bp    ← COMPILED (front 32), PURE: `Metadata`/`OpenGraph`/`TwitterCard`/`Icons`/`Viewport`, the merge rule, `renderHead`/`renderViewport` over std `escape`
-│   │   │   ├── signal_runtime.mjs ← HOST (js): `raise` / `capture` / `captureTask` / `tryValue` / `tryTask` — the one place a raise becomes a `@Result` value
-│   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same cells
+│   │   │   ├── signal_runtime.mjs ← HOST (js): `capture` — a boundary's raise as a `@Result` value; the renderer's other catches are std's `failure.attempt` / `attemptTask`
+│   │   │   └── sidecars/jhonstart_signal.erl ← HOST (BEAM): the same cell
 │   │   └── test/
 │   │       ├── render_test.bp ← `botopink test` flat suite: the walker, the hole, the fill, the globals, the payload (front 30) — both rows
 │   │       ├── styled_sheet_test.bp ← `botopink test`: `compose` provides `StyledContext` — a `styled` component computed at render, rendered twenty times, written once to `renderedStyles()`; `resetRender()` empties it (front 119 step 1) — both rows
