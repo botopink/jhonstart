@@ -1,2 +1,2 @@
-error: html: a second `RawBody` on one tag — `#[isRaw]` is written once
+error: decorator-meta-twice: `#[isRaw]` records a second `RawBody` on the tag `div`, which holds one
  --> src/main.bp:6:32

@@ -2,12 +2,10 @@
 // landed: step 5 — `raw`, `classList`, `#[isRaw]`. Rendered through
 // `renderNode`; `pre` and `code` are declared here (no core builder).
 //
-// Not here, and why: an annotation `html` calls with the tag's `@Decl` and
-// whose meta it reads back (302 — `#[mustBeBox]`, the style, island and
-// transition annotations) needs the compiler to build a tag's `@Decl` for a
-// template (`01-compiler/130` step 9); until then `html` resolves an
-// annotation's name, refuses an unbound one at its span, acts on its own
-// `isRaw`, and refuses any other by name.
+// `html` runs every annotation over the tag's `@Decl` (decision 302) and
+// reads back the meta it knows by type — `RawBody`, recorded by `#[isRaw]`.
+// Not here, and why: the readers of the other metas (`#[mustBeBox]`, the
+// style, island and transition annotations) are their fronts' (119, 120, 126).
 
 import {html, html.isRaw, html.classList, html.classIf};
 import {Element, Node, article, div, p, span, el, raw, renderNode} from "jhonstart";

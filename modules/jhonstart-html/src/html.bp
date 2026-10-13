@@ -86,8 +86,21 @@ import {bpp} from "std";
 // The value an expression attribute may hold on an element (step 1).
 type AttrValue = ?string | bool;
 
-// LANGUAGE GAP: A tag annotation cannot be called by the template function — `html` cannot build a tag's `@Decl`, call `#[name(args)]` with it, nor read back its meta (302); `isRaw` is recognised by its declared name when `lookup` binds it.
-pub fn isRaw(comptime decl: @Decl) {}
+// What `#[isRaw]` records on a tag (decision 302): its body is text, read
+// verbatim — `html` reads it back by type.
+pub type RawBody(verbatim: bool)
+
+// `#[isRaw]` — a tag annotation (decision 302): on an element it records
+// `RawBody`; a component has no body of its own to keep as text.
+pub fn isRaw(comptime decl: @Decl) {
+    if (decl.kind != DeclKind.Element)
+        decl.fail(
+            "`#[isRaw]` is written on an element — <"
+                + decl.name
+                + "> is a component",
+        );
+    decl.setMeta(RawBody(verbatim: true));
+}
 
 // `class={classList(["box", classIf(isRed, "red"), extra])}` — Astro's
 // `class:list`: the empty strings dropped, the rest joined with one space.
@@ -454,6 +467,9 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
     var fDyn: Array<string> = [""];
     var fSeen: Array<string> = ["|"];
     var fFlag: Array<string> = [""];
+    // Decision 302 — the `@Decl` of the tag whose attribute zone is open: its
+    // annotations run over it in written order.
+    var tagDecl = template.tagDecl(DeclKind.Element, "", []);
     var fStart: Array<i32> = [0];
     var fEnd: Array<i32> = [0];
     var fParen: Array<i32> = [0];
@@ -727,6 +743,11 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                             binding,
                         );
                         push("tag", name, a, b, if (comp) "comp" else "");
+                        tagDecl = template.tagDecl(
+                            if (comp) DeclKind.Component else DeclKind.Element,
+                            name,
+                            [],
+                        );
                     }
                 }
                 i = j;
@@ -899,32 +920,16 @@ pub fn html(comptime template: @Expr<string>) -> @ExprCustom<Element> {
                             )
                         else {
                             mark("annotation", a, b, "tag", binding);
-                            val declared = binding.name;
-                            if (declared == "isRaw") {
-                                if (args != "")
-                                    failSpan(a, b, "`isRaw` takes no argument");
-                                if (comp)
-                                    failSpan(
-                                        a,
-                                        b,
-                                        "`#[isRaw]` is written on an element — <"
-                                            + name
-                                            + "> is a component",
-                                    );
-                                if (topS(fFlag) == "raw")
-                                    failSpan(
-                                        a,
-                                        b,
-                                        "a second `RawBody` on one tag — `#[isRaw]` is written once",
-                                    );
-                                fFlag = setS(fFlag, "raw");
-                            } else failSpan(
-                                a,
-                                b,
-                                "`html` cannot run the annotation `"
-                                    + ann
-                                    + "` yet — a tag annotation is called with the tag's `@Decl` (decision 302), which the compiler does not build for a template",
+                            // Decision 302 — the annotation runs over the
+                            // tag's `@Decl`; `html` reads back the meta it
+                            // knows by type, and leaves any other to its
+                            // reader.
+                            tagDecl = template.annotate(
+                                tagDecl,
+                                Span(a, if (e > j) endOf(e - 1) else b, 1),
                             );
+                            if (tagDecl.meta(RawBody) != null)
+                                fFlag = setS(fFlag, "raw");
                         }
                     }
                     while (e < n && isWs(ch(e))) {
