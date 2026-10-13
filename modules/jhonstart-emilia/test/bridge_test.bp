@@ -216,6 +216,6 @@ test "bridge: no file of the core's src names emilia" {
     for (files) { f ->
         val body = readText(root + "/" + f).unwrapOr("");
         if (body.toLower().contains("emilia")) naming.push(f);
-    };
+    }
     assert naming.length == 0, "the core names emilia in: " + naming.join(", ");
 }

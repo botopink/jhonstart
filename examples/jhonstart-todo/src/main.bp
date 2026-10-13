@@ -31,7 +31,7 @@ pub fn TodoApp() -> @Component<Element> {
     val open = use toggle(true);
     if (open.value) {
         return todoView(items.value);
-    };
+    }
     return span([text("(hidden)", [])], []);
 }
 

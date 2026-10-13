@@ -34,7 +34,7 @@ pub fn PostPage(params: Array<#(string, string)>) -> @Component<Element> {
     };
     if (post.id == "") {
         val gone = notFound();
-    };
+    }
     val loaded = await loadComments(post.id);
     val comments = case loaded {
         Ok(cs) -> cs;

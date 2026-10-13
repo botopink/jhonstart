@@ -11,11 +11,11 @@ pub fn clientBundleEntryText(islands: Array<Island>) -> string {
     for (islands) { island ->
         val row = islandEntry(island);
         lines.push(row._0 + " " + row._1 + " " + row._2);
-    };
+    }
     lines.push("--- markup");
     for (islands) { island ->
         lines.push(renderToString(clientMount(island, [])));
-    };
+    }
     return lines.join("\n");
 }
 

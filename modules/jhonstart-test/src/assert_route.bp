@@ -24,7 +24,7 @@ fn attrOf(e: Element, name: string) -> string {
     var out = "";
     for (e.attrs) { a ->
         if (a._0 == name) out = a._1;
-    };
+    }
     return out;
 }
 
@@ -33,7 +33,7 @@ fn anchorsOf(e: Element) -> Array<Element> {
     if (e.tag == "a") out = out.append([e]);
     for (e.children) { c ->
         out = out.append(anchorsOf(c));
-    };
+    }
     return out;
 }
 
@@ -50,7 +50,7 @@ pub fn activeLinkText(nav: Element, path: string) -> string {
     var lines: string[] = ["path: " + path];
     for (anchorsOf(nav)) { a ->
         lines.push(anchorLine(a));
-    };
+    }
     return lines.join("\n");
 }
 

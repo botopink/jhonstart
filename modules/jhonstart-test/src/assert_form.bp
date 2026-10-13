@@ -17,7 +17,7 @@ pub fn actionStateText(s: ActionState) -> string {
     ];
     for (s.fields) { f ->
         lines.push("f." + f._0 + ": " + f._1);
-    };
+    }
     return lines.join("\n");
 }
 

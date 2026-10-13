@@ -23,7 +23,7 @@ pub fn jsonMembers(objectText: string) -> Array<string> {
             } else {
                 if (c == "\\") escaped = true;
                 if (c == "\"") inString = false;
-            };
+            }
         } else {
             if (c == "\"") {
                 inString = true;
@@ -42,12 +42,12 @@ pub fn jsonMembers(objectText: string) -> Array<string> {
                             current = "";
                         } else {
                             current = current + c;
-                        };
-                    };
-                };
-            };
-        };
-    };
+                        }
+                    }
+                }
+            }
+        }
+    }
     if (current != "") out.push(current);
     return out;
 }
@@ -70,13 +70,13 @@ pub fn documentText(doc: string) -> string {
         lines.push(tagPerLine(body));
     } else {
         lines.push(tagPerLine(before));
-    };
+    }
     if (parts.length > 1) {
         lines.push("--- payload");
         lines = lines.append(jsonMembers(json));
         lines.push("--- after the payload");
         lines.push(tagPerLine(rest));
-    };
+    }
     return lines.join("\n");
 }
 
@@ -86,7 +86,7 @@ pub fn responseText(r: RecordedResponse) -> string {
     var lines: string[] = ["status " + r.status.toString()];
     for (r.headers) { h ->
         lines.push("header " + h);
-    };
+    }
     lines.push("chunks " + r.chunks.length.toString());
     lines.push("closed " + r.closed.toString());
     return lines.join("\n");

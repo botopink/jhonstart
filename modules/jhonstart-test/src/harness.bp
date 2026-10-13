@@ -83,7 +83,7 @@ pub fn renderToStream(shell: Element, boundaries: Array<Boundary>) -> @Task<Arra
     for (boundaries) { b ->
         val c = await resolve(b);
         chunks = chunks.append([fillHtml(c, "")]);
-    };
+    }
     return chunks;
 }
 

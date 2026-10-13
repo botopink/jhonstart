@@ -56,12 +56,12 @@ pub fn classesIn(css: string) -> string[] {
                     hex = hex + c;
                 } else {
                     open = false;
-                };
-            };
+                }
+            }
             val name = "e_" + hex;
             if (hex != "" && out.contains(name) == false) out.push(name);
-        };
-    };
+        }
+    }
     return out;
 }
 
