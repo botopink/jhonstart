@@ -10,7 +10,8 @@ pub type LikeProps(postId: string, likes: i32)
 // What the browser paints inside the island once it starts.
 #[client]
 pub fn LikeButton(props: LikeProps) -> Element {
-    return button([text("♥ " + props.likes.toString())], attrs: [#("class", "like"), #("data-post", props.postId)]);
+    return button([text("♥ "
+        + props.likes.toString())], attrs: [#("class", "like"), #("data-post", props.postId)]);
 }
 
 // The island for one post: its id, the component, the props encoded.

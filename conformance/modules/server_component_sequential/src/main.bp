@@ -1,4 +1,4 @@
-import { Element, article, h1, ul, li, text, renderServerComponent, pairValue } from "jhonstart";
+import {Element, article, h1, ul, li, text, renderServerComponent, pairValue} from "jhonstart";
 
 pub type Post(id: string, title: string)
 
@@ -18,9 +18,9 @@ pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
     val post = await loadPost(pairValue(params, "slug"));
     val comments = await loadComments(post.id);
     return article([
-            h1([text(post.title, attrs: [])], attrs: []),
-            ul(comments.map({ c -> commentRow(c); }), attrs: []),
-        ], attrs: []);
+        h1([text(post.title, attrs: [])], attrs: []),
+        ul(comments.map({ c -> commentRow(c); }), attrs: []),
+    ], attrs: []);
 }
 
 pub fn main() -> @Task<void> {

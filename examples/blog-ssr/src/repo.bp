@@ -6,8 +6,10 @@ pub type Post(id: string, slug: string, title: string, body: string)
 pub type Comment(author: string, text: string)
 
 pub fn findPost(slug: string) -> @Result<Post, string> {
-    if (slug == "hello") return Post(id: "p-hello", slug: "hello", title: "Hello", body: "The first post, with a <tag> in it.");
-    if (slug == "broken-comments") return Post(id: "p-broken", slug: "broken-comments", title: "Broken", body: "Its comments cannot load.");
+    if (slug == "hello")
+        return Post(id: "p-hello", slug: "hello", title: "Hello", body: "The first post, with a <tag> in it.");
+    if (slug == "broken-comments")
+        return Post(id: "p-broken", slug: "broken-comments", title: "Broken", body: "Its comments cannot load.");
     throw "no post " + slug;
 }
 

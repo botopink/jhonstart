@@ -24,7 +24,12 @@ test "nav: the index switches prefetch off for its rows and leaves the header on
 }
 
 test "nav: prefetch policy per route kind" {
-    try assertText(@src(), "docs=" + prefetchMode("static", false, true) + "\nguide-page=" + prefetchMode("dynamic", true, true) + "\nsearch=" + prefetchMode("dynamic", false, true));
+    try assertText(@src(), "docs="
+        + prefetchMode("static", false, true)
+        + "\nguide-page="
+        + prefetchMode("dynamic", true, true)
+        + "\nsearch="
+        + prefetchMode("dynamic", false, true));
 }
 
 test "nav: moving between two guides keeps the docs and guides layouts" {

@@ -1,4 +1,4 @@
-import { Element, div, p, text, renderToString, ErrorInfo, catchError, renderBoundary, infoFor, serverInfoFor } from "jhonstart";
+import {Element, div, p, text, renderToString, ErrorInfo, catchError, renderBoundary, infoFor, serverInfoFor} from "jhonstart";
 
 fn fine() -> @Result<Element, string> {
     return p([text("fine", attrs: [])], attrs: []);

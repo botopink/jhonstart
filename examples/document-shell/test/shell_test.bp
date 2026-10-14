@@ -13,7 +13,8 @@ test "shell: constructors ---- head before body" {
 
 test "shell: the doctype is a string prefix, not an element" {
     val content = main([]);
-    try assertText(@src(), doctype() + renderToString(documentShell("en", "x", "/a.css", content)));
+    try assertText(@src(), doctype()
+        + renderToString(documentShell("en", "x", "/a.css", content)));
 }
 
 test "shell: the dsl body equals the constructor body" {

@@ -1,4 +1,4 @@
-import { Element, button, text, state, renderToString, client, clientProps } from "jhonstart";
+import {Element, button, text, state, renderToString, client, clientProps} from "jhonstart";
 
 #[clientProps]
 pub type LikeProps(postId: string, likes: i32)

@@ -11,8 +11,8 @@
 import {Element, ElementBase, p, text, RouterState, RequestData, Boundary, Suspense, holeId} from "jhonstart";
 import {Chunk, resolve, fillHtml, shellHtml, Response, PageInput, App} from "jhonstart";
 import {layoutKeys, sharedDepth} from "jhonstart-link";
-import {envelope: {ActionEnvelope, writeEnvelope}} from "actions";
-import {navigation: {NavKind, NavOutcome, signalToWire}} from "routing";
+import {envelope.ActionEnvelope, envelope.writeEnvelope} from "actions";
+import {navigation.NavKind, navigation.NavOutcome, navigation.signalToWire} from "routing";
 import {encoding} from "std";
 import {} from "snap";
 
@@ -70,7 +70,10 @@ pub fn fixturePageOver(path: string, shell: Element, child: fn() -> @Component<E
 // The JSON envelope `__jhFormSubmit` answers, written with `actions`'
 // `writeEnvelope`; a non-empty `redirect` is the `n` signal wire.
 pub fn stubEnvelope(ok: bool, state: string, redirect: string) -> string {
-    val n = if (redirect == "") "" else signalToWire(NavOutcome(kind: NavKind.Redirect, location: redirect, status: 307));
+    val n = if (redirect == "")
+        ""
+    else
+        signalToWire(NavOutcome(kind: NavKind.Redirect, location: redirect, status: 307));
     return writeEnvelope(ActionEnvelope(ok: ok, state: state, revalidated: [], n: n, payload: ""));
 }
 

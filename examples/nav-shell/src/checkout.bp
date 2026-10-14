@@ -6,6 +6,7 @@ import {Link, linkProps, withClass, LinkStatus} from "jhonstart-link";
 
 pub fn CheckoutLink(status: LinkStatus) -> Element {
     val busy = status.pending && status.href == "/checkout";
-    if (busy) return Link(withClass(linkProps("/checkout"), "cta busy"), [span([], attrs: [#("class", "spinner")]), text("Checking out…")]);
+    if (busy)
+        return Link(withClass(linkProps("/checkout"), "cta busy"), [span([], attrs: [#("class", "spinner")]), text("Checking out…")]);
     return Link(withClass(linkProps("/checkout"), "cta"), [text("Checkout")]);
 }

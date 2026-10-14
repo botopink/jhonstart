@@ -1,4 +1,4 @@
-import { Element, State, div, p, text, state, renderToString } from "jhonstart";
+import {Element, State, div, p, text, state, renderToString} from "jhonstart";
 
 fn counter(start: i32) -> @Component<State<i32>> {
     val s = use state(start);
@@ -6,7 +6,7 @@ fn counter(start: i32) -> @Component<State<i32>> {
 }
 
 fn Widget() -> @Component<Element> {
-    val c = use counter(5);   // `use` + the noun; never `use useCounter()`
+    val c = use counter(5); // `use` + the noun; never `use useCounter()`
     return p([text(c.value.toString(), [])], []);
 }
 

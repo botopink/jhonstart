@@ -11,11 +11,11 @@
 // `client_runtime.bp`). Interactivity (buttons / event handlers) is host-bound
 // and lives outside this pure core.
 
-import { Element, ElementBase, div, p, span, text, state, renderToString } from "jhonstart";
+import {Element, ElementBase, div, p, span, text, state, renderToString} from "jhonstart";
 
 // Pure view: the counter markup for a given count.
 fn counterView(count: i32) -> Element {
-    val sign = if (count >= 0) { "non-negative"; } else { "negative"; };
+    val sign = if (count >= 0) "non-negative" else "negative";
     return div([
         p([text("count: " + count.toString(), [])], []),
         span([text(sign, [])], []),
@@ -47,8 +47,10 @@ fn main() {
 }
 
 test "the counter view renders its count and sign" {
-    assert renderToString(counterView(0)) == "<div><p>count: 0</p><span>non-negative</span></div>";
-    assert renderToString(counterView(-2)) == "<div><p>count: -2</p><span>negative</span></div>";
+    assert renderToString(counterView(0))
+        == "<div><p>count: 0</p><span>non-negative</span></div>";
+    assert renderToString(counterView(-2))
+        == "<div><p>count: -2</p><span>negative</span></div>";
 }
 
 test "the state hook seeds the initial count and exposes a setter" {
@@ -58,12 +60,13 @@ test "the state hook seeds the initial count and exposes a setter" {
 }
 
 test "renderToString of a component consuming a hook produces the SSR string" {
-    assert renderToString(await StatefulBadge()) ==
-        "<div><p>count: 7</p><span>x2=14</span></div>";
+    assert renderToString(await StatefulBadge())
+        == "<div><p>count: 7</p><span>x2=14</span></div>";
 }
 
 test "a @Component component activating `use state` renders the server pass" {
-    assert renderToString(await Counter()) == "<div><p>count: 0</p><span>non-negative</span></div>";
+    assert renderToString(await Counter())
+        == "<div><p>count: 0</p><span>non-negative</span></div>";
 }
 
 // LIMITATION (recorded, not a forced test): a builder called with a LONE child

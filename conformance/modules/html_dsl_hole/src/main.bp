@@ -1,7 +1,8 @@
-import { html } from "jhonstart-html";
-import { Element, div, p, text, renderToString } from "jhonstart";
+import {html} from "jhonstart-html";
+import {Element, div, p, text, renderToString} from "jhonstart";
 
 val name = "world";
+
 val page = html """
 <div>
   <p>hello, ${name}</p>
@@ -9,5 +10,5 @@ val page = html """
 """;
 
 fn main() {
-    @print(renderToString(page));   // <div><p>hello, world</p></div>
+    @print(renderToString(page)); // <div><p>hello, world</p></div>
 }

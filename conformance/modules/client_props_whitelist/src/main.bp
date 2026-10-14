@@ -1,4 +1,4 @@
-import { Island, clientProps } from "jhonstart";
+import {Island, clientProps} from "jhonstart";
 
 #[clientProps]
 pub type LikeProps(postId: string, likes: i32)

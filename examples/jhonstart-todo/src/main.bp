@@ -7,7 +7,7 @@
 // return (the return is the effect) — used by the idiomatic `TodoApp` component
 // (decisions 88, 118 and 128 of 1.0.10-beta).
 
-import { Element, ElementBase, div, ul, li, span, text, state, renderToString } from "jhonstart";
+import {Element, ElementBase, div, ul, li, span, text, state, renderToString} from "jhonstart";
 
 // Pure view: render a todo list (and a count) from plain data.
 fn todoView(items: string[]) -> Element {
@@ -29,9 +29,7 @@ fn toggle(initial: bool) -> @Component<State<bool>> {
 pub fn TodoApp() -> @Component<Element> {
     val items = use state(["buy milk", "write docs"]);
     val open = use toggle(true);
-    if (open.value) {
-        return todoView(items.value);
-    }
+    if (open.value) return todoView(items.value);
     return span([text("(hidden)", [])], []);
 }
 
@@ -41,14 +39,16 @@ fn main() {
 
 test "the todo view renders one li per item plus a count" {
     val out = renderToString(todoView(["a", "b", "c"]));
-    assert out == "<div><span>todos: 3</span><ul><li>a</li><li>b</li><li>c</li></ul></div>";
+    assert out
+        == "<div><span>todos: 3</span><ul><li>a</li><li>b</li><li>c</li></ul></div>";
 }
 
 test "an empty list renders an empty ul" {
-    assert renderToString(todoView([])) == "<div><span>todos: 0</span><ul></ul></div>";
+    assert renderToString(todoView([]))
+        == "<div><span>todos: 0</span><ul></ul></div>";
 }
 
 test "the @Component component and its custom hook render the server pass" {
-    assert renderToString(await TodoApp()) ==
-        "<div><span>todos: 2</span><ul><li>buy milk</li><li>write docs</li></ul></div>";
+    assert renderToString(await TodoApp())
+        == "<div><span>todos: 2</span><ul><li>buy milk</li><li>write docs</li></ul></div>";
 }

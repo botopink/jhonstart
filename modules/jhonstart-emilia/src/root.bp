@@ -46,17 +46,11 @@ pub fn classesIn(css: string) -> string[] {
     var out: string[] = [];
     var first = true;
     for (css.split(".e_")) { piece ->
-        if (first) {
-            first = false;
-        } else {
+        if (first) first = false else {
             var hex = "";
             var open = true;
             for (piece.split("")) { c ->
-                if (open && isHex(c)) {
-                    hex = hex + c;
-                } else {
-                    open = false;
-                }
+                if (open && isHex(c)) hex = hex + c else open = false;
             }
             val name = "e_" + hex;
             if (hex != "" && out.contains(name) == false) out.push(name);
@@ -83,7 +77,9 @@ fn bridgeChunk(holeId: string) -> @Task<string> {
 fn bridgeClose() -> @Task<@Result<void, string>> {
     val css = await flush();
     val names = classesIn(css);
-    if (names.length > 0) throw "emilia classes registered after the last chunk: " + names.join(", ");
+    if (names.length > 0)
+        throw "emilia classes registered after the last chunk: "
+            + names.join(", ");
     return;
 }
 

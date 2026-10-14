@@ -7,7 +7,8 @@ import {Link, linkProps, withPrefetch} from "jhonstart-link";
 pub type Page(slug: string, title: string)
 
 fn archiveRow(page: Page) -> Element {
-    return li([Link(withPrefetch(linkProps("/docs/" + page.slug), false), [text(page.title)])]);
+    return li([Link(withPrefetch(linkProps("/docs/"
+        + page.slug), false), [text(page.title)])]);
 }
 
 pub fn DocsIndex(pages: Array<Page>) -> Element {

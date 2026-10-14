@@ -11,19 +11,19 @@
 //// own `test/`. Nothing from std is re-exported, and mocking is std's
 //// (decision 71) — this member keeps only the injection pairing.
 
-pub mod harness;                // fronts 94, 26, 27, 28, 30, 67
-pub mod assert_html;            // front 94
-pub mod assert_route;           // front 26
-pub mod assert_link;            // front 27
-pub mod assert_server;          // front 28
-pub mod assert_island;          // front 29
-pub mod assert_stream;          // front 30
-pub mod assert_render;          // front 30
-pub mod assert_error_boundary;  // front 31
-pub mod assert_metadata;        // front 32
-pub mod assert_form;            // front 67
+pub mod harness; // fronts 94, 26, 27, 28, 30, 67
+pub mod assert_html; // front 94
+pub mod assert_route; // front 26
+pub mod assert_link; // front 27
+pub mod assert_server; // front 28
+pub mod assert_island; // front 29
+pub mod assert_stream; // front 30
+pub mod assert_render; // front 30
+pub mod assert_error_boundary; // front 31
+pub mod assert_metadata; // front 32
+pub mod assert_form; // front 67
 
-import { renderToString, div, text } from "jhonstart";
+import {renderToString, div, text} from "jhonstart";
 
 test "jhonstart-test: the core member resolves from the test member" {
     assert renderToString(div([text("ok")])) == "<div>ok</div>";

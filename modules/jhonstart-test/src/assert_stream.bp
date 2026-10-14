@@ -8,7 +8,10 @@ pub fn streamText(chunks: Array<string>) -> string {
     var lines: string[] = [];
     var n = 0;
     for (chunks) { c ->
-        val head = if (n == 0) "--- chunk 0 (shell)" else "--- chunk " + n.toString();
+        val head = if (n == 0)
+            "--- chunk 0 (shell)"
+        else
+            "--- chunk " + n.toString();
         lines.push(head);
         lines.push(c);
         n = n + 1;

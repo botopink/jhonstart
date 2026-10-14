@@ -1,4 +1,4 @@
-import { RouterState, fill, snapshot, pairValue } from "jhonstart";
+import {RouterState, fill, snapshot, pairValue} from "jhonstart";
 
 pub fn main() {
     fill("/blog/hi", "slug=hi", "sort=new", "/blog/[slug]", 1);

@@ -1,5 +1,5 @@
-import { Element, div, p, text, state, effect, renderToString } from "jhonstart";
-import { html } from "jhonstart-html";   // the markup DSL is its own member
+import {Element, div, p, text, state, effect, renderToString} from "jhonstart";
+import {html} from "jhonstart-html"; // the markup DSL is its own member
 
 fn Hello(who: string) -> @Component<Element> {
     val greeted = use state(who);

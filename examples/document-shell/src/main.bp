@@ -13,5 +13,6 @@ fn page() -> Element {
 }
 
 fn main() {
-    @print(doctype() + renderToString(documentShell("en", "botopink", "/app.css", page())));
+    @print(doctype()
+        + renderToString(documentShell("en", "botopink", "/app.css", page())));
 }

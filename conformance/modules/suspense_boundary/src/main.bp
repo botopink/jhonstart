@@ -1,4 +1,4 @@
-import { Element, p, text, renderToString, Boundary, Suspense, holeId, resolve, fillHtml } from "jhonstart";
+import {Element, p, text, renderToString, Boundary, Suspense, holeId, resolve, fillHtml} from "jhonstart";
 
 fn Slow() -> @Component<Element> {
     return p([text("loaded", attrs: [])], attrs: []);

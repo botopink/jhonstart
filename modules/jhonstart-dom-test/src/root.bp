@@ -48,6 +48,7 @@ pub declare fn uninstallDocument() -> i32;
 
 test "jhonstart-dom-test: a document round-trips through the minimal DOM" {
     installDocument("<div data-jh-root=\"\"><p class=\"a\">x &amp; y</p><input value=\"v\"></div>");
-    assert documentMarkup() == "<div data-jh-root=\"\"><p class=\"a\">x &amp; y</p><input value=\"v\"></div>";
+    assert documentMarkup()
+        == "<div data-jh-root=\"\"><p class=\"a\">x &amp; y</p><input value=\"v\"></div>";
     uninstallDocument();
 }

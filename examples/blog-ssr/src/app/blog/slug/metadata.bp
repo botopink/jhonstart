@@ -20,7 +20,10 @@ pub fn generateMetadata(params: Array<#(string, string)>, parent: Metadata) -> @
         title: post.title,
         titleTemplate: "",
         description: post.body,
-        openGraph: OpenGraph(title: post.title, description: "", url: "https://blog.botopink.dev/blog/" + slug, ogType: "article", siteName: "", images: ["/og/" + slug + ".png"]),
+        openGraph: OpenGraph(title: post.title, description: "", url: "https://blog.botopink.dev/blog/"
+            + slug, ogType: "article", siteName: "", images: ["/og/"
+            + slug
+            + ".png"]),
         twitter: TwitterCard(card: "", title: "", description: "", images: []),
         icons: Icons(icon: "", apple: ""),
     );

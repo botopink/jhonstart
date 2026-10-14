@@ -1,5 +1,5 @@
-import { text, input, button, renderToString } from "jhonstart";
-import { formAction, actionForm, setWireNames } from "jhonstart-forms";
+import {text, input, button, renderToString} from "jhonstart";
+import {formAction, actionForm, setWireNames} from "jhonstart-forms";
 
 pub fn main() {
     val actionField = "_action";

@@ -11,7 +11,8 @@ import {theme.themeIsland};
 pub type Post(id: string, title: string, likes: i32)
 
 fn postRow(post: Post, ordinal: i32) -> Element {
-    val island = likeIsland("i" + ordinal.toString(), LikeProps(postId: post.id, likes: post.likes));
+    val island = likeIsland("i"
+        + ordinal.toString(), LikeProps(postId: post.id, likes: post.likes));
     return li([h2([text(post.title)]), clientMount(island, [])]);
 }
 

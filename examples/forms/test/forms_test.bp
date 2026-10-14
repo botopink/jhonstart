@@ -2,7 +2,7 @@
 
 import {Element, renderToString} from "jhonstart";
 import {formAction, FormStatus, applyOptimistic, searchFormProps, searchHref} from "jhonstart-forms";
-import {state: {ActionState, writeState, newActionState}, envelope: {parseActionState}} from "actions";
+import {state.ActionState, state.writeState, state.newActionState, envelope.parseActionState} from "actions";
 import {create_post.createPostForm};
 import {like.likeWidget, like.addLike};
 import {search.searchForm};
@@ -10,6 +10,7 @@ import {assertForm, assertActionState, assertOptimistic, stubEnvelope} from "jho
 import {assertText} from "snap";
 
 val actionId = "a_9f31c0d7a4b2e5081c6fa3d2";
+
 val failedState = writeState("Title must be at least 3 characters", [#("title", "Too short")]);
 
 test "forms: create post ---- empty" {
@@ -43,5 +44,7 @@ test "forms: optimistic fold and its collapse" {
 test "forms: search form and the URL a plain GET produces" {
     val props = searchFormProps("/search");
     val fields = [#("q", "botopink lang"), #("sort", "new")];
-    try assertText(@src(), renderToString(searchForm(props)) + "\n" + searchHref(props, fields));
+    try assertText(@src(), renderToString(searchForm(props))
+        + "\n"
+        + searchHref(props, fields));
 }

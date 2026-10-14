@@ -7,7 +7,7 @@ import {app, Response, PageInput, RequestData, RenderPlugin} from "jhonstart";
 import {UiSegment, Metadata, Viewport, ErrorInfo, LayoutProps, PageContext} from "jhonstart";
 import {emilia, flush, Token, defaultTheme, className, cls, clsWith, styled, styledWith, mergeClass} from "emilia";
 import {renderNode, withAttrs, attrValue, classAttr, bracketPair} from "jhonstart";
-import { html } from "jhonstart-html";
+import {html} from "jhonstart-html";
 import {io.fs.walk, io.fs.readText} from "std";
 import {root.plugin, root.classesIn};
 
@@ -113,7 +113,8 @@ test "bridge: a streamed boundary's new class is its fill's style, before the ma
     val doc = document();
     assert doc.contains("<template data-jh-f=\"h1\"><style>");
     val fill = doc.split("<template data-jh-f=\"h1\">").at(1) ?? "";
-    assert fill.indexOf("." + cls) < fill.indexOf("<span class=\"" + cls + "\">aside</span>");
+    assert fill.indexOf("." + cls)
+        < fill.indexOf("<span class=\"" + cls + "\">aside</span>");
     assert fill.contains("</template><script>__bp1(\"h1\")</script>");
 }
 
@@ -136,11 +137,13 @@ test "bridge: close is Ok after the last chunk and Error for a class registered 
     assert outcomeText(clean) == "ok";
     val late = emilia([.Gap.All.8]);
     val dirty = await close();
-    assert outcomeText(dirty).contains("registered after the last chunk: " + late);
+    assert outcomeText(dirty).contains("registered after the last chunk: "
+        + late);
 }
 
 test "bridge: classesIn reads the e_ classes of a flushed document, once each, in order" {
-    assert classesIn(".e_1a2b{gap:1rem}.e_1a2b:hover{}.e_ff{}").join(",") == "e_1a2b,e_ff";
+    assert classesIn(".e_1a2b{gap:1rem}.e_1a2b:hover{}.e_ff{}").join(",")
+        == "e_1a2b,e_ff";
     assert classesIn("@layer theme{:root{--x:1}}").length == 0;
 }
 
@@ -178,7 +181,7 @@ test "bridge: the contract-4 literal on a rendered document" {
 test "bridge: the builders and the html DSL render the class slot byte for byte the same" {
     val c = cls(cardTokens(), defaultTheme());
     val built = div([p([text("hi")])], attrs: [styled(cardTokens(), defaultTheme())]);
-    val dsl = html """<div class={c}><p>hi</p></div>""";
+    val dsl = html "<div class={c}><p>hi</p></div>";
     val drained = await flush();
     assert renderNode(built) == "<div class=\"e_f51c2501\"><p>hi</p></div>";
     assert renderNode(dsl) == renderNode(built);
@@ -186,7 +189,8 @@ test "bridge: the builders and the html DSL render the class slot byte for byte 
     assert attrValue(dsl.attrs, "class") == "e_f51c2501";
     val tagged = withAttrs([#("id", "card")], [classAttr(c)]);
     assert attrValue(tagged, "class") == "e_f51c2501";
-    assert renderNode(div([], attrs: tagged)) == "<div id=\"card\" class=\"e_f51c2501\"></div>";
+    assert renderNode(div([], attrs: tagged))
+        == "<div id=\"card\" class=\"e_f51c2501\"></div>";
 }
 
 test "bridge: a static and an emilia class render static first, one space, in array order" {
@@ -194,8 +198,10 @@ test "bridge: a static and an emilia class render static first, one space, in ar
     val drained = await flush();
     assert pair._1 == mergeClass("card", "e_f51c2501");
     val el = div([], attrs: [#("id", "x"), pair, #("role", "note")]);
-    assert renderNode(el) == "<div id=\"x\" class=\"card e_f51c2501\" role=\"note\"></div>";
-    assert clsWith("card rounded", cardTokens(), defaultTheme()) == "card rounded e_f51c2501";
+    assert renderNode(el)
+        == "<div id=\"x\" class=\"card e_f51c2501\" role=\"note\"></div>";
+    assert clsWith("card rounded", cardTokens(), defaultTheme())
+        == "card rounded e_f51c2501";
 }
 
 test "bridge: one token list is one class on both rows" {

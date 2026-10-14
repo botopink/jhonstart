@@ -23,7 +23,8 @@ test "dom: a fill replaces its hole with the template's content and removes the 
     installDocument(shell() + fill());
     registerFill(globals.fill, ["h1"]);
     assert callFill(globals.fill, "h1") == "called";
-    assert documentMarkup() == "<div data-jh-root=\"\"><section><div data-jh-h=\"h1\"><ul><li>one</li></ul></div></section></div><script>__bp1(\"h1\")</script>";
+    assert documentMarkup()
+        == "<div data-jh-root=\"\"><section><div data-jh-h=\"h1\"><ul><li>one</li></ul></div></section></div><script>__bp1(\"h1\")</script>";
     uninstallDocument();
 }
 
@@ -50,7 +51,10 @@ test "dom: a fill for a hole that is not in the document is dropped" {
 
 fn jsonField(j: Json, key: string) -> string {
     return case j {
-        Obj(members: ms) -> ms.filter({ m -> m._0 == key }).map({ m -> jsonText(m._1) }).join("");
+        Obj(members: ms) -> ms
+            .filter({ m -> m._0 == key })
+            .map({ m -> jsonText(m._1) })
+            .join("");
         _ -> "";
     };
 }
@@ -64,7 +68,10 @@ fn jsonText(j: Json) -> string {
 }
 
 test "dom: readPayload decodes the last payload script the render assigned" {
-    installDocument(shell() + "<script>window." + globals.payload + " = {\"v\":1,\"b\":\"build-0001\",\"p\":\"/blog\"}</script>");
+    installDocument(shell()
+        + "<script>window."
+        + globals.payload
+        + " = {\"v\":1,\"b\":\"build-0001\",\"p\":\"/blog\"}</script>");
     val out = readPayload(globals.payload);
     val decoded = case out {
         Ok(j) -> jsonField(j, "b") + " " + jsonField(j, "p");
@@ -75,7 +82,10 @@ test "dom: readPayload decodes the last payload script the render assigned" {
 }
 
 test "dom: a payload json.decode refuses is an Error, never a partial payload" {
-    installDocument(shell() + "<script>window." + globals.payload + " = {\"v\":1,\"b\":</script>");
+    installDocument(shell()
+        + "<script>window."
+        + globals.payload
+        + " = {\"v\":1,\"b\":</script>");
     val out = readPayload(globals.payload);
     val refused = case out {
         Ok(j) -> false;
@@ -109,7 +119,9 @@ test "dom: a late absolute redirect is followed only when listed" {
 }
 
 test "dom: a late not-found swaps the root's content and drops every later fill" {
-    installDocument(shell() + notFoundSignalHtml("", "<h2>No such post</h2>") + fill());
+    installDocument(shell()
+        + notFoundSignalHtml("", "<h2>No such post</h2>")
+        + fill());
     registerFill(globals.fill, ["h1"]);
     registerSignal(globals.signal, []);
     val signalled = callSignal(globals.signal);

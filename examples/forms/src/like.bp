@@ -10,7 +10,8 @@ pub fn addLike(count: i32, action: i32) -> i32 {
 }
 
 fn likeButton(status: FormStatus) -> Element {
-    if (status.pending) return button([text("♥")], attrs: [#("type", "submit"), #("disabled", "disabled")]);
+    if (status.pending)
+        return button([text("♥")], attrs: [#("type", "submit"), #("disabled", "disabled")]);
     return button([text("♥")], attrs: [#("type", "submit")]);
 }
 

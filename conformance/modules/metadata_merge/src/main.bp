@@ -1,4 +1,4 @@
-import { emptyMetadata, mergeMetadata, renderHead, Metadata } from "jhonstart";
+import {emptyMetadata, mergeMetadata, renderHead, Metadata} from "jhonstart";
 
 pub fn main() {
     val base = emptyMetadata();
