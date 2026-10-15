@@ -149,7 +149,7 @@ pub fn clientProps(comptime decl: @Decl) {
                     + f.name
                     + "' is "
                     + f.typeName,
-            );
+            )
     });
 }
 

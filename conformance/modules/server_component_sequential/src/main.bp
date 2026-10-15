@@ -19,7 +19,7 @@ pub fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
     val comments = await loadComments(post.id);
     return article([
         h1([text(post.title, attrs: [])], attrs: []),
-        ul(comments.map({ c -> commentRow(c); }), attrs: []),
+        ul(comments.map({ c -> commentRow(c) }), attrs: []),
     ], attrs: []);
 }
 

@@ -87,7 +87,7 @@ fn probeNestedCounter(comptime t: @Expr<string>) -> @Expr<string> {
                 .split("")
                 .forEach({ c ->
                     n = n + 1;
-                });
+                })
         });
     return t.build("\"" + n.toString() + "\"");
 }

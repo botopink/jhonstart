@@ -318,7 +318,7 @@ fn PostPage(params: Array<#(string, string)>) -> @Task<Element> {
             h1([text(post.title, attrs: [])], attrs: []),
             ul(
                 comments.map({ c ->
-                    commentRow(c);
+                    commentRow(c)
                 }),
                 attrs: [],
             ),

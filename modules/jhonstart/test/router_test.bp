@@ -286,7 +286,7 @@ test "router: a snapshot's search list round-trips through both" {
     val r = snapshot();
     assert encoding.formStringify(r.search) == "q=boots&page=2&sort=asc";
     val kept = r.search.filter({ p ->
-        p._0 != "sort";
+        p._0 != "sort"
     });
     assert encoding.formStringify(kept) == "q=boots&page=2";
 }

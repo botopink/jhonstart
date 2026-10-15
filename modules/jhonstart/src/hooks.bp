@@ -88,7 +88,7 @@ test "state yields its initial value and a callable setter" {
 // the intended spelling (`r.current`, `rd.state`).
 test "memo computes eagerly; ref/reducer seed their boxes" {
     val m = await memo({ ->
-        3 + 4;
+        3 + 4
     }, []);
     assert m == 7;
     val r = await ref(0);
@@ -124,7 +124,7 @@ fn counter(start: i32) -> @Component<State<i32>> {
 fn Counter() -> @Component<Element> {
     val c = use state(0);
     val doubled = use memo({ ->
-        c.value + c.value;
+        c.value + c.value
     }, []);
     return Element(
         tag: "div",

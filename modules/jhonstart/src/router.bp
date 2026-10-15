@@ -78,7 +78,7 @@ pub fn patternSegments(pattern: string) -> Array<string> {
     return pattern
         .split("/")
         .filter({ part ->
-            part != "";
+            part != ""
         });
 }
 

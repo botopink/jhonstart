@@ -118,7 +118,7 @@ fn islandsOfPage() -> Array<#(string, i32)> {
 
 fn mountFrom(depth: i32) -> void {
     islandsOfPage().forEach({ island ->
-        if (island.1 > depth) recPush("mount " + island.0);
+        if (island.1 > depth) recPush("mount " + island.0)
     });
 }
 
